@@ -34,9 +34,32 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### Docker Development
 
+**Build the image**
 ```bash
-docker build -t mistral-realms-backend .
-docker run -p 8000:8000 --env-file .env mistral-realms-backend
+docker build -t mistral-realms-backend:latest .
+```
+
+**Run the container**
+```bash
+# With environment file
+docker run -d -p 8000:8000 --env-file .env --name realms-backend mistral-realms-backend:latest
+
+# Or with individual env vars
+docker run -d -p 8000:8000 \
+  -e MISTRAL_API_KEY=your_key_here \
+  --name realms-backend \
+  mistral-realms-backend:latest
+```
+
+**View logs**
+```bash
+docker logs -f realms-backend
+```
+
+**Stop and remove**
+```bash
+docker stop realms-backend
+docker rm realms-backend
 ```
 
 ## 🧪 Testing
@@ -62,17 +85,22 @@ backend/
 │   ├── config.py            # Configuration management
 │   ├── routers/             # API endpoints
 │   │   ├── health.py        # Health check routes
-│   │   └── narrate.py       # DM narration routes
+│   │   └── narrate.py       # DM narration routes (coming soon)
 │   ├── services/            # Business logic
-│   │   ├── mistral_client.py
-│   │   └── dm_engine.py
+│   │   ├── mistral_client.py # Mistral AI wrapper
+│   │   └── dm_engine.py     # DM narration engine
 │   ├── models/              # Data models
-│   │   └── schemas.py       # Pydantic models
+│   │   └── schemas.py       # Pydantic models (coming soon)
 │   └── utils/               # Utilities
-│       └── logger.py
+│       └── logger.py        # Structured logging
 ├── tests/                   # Test suite
+│   ├── test_health.py       # Health endpoint tests
+│   ├── test_mistral_client.py # Mistral client tests
+│   ├── test_dm_engine.py    # DM engine tests
+│   └── test_integration.py  # Integration tests
 ├── requirements.txt         # Python dependencies
-├── Dockerfile              # Docker configuration
+├── Dockerfile              # Multi-stage Docker build
+├── .dockerignore           # Docker ignore patterns
 └── .env.example            # Environment template
 ```
 
