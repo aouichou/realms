@@ -39,3 +39,16 @@ def setup_logger(name: str = "mistral-realms") -> logging.Logger:
 
 # Global logger instance
 logger = setup_logger()
+
+
+def get_logger(name: str = "mistral-realms") -> logging.Logger:
+    """
+    Get or create a logger instance
+    
+    Args:
+        name: Logger name
+        
+    Returns:
+        Logger instance
+    """
+    return logging.getLogger(name)
