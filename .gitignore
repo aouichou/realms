@@ -8,6 +8,7 @@
 docs/
 *.code-workspace
 .github
+.codacy/
 
 # Make sure workflows are not ignored
 !.github/workflows/
