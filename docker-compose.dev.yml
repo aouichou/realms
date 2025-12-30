@@ -2,7 +2,7 @@ services:
   # Redis for session storage
   redis:
     image: redis:7-alpine
-    container_name: realms-redis
+    container_name: realms-redis-dev
     ports:
       - "6379:6379"
     volumes:
@@ -13,58 +13,53 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
-    restart: unless-stopped
     networks:
       - realms-network
 
-  # Backend API
+  # Backend API (Development)
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: realms-backend
+    container_name: realms-backend-dev
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app:ro
+      - ./backend/tests:/app/tests:ro
     environment:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - ENVIRONMENT=production
-      - DEBUG=False
+      - ENVIRONMENT=development
+      - DEBUG=True
     depends_on:
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=3.0)"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
-    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - realms-network
 
-  # Frontend Web App
+  # Frontend Web App (Development)
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-    container_name: realms-frontend
+      dockerfile: Dockerfile.dev
+    container_name: realms-frontend-dev
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend/app:/app/app
+      - ./frontend/components:/app/components
+      - ./frontend/lib:/app/lib
+      - ./frontend/public:/app/public
+      - /app/node_modules
+      - /app/.next
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
-      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_ENV=development
     depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 15s
-    restart: unless-stopped
+      - backend
     networks:
       - realms-network
 
