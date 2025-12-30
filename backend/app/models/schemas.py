@@ -2,7 +2,7 @@
 Pydantic models for request/response validation
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, Dict, Any
 from datetime import datetime
 
 
@@ -16,18 +16,22 @@ class HealthCheckResponse(BaseModel):
 
 
 class NarrateRequest(BaseModel):
-    """Request model for DM narration"""
-    message: str = Field(description="User message to the DM", min_length=1, max_length=1000)
-    session_id: Optional[str] = Field(default=None, description="Session ID for context")
-    character_id: Optional[str] = Field(default=None, description="Character ID for context")
+    """Request model for player action narration"""
+    action: str = Field(..., description="The player's action to narrate", min_length=1)
+    character_context: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional character information (name, class, level, etc.)"
+    )
+    game_state: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional game state (location, inventory, quest log, etc.)"
+    )
 
 
 class NarrateResponse(BaseModel):
-    """Response model for DM narration"""
-    response: str = Field(description="DM response")
-    session_id: str = Field(description="Session ID")
-    tokens_used: int = Field(description="Number of tokens used")
-    timestamp: datetime = Field(description="Response timestamp")
+    """Response model for narration"""
+    narration: str = Field(..., description="The DM's narration")
+    tokens_used: int = Field(..., description="Number of tokens consumed")
 
 
 class ErrorResponse(BaseModel):
