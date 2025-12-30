@@ -91,7 +91,74 @@ npm run lint
 npm run build
 ```
 
-## 🐳 Docker (Coming Soon)
+## 🐳 Docker
 
-Docker support will be added in RL-12.
+### Development with Hot Reload
+
+**Build development image**
+```bash
+docker build -f Dockerfile.dev -t mistral-realms-frontend:dev .
+```
+
+**Run development container**
+```bash
+# With environment file
+docker run -d -p 3000:3000 \
+  -v $(pwd):/app \
+  -v /app/node_modules \
+  -v /app/.next \
+  --env-file .env.local \
+  --name realms-frontend-dev \
+  mistral-realms-frontend:dev
+
+# Or with environment variable
+docker run -d -p 3000:3000 \
+  -v $(pwd):/app \
+  -v /app/node_modules \
+  -v /app/.next \
+  -e NEXT_PUBLIC_API_URL=http://backend:8000 \
+  --name realms-frontend-dev \
+  mistral-realms-frontend:dev
+```
+
+### Production Build
+
+**Build production image**
+```bash
+docker build -t mistral-realms-frontend:latest .
+```
+
+**Run production container**
+```bash
+# With environment variable
+docker run -d -p 3000:3000 \
+  -e NEXT_PUBLIC_API_URL=http://backend:8000 \
+  --name realms-frontend \
+  mistral-realms-frontend:latest
+
+# Or with environment file
+docker run -d -p 3000:3000 \
+  --env-file .env.local \
+  --name realms-frontend \
+  mistral-realms-frontend:latest
+```
+
+**View logs**
+```bash
+docker logs -f realms-frontend
+```
+
+**Stop and remove**
+```bash
+docker stop realms-frontend
+docker rm realms-frontend
+```
+
+### Docker Features
+
+- **Multi-stage build**: Optimized for production with minimal image size
+- **Non-root user**: Security-hardened with dedicated nextjs user
+- **Standalone output**: Self-contained build for better portability
+- **Health checks**: Built-in health monitoring
+- **Hot reload**: Development image supports live code changes
 
