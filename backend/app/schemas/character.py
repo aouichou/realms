@@ -18,30 +18,74 @@ class CharacterBase(BaseModel):
     @classmethod
     def validate_class(cls, v: str) -> str:
         """Validate D&D class."""
-        valid_classes = ['Fighter', 'Wizard', 'Rogue', 'Cleric']
-        if v not in valid_classes:
+        valid_classes = [
+            'Barbarian', 'Bard', 'Cleric', 'Druid', 'Fighter', 'Monk',
+            'Paladin', 'Ranger', 'Rogue', 'Sorcerer', 'Warlock', 'Wizard'
+        ]
+        # Case-insensitive validation with capitalization
+        v_capitalized = v.capitalize()
+        if v_capitalized not in valid_classes:
             raise ValueError(f'Invalid class. Must be one of: {", ".join(valid_classes)}')
-        return v
+        return v_capitalized
     
     @field_validator('race')
     @classmethod
     def validate_race(cls, v: str) -> str:
         """Validate D&D race."""
-        valid_races = ['Human', 'Elf', 'Dwarf', 'Halfling']
-        if v not in valid_races:
-            raise ValueError(f'Invalid race. Must be one of: {", ".join(valid_races)}')
+        valid_races = [
+            'Dragonborn', 'Dwarf', 'Elf', 'Gnome', 'Half-Elf', 'Halfling',
+            'Half-Orc', 'Human', 'Tiefling'
+        ]
+        # Case-insensitive validation
+        for race in valid_races:
+            if v.lower() == race.lower():
+                return race
+        raise ValueError(f'Invalid race. Must be one of: {", ".join(valid_races)}')
         return v
+
+
+class AbilityScores(BaseModel):
+    """Ability scores sub-schema."""
+    strength: int = Field(..., ge=1, le=20)
+    dexterity: int = Field(..., ge=1, le=20)
+    constitution: int = Field(..., ge=1, le=20)
+    intelligence: int = Field(..., ge=1, le=20)
+    wisdom: int = Field(..., ge=1, le=20)
+    charisma: int = Field(..., ge=1, le=20)
 
 
 class CharacterCreate(CharacterBase):
     """Schema for creating a new character."""
-    # Base stats - use defaults or allow custom values
-    strength: int = Field(10, ge=3, le=18, description="Strength stat (3-18)")
-    dexterity: int = Field(10, ge=3, le=18, description="Dexterity stat (3-18)")
-    constitution: int = Field(10, ge=3, le=18, description="Constitution stat (3-18)")
-    intelligence: int = Field(10, ge=3, le=18, description="Intelligence stat (3-18)")
-    wisdom: int = Field(10, ge=3, le=18, description="Wisdom stat (3-18)")
-    charisma: int = Field(10, ge=3, le=18, description="Charisma stat (3-18)")
+    level: int = Field(1, ge=1, le=20, description="Character level (1-20)")
+    
+    # Accept either individual stats OR ability_scores object
+    ability_scores: Optional[AbilityScores] = None
+    strength: Optional[int] = Field(None, ge=1, le=20, description="Strength stat (1-20)")
+    dexterity: Optional[int] = Field(None, ge=1, le=20, description="Dexterity stat (1-20)")
+    constitution: Optional[int] = Field(None, ge=1, le=20, description="Constitution stat (1-20)")
+    intelligence: Optional[int] = Field(None, ge=1, le=20, description="Intelligence stat (1-20)")
+    wisdom: Optional[int] = Field(None, ge=1, le=20, description="Wisdom stat (1-20)")
+    charisma: Optional[int] = Field(None, ge=1, le=20, description="Charisma stat (1-20)")
+    
+    def get_ability_scores(self) -> dict:
+        """Get ability scores as dict, preferring ability_scores object."""
+        if self.ability_scores:
+            return {
+                'strength': self.ability_scores.strength,
+                'dexterity': self.ability_scores.dexterity,
+                'constitution': self.ability_scores.constitution,
+                'intelligence': self.ability_scores.intelligence,
+                'wisdom': self.ability_scores.wisdom,
+                'charisma': self.ability_scores.charisma,
+            }
+        return {
+            'strength': self.strength or 10,
+            'dexterity': self.dexterity or 10,
+            'constitution': self.constitution or 10,
+            'intelligence': self.intelligence or 10,
+            'wisdom': self.wisdom or 10,
+            'charisma': self.charisma or 10,
+        }
 
 
 class CharacterUpdate(BaseModel):

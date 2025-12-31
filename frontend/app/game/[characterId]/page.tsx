@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import Image from 'next/image';
+import { useParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
 interface Message {
   id: number;
