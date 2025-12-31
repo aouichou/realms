@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.utils.logger import logger
 from app.routers import health, narrate
+from app.api import characters
 from app.db.base import init_db, close_db
 
 
@@ -98,6 +99,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 # Include routers
 app.include_router(health.router)
 app.include_router(narrate.router)
+app.include_router(characters.router)
 
 
 # Root endpoint
