@@ -32,7 +32,15 @@ COPY --from=builder /root/.local /home/appuser/.local
 
 # Copy application code
 COPY --chown=appuser:appuser app/ ./app/
+COPY --chown=appuser:appuser alembic/ ./alembic/
+COPY --chown=appuser:appuser alembic.ini .
+COPY --chown=appuser:appuser entrypoint.sh .
 COPY --chown=appuser:appuser pyproject.toml .
+
+# Make entrypoint executable
+USER root
+RUN chmod +x entrypoint.sh
+USER appuser
 
 # Set environment variables
 ENV PATH=/home/appuser/.local/bin:$PATH \
@@ -50,5 +58,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8000/health', timeout=3.0)"
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run migrations and start application
+CMD ["./entrypoint.sh"]
