@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 // D&D 5e Classes and Races from backend API
 const DND_CLASSES = [
@@ -38,6 +39,7 @@ interface AbilityScores {
 }
 
 export default function CharacterCreation() {
+  const router = useRouter();
   const [name, setName] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedRace, setSelectedRace] = useState('');
@@ -90,7 +92,8 @@ export default function CharacterCreation() {
       if (response.ok) {
         const character = await response.json();
         console.log('Character created:', character);
-        // TODO: Navigate to character sheet or game
+        // Navigate to game with the new character
+        router.push(`/game/${character.id}`);
       } else {
         console.error('Failed to create character');
       }
