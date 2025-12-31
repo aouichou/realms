@@ -11,8 +11,9 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.utils.logger import logger
 from app.routers import health, narrate
-from app.api import characters
+from app.api import characters, sessions
 from app.db.base import init_db, close_db
+from app.services.redis_service import session_service
 
 
 @asynccontextmanager
@@ -36,14 +37,21 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to initialize database: {e}")
         raise
     
-    # TODO: Initialize Redis connection pool
+    # Initialize Redis connection
+    try:
+        logger.info("Initializing Redis connection...")
+        await session_service.connect()
+        logger.info("Redis connection established")
+    except Exception as e:
+        logger.error(f"Failed to initialize Redis: {e}")
+        raise
     
     yield
     
     # Shutdown
     logger.info("Shutting down application")
     await close_db()
-    # TODO: Close Redis connection
+    await session_service.disconnect()
 
 
 # Create FastAPI application
@@ -100,6 +108,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router)
 app.include_router(narrate.router)
 app.include_router(characters.router)
+app.include_router(sessions.router)
 
 
 # Root endpoint
