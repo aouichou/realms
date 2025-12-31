@@ -1,17 +1,17 @@
 """D&D dice rolling service."""
-import random
 import re
 from typing import Optional
 
 from app.schemas.dice import DiceRollResult, RollType
+from app.services.random_pool import random_pool
 
 
 class DiceService:
     """Service for D&D dice rolling."""
     
     @staticmethod
-    def roll_die(sides: int) -> int:
-        """Roll a single die.
+    async def roll_die(sides: int) -> int:
+        """Roll a single die using true randomness if available.
         
         Args:
             sides: Number of sides on the die
@@ -19,7 +19,7 @@ class DiceService:
         Returns:
             Random number between 1 and sides
         """
-        return random.randint(1, sides)
+        return await random_pool.get_random_int(1, sides)
     
     @staticmethod
     def parse_dice_notation(notation: str) -> tuple[int, int, int]:
@@ -59,7 +59,7 @@ class DiceService:
         return count, sides, modifier
     
     @staticmethod
-    def roll_dice(
+    async def roll_dice(
         notation: str,
         roll_type: RollType = RollType.NORMAL
     ) -> tuple[list[DiceRollResult], int, int]:
@@ -82,8 +82,8 @@ class DiceService:
             if count != 1:
                 raise ValueError("Advantage/disadvantage only works with single die rolls (e.g., d20)")
             
-            roll1 = DiceService.roll_die(sides)
-            roll2 = DiceService.roll_die(sides)
+            roll1 = await DiceService.roll_die(sides)
+            roll2 = await DiceService.roll_die(sides)
             
             if roll1 >= roll2:
                 rolls.append(DiceRollResult(die_type=die_type, roll=roll1, dropped=False))
@@ -97,8 +97,8 @@ class DiceService:
             if count != 1:
                 raise ValueError("Advantage/disadvantage only works with single die rolls (e.g., d20)")
             
-            roll1 = DiceService.roll_die(sides)
-            roll2 = DiceService.roll_die(sides)
+            roll1 = await DiceService.roll_die(sides)
+            roll2 = await DiceService.roll_die(sides)
             
             if roll1 <= roll2:
                 rolls.append(DiceRollResult(die_type=die_type, roll=roll1, dropped=False))
@@ -110,7 +110,7 @@ class DiceService:
         else:
             # Normal roll
             for _ in range(count):
-                roll = DiceService.roll_die(sides)
+                roll = await DiceService.roll_die(sides)
                 rolls.append(DiceRollResult(die_type=die_type, roll=roll, dropped=False))
         
         # Calculate total (only non-dropped rolls)

@@ -1,7 +1,7 @@
 """Dice rolling API endpoints."""
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.dice import DiceRollRequest, DiceRollResponse, DiceRollResult
+from app.schemas.dice import DiceRollRequest, DiceRollResponse
 from app.services.dice_service import DiceService
 
 router = APIRouter(prefix="/api/dice", tags=["dice"])
@@ -21,7 +21,7 @@ async def roll_dice(request: DiceRollRequest) -> DiceRollResponse:
         HTTPException: If dice notation is invalid
     """
     try:
-        rolls, modifier, total = DiceService.roll_dice(
+        rolls, modifier, total = await DiceService.roll_dice(
             request.dice,
             request.roll_type
         )
