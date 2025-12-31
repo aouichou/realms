@@ -82,6 +82,8 @@ export default function CharacterCreation() {
       ability_scores: abilities,
     };
 
+    console.log('Sending character data:', characterData);
+
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/characters`, {
         method: 'POST',
@@ -89,16 +91,21 @@ export default function CharacterCreation() {
         body: JSON.stringify(characterData),
       });
 
+      console.log('Response status:', response.status);
+
       if (response.ok) {
         const character = await response.json();
         console.log('Character created:', character);
         // Navigate to game with the new character
         router.push(`/game/${character.id}`);
       } else {
-        console.error('Failed to create character');
+        const errorData = await response.json();
+        console.error('Failed to create character:', errorData);
+        alert(`Failed to create character: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error creating character:', error);
+      alert('An error occurred while creating your character. Please try again.');
     }
   };
 
