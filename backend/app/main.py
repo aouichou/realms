@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.utils.logger import logger
 from app.routers import health, narrate
+from app.db.base import init_db, close_db
 
 
 @asynccontextmanager
@@ -24,15 +25,24 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
     
-    # TODO: Initialize Redis connection
-    # TODO: Initialize database connection pool
+    # Initialize database
+    try:
+        logger.info("Initializing database connection...")
+        # Note: Tables are created by Alembic migrations
+        # await init_db()  # Only use in development without Alembic
+        logger.info("Database connection established")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        raise
+    
+    # TODO: Initialize Redis connection pool
     
     yield
     
     # Shutdown
     logger.info("Shutting down application")
+    await close_db()
     # TODO: Close Redis connection
-    # TODO: Close database connections
 
 
 # Create FastAPI application
