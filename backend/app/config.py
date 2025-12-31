@@ -59,6 +59,28 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = Field(default="INFO", description="Logging level")
     
+    # True Randomness (Random.org)
+    use_true_randomness: bool = Field(
+        default=True,
+        description="Use Random.org for true atmospheric randomness in dice rolls"
+    )
+    random_org_url: str = Field(
+        default="https://www.random.org/integers/",
+        description="Random.org API endpoint"
+    )
+    random_pool_size: int = Field(
+        default=200,
+        description="Number of random integers to fetch per API call"
+    )
+    random_pool_min_threshold: int = Field(
+        default=50,
+        description="Minimum pool size before triggering refill"
+    )
+    random_pool_timeout: float = Field(
+        default=30.0,
+        description="API request timeout in seconds"
+    )
+    
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins into a list"""
