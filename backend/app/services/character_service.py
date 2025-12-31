@@ -41,10 +41,13 @@ class CharacterService:
         user_id: Optional[UUID] = None
     ) -> Character:
         """Create a new character."""
+        # Get ability scores from either format
+        ability_scores = character_data.get_ability_scores()
+        
         # Calculate initial HP
         hp_max = CharacterService.calculate_hp_max(
             character_data.character_class,
-            character_data.constitution
+            ability_scores['constitution']
         )
         
         character = Character(
@@ -54,15 +57,15 @@ class CharacterService:
             character_type=CharacterType.PLAYER,
             character_class=character_data.character_class,
             race=character_data.race,
-            level=1,
+            level=character_data.level,
             hp_current=hp_max,
             hp_max=hp_max,
-            strength=character_data.strength,
-            dexterity=character_data.dexterity,
-            constitution=character_data.constitution,
-            intelligence=character_data.intelligence,
-            wisdom=character_data.wisdom,
-            charisma=character_data.charisma,
+            strength=ability_scores['strength'],
+            dexterity=ability_scores['dexterity'],
+            constitution=ability_scores['constitution'],
+            intelligence=ability_scores['intelligence'],
+            wisdom=ability_scores['wisdom'],
+            charisma=ability_scores['charisma'],
             background=character_data.background,
             personality=character_data.personality
         )

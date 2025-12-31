@@ -5,8 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 // D&D 5e Classes and Races from backend API
 const DND_CLASSES = [
@@ -76,7 +76,7 @@ export default function CharacterCreation() {
     
     const characterData = {
       name,
-      class: selectedClass,
+      character_class: selectedClass,
       race: selectedRace,
       level,
       ability_scores: abilities,
