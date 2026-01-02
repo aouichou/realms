@@ -1,26 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
-import { Package, Sword, Shield, Flask, Scroll, Box, Grid3x3, List } from "lucide-react";
+import { Beaker, Box, Grid3x3, List, Package, ScrollText, Shield, Sword } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface Item {
   id: string;
@@ -47,8 +47,8 @@ interface InventoryPanelProps {
 const ITEM_ICONS = {
   weapon: Sword,
   armor: Shield,
-  consumable: Flask,
-  quest: Scroll,
+  consumable: Beaker,
+  quest: ScrollText,
   misc: Box,
 };
 
@@ -316,7 +316,7 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
           <DialogHeader>
             <DialogTitle>{selectedItem?.name}</DialogTitle>
             <DialogDescription>
-              {selectedItem?.item_type.charAt(0).toUpperCase() + selectedItem?.item_type.slice(1)}
+              {selectedItem ? selectedItem.item_type.charAt(0).toUpperCase() + selectedItem.item_type.slice(1) : ''}
             </DialogDescription>
           </DialogHeader>
 

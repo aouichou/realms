@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from app.db.database import get_db
+from app.db.base import get_db
 from app.db.models import Item, Character, ItemType
 from app.schemas.inventory import (
     ItemCreate,
