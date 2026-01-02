@@ -81,10 +81,11 @@ const DialogDescription = React.forwardRef<
 DialogDescription.displayName = "DialogDescription"
 
 export {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle
 }
+

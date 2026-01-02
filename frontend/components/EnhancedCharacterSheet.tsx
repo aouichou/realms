@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
-  Heart,
-  Shield,
-  Zap,
-  Sparkles,
-  Swords,
-  Brain,
-  Eye,
-  MessageCircle,
+    Brain,
+    Eye,
+    Heart,
+    MessageCircle,
+    Shield,
+    Sparkles,
+    Swords,
+    Zap,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface AbilityScore {
   score: number;
