@@ -1,5 +1,8 @@
 'use client';
 
+import { CombatTracker } from '@/components/CombatTracker';
+import { EnhancedCharacterSheet } from '@/components/EnhancedCharacterSheet';
+import { InventoryPanel } from '@/components/InventoryPanel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,7 +34,7 @@ interface Character {
   charisma: number;
 }
 
-type PanelType = 'stats' | 'inventory' | 'dice' | null;
+type PanelType = 'stats' | 'inventory' | 'dice' | 'combat' | null;
 
 export default function GamePage() {
   const params = useParams();
@@ -241,6 +244,15 @@ export default function GamePage() {
           >
             🎲 Dice Roller
           </button>
+
+          {/* Combat Button */}
+          <button
+            onClick={() => togglePanel('combat')}
+            className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 
+                     hover:bg-white/20 transition-all text-white font-body text-sm"
+          >
+            ⚔️ Combat
+          </button>
         </div>
 
         {/* Center - Messages Area */}
@@ -309,12 +321,15 @@ export default function GamePage() {
 
         {/* Right Panel - Expanded Content */}
         {openPanel && (
-          <div className="w-96 p-6 bg-white/10 backdrop-blur-xl border-l border-white/20 overflow-y-auto">
+          <div className={`p-6 bg-white/10 backdrop-blur-xl border-l border-white/20 overflow-y-auto ${
+            openPanel === 'stats' || openPanel === 'inventory' || openPanel === 'combat' ? 'w-[800px]' : 'w-96'
+          }`}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-display text-xl text-white">
                 {openPanel === 'stats' && '⚔️ Character Stats'}
                 {openPanel === 'inventory' && '🎒 Inventory'}
                 {openPanel === 'dice' && '🎲 Dice Roller'}
+                {openPanel === 'combat' && '⚔️ Combat'}
               </h2>
               <button
                 onClick={() => setOpenPanel(null)}
@@ -326,52 +341,34 @@ export default function GamePage() {
 
             {/* Stats Panel */}
             {openPanel === 'stats' && character && (
-              <div className="space-y-4">
-                <Card className="bg-white/5 border-white/10">
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-white/60 font-body uppercase">HP</p>
-                        <p className="text-lg font-bold text-success-500">
-                          {character.hp_current} / {character.hp_max}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-white/60 font-body uppercase">Level</p>
-                        <p className="text-lg font-bold text-white">{character.level}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="space-y-3">
-                  <h3 className="font-body text-sm text-white/80 uppercase tracking-wide">Ability Scores</h3>
-                  {[
-                    { name: 'Strength', value: character.strength },
-                    { name: 'Dexterity', value: character.dexterity },
-                    { name: 'Constitution', value: character.constitution },
-                    { name: 'Intelligence', value: character.intelligence },
-                    { name: 'Wisdom', value: character.wisdom },
-                    { name: 'Charisma', value: character.charisma },
-                  ].map(({ name, value }) => (
-                    <div key={name} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                      <span className="font-body text-white">{name}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-white font-bold">{value}</span>
-                        <span className="text-accent-400 font-mono text-sm">
-                          {calculateModifier(value) >= 0 ? '+' : ''}{calculateModifier(value)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="bg-neutral-900 rounded-lg">
+                <EnhancedCharacterSheet
+                  characterId={characterId}
+                  characterName={character.name}
+                  characterClass={character.character_class}
+                  level={character.level}
+                />
               </div>
             )}
 
             {/* Inventory Panel */}
             {openPanel === 'inventory' && (
-              <div className="text-white/60 font-body text-center py-8">
-                Inventory system coming soon...
+              <div className="bg-neutral-900 rounded-lg">
+                <InventoryPanel characterId={characterId} />
+              </div>
+            )}
+
+            {/* Combat Panel */}
+            {openPanel === 'combat' && sessionId && (
+              <div className="bg-neutral-900 rounded-lg">
+                <CombatTracker 
+                  sessionId={sessionId}
+                  characterId={characterId}
+                  onCombatEnd={() => {
+                    // Refresh character stats after combat
+                    loadCharacter();
+                  }}
+                />
               </div>
             )}
 
