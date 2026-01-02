@@ -28,7 +28,7 @@ class SessionStateUpdate(BaseModel):
 class SessionResponse(BaseModel):
     """Schema for session API responses."""
     id: UUID
-    user_id: UUID
+    user_id: Optional[UUID] = None
     character_id: UUID
     companion_id: Optional[UUID] = None
     is_active: bool

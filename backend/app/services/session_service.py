@@ -16,14 +16,14 @@ class GameSessionService:
     @staticmethod
     async def create_session(
         db: AsyncSession,
-        user_id: UUID,
+        user_id: Optional[UUID],
         session_data: SessionCreate
     ) -> GameSession:
         """Create a new game session in the database.
         
         Args:
             db: Database session
-            user_id: User ID
+            user_id: User ID (optional for development without auth)
             session_data: Session creation data
             
         Returns:
