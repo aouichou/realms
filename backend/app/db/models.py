@@ -59,6 +59,30 @@ class ItemType(str, PyEnum):
     MISC = "misc"
 
 
+class SpellSchool(str, PyEnum):
+    """D&D 5e schools of magic"""
+    ABJURATION = "Abjuration"
+    CONJURATION = "Conjuration"
+    DIVINATION = "Divination"
+    ENCHANTMENT = "Enchantment"
+    EVOCATION = "Evocation"
+    ILLUSION = "Illusion"
+    NECROMANCY = "Necromancy"
+    TRANSMUTATION = "Transmutation"
+
+
+class CastingTime(str, PyEnum):
+    """Spell casting time"""
+    ACTION = "1 action"
+    BONUS_ACTION = "1 bonus action"
+    REACTION = "1 reaction"
+    MINUTE = "1 minute"
+    TEN_MINUTES = "10 minutes"
+    HOUR = "1 hour"
+    RITUAL = "1 minute (ritual)"
+
+
+
 class MessageRole(str, PyEnum):
     """Conversation message roles"""
     USER = "user"
@@ -147,6 +171,10 @@ class Character(Base):
     # Stored for quick access, should be updated when strength changes
     carrying_capacity: Mapped[int] = mapped_column(Integer, default=150, nullable=False)
     
+    # Spell slots tracking (for spellcasting classes)
+    # Format: {"1": {"total": 2, "used": 0}, "2": {"total": 0, "used": 0}, ...}
+    spell_slots: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True, default=dict)
+    
     # Additional attributes for AI companions and NPCs
     background: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     personality: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -173,6 +201,7 @@ class Character(Base):
         foreign_keys="GameSession.companion_id"
     )
     items = relationship("Item", back_populates="character", cascade="all, delete-orphan")
+    character_spells = relationship("CharacterSpell", back_populates="character", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (
@@ -341,3 +370,109 @@ class Item(Base):
 
     def __repr__(self) -> str:
         return f"<Item(id={self.id}, name={self.name}, type={self.item_type})>"
+
+
+class Spell(Base):
+    """Spell model for D&D 5e spells"""
+    __tablename__ = "spells"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
+    level: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # 0 = cantrip
+    school: Mapped[SpellSchool] = mapped_column(
+        Enum(SpellSchool, values_callable=lambda x: [e.value for e in x]),
+        nullable=False
+    )
+    
+    # Casting details
+    casting_time: Mapped[CastingTime] = mapped_column(
+        Enum(CastingTime, values_callable=lambda x: [e.value for e in x]),
+        nullable=False
+    )
+    range: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g., "30 feet", "Self", "Touch"
+    duration: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g., "Instantaneous", "1 minute"
+    
+    # Components
+    verbal: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    somatic: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    material: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)  # Material components if any
+    
+    # Spell details
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    is_concentration: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_ritual: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    
+    # Damage/healing if applicable
+    damage_dice: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # e.g., "1d6", "3d8"
+    damage_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # e.g., "fire", "cold"
+    
+    # Saving throw if applicable
+    save_ability: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # e.g., "dexterity", "wisdom"
+    
+    # Classes that can learn this spell
+    available_to_classes: Mapped[Optional[dict]] = mapped_column(
+        JSONB,
+        nullable=True,
+        default=dict
+    )  # {"wizard": True, "cleric": True}
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    character_spells = relationship("CharacterSpell", back_populates="spell")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_spells_level_school", "level", "school"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Spell(id={self.id}, name={self.name}, level={self.level})>"
+
+
+class CharacterSpell(Base):
+    """Junction table for character spells (known/prepared)"""
+    __tablename__ = "character_spells"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    character_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("characters.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    spell_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("spells.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    
+    # Spell status for this character
+    is_known: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_prepared: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    character = relationship("Character", back_populates="character_spells")
+    spell = relationship("Spell", back_populates="character_spells")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_character_spells_char_spell", "character_id", "spell_id", unique=True),
+        Index("ix_character_spells_prepared", "character_id", "is_prepared"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<CharacterSpell(character_id={self.character_id}, spell_id={self.spell_id})>"
+

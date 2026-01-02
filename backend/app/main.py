@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.utils.logger import logger
 from app.routers import health, narrate
-from app.api import characters, sessions, conversations, dice, random_status, inventory
+from app.api import characters, sessions, conversations, dice, random_status, inventory, spells
 from app.db.base import init_db, close_db
 from app.services.redis_service import session_service
 
@@ -130,6 +130,7 @@ app.include_router(conversations.router)
 app.include_router(dice.router)
 app.include_router(random_status.router)
 app.include_router(inventory.router)
+app.include_router(spells.router)
 
 
 # Root endpoint
