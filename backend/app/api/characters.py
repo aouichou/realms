@@ -12,6 +12,7 @@ from app.schemas.character import (
     CharacterResponse,
     CharacterUpdate,
 )
+from app.schemas.character_stats import CharacterStatsResponse
 from app.services.character_service import CharacterService
 
 router = APIRouter(prefix="/api/characters", tags=["characters"])
@@ -139,3 +140,35 @@ async def delete_character(
     deleted = await CharacterService.delete_character(db, character_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Character not found")
+
+
+@router.get("/{character_id}/stats", response_model=CharacterStatsResponse)
+async def get_character_stats(
+    character_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get full character statistics including equipment bonuses.
+    
+    This endpoint calculates:
+    - Ability modifiers
+    - Proficiency bonus
+    - Armor Class (including equipped armor and shields)
+    - Attack bonuses
+    - Spell save DC
+    - Skill modifiers
+    - Saving throw modifiers
+    
+    Args:
+        character_id: Character UUID
+        db: Database session
+        
+    Returns:
+        Complete character statistics
+        
+    Raises:
+        HTTPException: 404 if character not found
+    """
+    stats = await CharacterService.calculate_character_stats(db, character_id)
+    if not stats:
+        raise HTTPException(status_code=404, detail="Character not found")
+    return stats

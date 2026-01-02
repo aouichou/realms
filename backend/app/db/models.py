@@ -50,6 +50,15 @@ class CharacterRace(str, PyEnum):
     TIEFLING = "Tiefling"
 
 
+class ItemType(str, PyEnum):
+    """Item type categories"""
+    WEAPON = "weapon"
+    ARMOR = "armor"
+    CONSUMABLE = "consumable"
+    QUEST = "quest"
+    MISC = "misc"
+
+
 class MessageRole(str, PyEnum):
     """Conversation message roles"""
     USER = "user"
@@ -134,6 +143,10 @@ class Character(Base):
     wisdom: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
     charisma: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
     
+    # Carrying capacity (calculated as STR * 15 lbs per D&D 5e rules)
+    # Stored for quick access, should be updated when strength changes
+    carrying_capacity: Mapped[int] = mapped_column(Integer, default=150, nullable=False)
+    
     # Additional attributes for AI companions and NPCs
     background: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     personality: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -159,6 +172,7 @@ class Character(Base):
         back_populates="companion",
         foreign_keys="GameSession.companion_id"
     )
+    items = relationship("Item", back_populates="character", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (
@@ -275,3 +289,55 @@ class ConversationMessage(Base):
 
     def __repr__(self) -> str:
         return f"<ConversationMessage(id={self.id}, session_id={self.session_id}, role={self.role})>"
+
+
+class Item(Base):
+    """Item model for character inventory"""
+    __tablename__ = "items"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    character_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("characters.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    item_type: Mapped[ItemType] = mapped_column(
+        Enum(ItemType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        index=True
+    )
+    
+    # Weight in pounds (D&D 5e standard)
+    weight: Mapped[float] = mapped_column(Integer, default=0, nullable=False)
+    
+    # Value in gold pieces
+    value: Mapped[float] = mapped_column(Integer, default=0, nullable=False)
+    
+    # Flexible storage for item-specific properties
+    # Examples: damage_dice, ac_bonus, attack_bonus, charges, effects, etc.
+    properties: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True, default=dict)
+    
+    # Inventory management
+    equipped: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    character = relationship("Character", back_populates="items")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_items_character_type", "character_id", "item_type"),
+        Index("ix_items_character_equipped", "character_id", "equipped"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Item(id={self.id}, name={self.name}, type={self.item_type})>"
