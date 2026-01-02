@@ -5,8 +5,8 @@ from typing import Optional
 from enum import Enum as PyEnum
 
 from sqlalchemy import (
-    String, Integer, Boolean, DateTime, Text, Enum, JSON, ForeignKey,
-    Index, UniqueConstraint
+    String, Integer, Boolean, DateTime, Text, Enum, ForeignKey,
+    Index
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -23,18 +23,31 @@ class CharacterType(str, PyEnum):
 
 class CharacterClass(str, PyEnum):
     """D&D 5e character classes"""
-    FIGHTER = "Fighter"
-    WIZARD = "Wizard"
-    ROGUE = "Rogue"
+    BARBARIAN = "Barbarian"
+    BARD = "Bard"
     CLERIC = "Cleric"
+    DRUID = "Druid"
+    FIGHTER = "Fighter"
+    MONK = "Monk"
+    PALADIN = "Paladin"
+    RANGER = "Ranger"
+    ROGUE = "Rogue"
+    SORCERER = "Sorcerer"
+    WARLOCK = "Warlock"
+    WIZARD = "Wizard"
 
 
 class CharacterRace(str, PyEnum):
     """D&D 5e character races"""
-    HUMAN = "Human"
-    ELF = "Elf"
+    DRAGONBORN = "Dragonborn"
     DWARF = "Dwarf"
+    ELF = "Elf"
+    GNOME = "Gnome"
+    HALFELF = "Half-Elf"
+    HALFORC = "Half-Orc"
     HALFLING = "Halfling"
+    HUMAN = "Human"
+    TIEFLING = "Tiefling"
 
 
 class MessageRole(str, PyEnum):
@@ -165,10 +178,10 @@ class GameSession(Base):
         primary_key=True,
         default=uuid.uuid4
     )
-    user_id: Mapped[uuid.UUID] = mapped_column(
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True
     )
     character_id: Mapped[uuid.UUID] = mapped_column(

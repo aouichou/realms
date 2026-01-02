@@ -22,19 +22,22 @@ router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 @router.post("", response_model=SessionResponse, status_code=201)
 async def create_session(
     session_data: SessionCreate,
-    user_id: UUID,  # TODO: Replace with auth user from JWT
+    user_id: Optional[UUID] = Query(None, description="User ID (temporary - will be from JWT)"),
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new game session.
     
     Args:
         session_data: Session creation data
-        user_id: User ID (from authentication)
+        user_id: User ID (from authentication, optional for now)
         db: Database session
         
     Returns:
         Created session
     """
+    # Pass None if no user_id provided (for development without auth)
+    # The database allows nullable user_id for game_sessions
+    
     # Create session in PostgreSQL
     session = await GameSessionService.create_session(db, user_id, session_data)
     

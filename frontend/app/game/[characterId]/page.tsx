@@ -18,19 +18,17 @@ interface Message {
 interface Character {
   id: number;
   name: string;
-  class: string;
+  character_class: string;
   race: string;
   level: number;
-  current_hp: number;
-  max_hp: number;
-  ability_scores: {
-    strength: number;
-    dexterity: number;
-    constitution: number;
-    intelligence: number;
-    wisdom: number;
-    charisma: number;
-  };
+  hp_current: number;
+  hp_max: number;
+  strength: number;
+  dexterity: number;
+  constitution: number;
+  intelligence: number;
+  wisdom: number;
+  charisma: number;
 }
 
 type PanelType = 'stats' | 'inventory' | 'dice' | null;
@@ -41,6 +39,7 @@ export default function GamePage() {
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [character, setCharacter] = useState<Character | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [openPanel, setOpenPanel] = useState<PanelType>(null);
@@ -52,8 +51,19 @@ export default function GamePage() {
 
   useEffect(() => {
     loadCharacter();
-    loadConversationHistory();
   }, [characterId]);
+
+  useEffect(() => {
+    if (character && !sessionId) {
+      getOrCreateSession();
+    }
+  }, [character]);
+
+  useEffect(() => {
+    if (sessionId) {
+      loadConversationHistory();
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -75,9 +85,36 @@ export default function GamePage() {
     }
   };
 
-  const loadConversationHistory = async () => {
+  const getOrCreateSession = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/conversations/history?character_id=${characterId}`);
+      // For now, create a new session every time
+      // TODO: Implement logic to get active session or create new one
+      const response = await fetch(`${API_URL}/api/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          character_id: characterId,
+          companion_id: null,
+          current_location: 'Starting Village',
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSessionId(data.id);
+      } else {
+        console.error('Error creating session:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error getting/creating session:', error);
+    }
+  };
+
+  const loadConversationHistory = async () => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/conversations/${sessionId}`);
       if (response.ok) {
         const data = await response.json();
         setMessages(data.messages || []);
@@ -137,7 +174,7 @@ export default function GamePage() {
       const response = await fetch(`${API_URL}/api/dice/roll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notation: diceNotation }),
+        body: JSON.stringify({ dice: diceNotation }),
       });
 
       if (response.ok) {
@@ -215,7 +252,7 @@ export default function GamePage() {
                 {character.name}
               </h1>
               <p className="text-sm text-white/80 font-body">
-                Level {character.level} {character.race} {character.class}
+                Level {character.level} {character.race} {character.character_class}
               </p>
             </div>
           )}
@@ -296,7 +333,7 @@ export default function GamePage() {
                       <div>
                         <p className="text-xs text-white/60 font-body uppercase">HP</p>
                         <p className="text-lg font-bold text-success-500">
-                          {character.current_hp} / {character.max_hp}
+                          {character.hp_current} / {character.hp_max}
                         </p>
                       </div>
                       <div>
@@ -309,13 +346,20 @@ export default function GamePage() {
 
                 <div className="space-y-3">
                   <h3 className="font-body text-sm text-white/80 uppercase tracking-wide">Ability Scores</h3>
-                  {Object.entries(character.ability_scores).map(([ability, score]) => (
-                    <div key={ability} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                      <span className="font-body text-white capitalize">{ability}</span>
+                  {[
+                    { name: 'Strength', value: character.strength },
+                    { name: 'Dexterity', value: character.dexterity },
+                    { name: 'Constitution', value: character.constitution },
+                    { name: 'Intelligence', value: character.intelligence },
+                    { name: 'Wisdom', value: character.wisdom },
+                    { name: 'Charisma', value: character.charisma },
+                  ].map(({ name, value }) => (
+                    <div key={name} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                      <span className="font-body text-white">{name}</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-white font-bold">{score}</span>
+                        <span className="text-white font-bold">{value}</span>
                         <span className="text-accent-400 font-mono text-sm">
-                          {calculateModifier(score) >= 0 ? '+' : ''}{calculateModifier(score)}
+                          {calculateModifier(value) >= 0 ? '+' : ''}{calculateModifier(value)}
                         </span>
                       </div>
                     </div>
