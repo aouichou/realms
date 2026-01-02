@@ -268,6 +268,7 @@ class GameSession(Base):
         foreign_keys=[companion_id]
     )
     messages = relationship("ConversationMessage", back_populates="session", cascade="all, delete-orphan")
+    combat_encounters = relationship("CombatEncounter", back_populates="session", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (
@@ -475,4 +476,49 @@ class CharacterSpell(Base):
 
     def __repr__(self) -> str:
         return f"<CharacterSpell(character_id={self.character_id}, spell_id={self.spell_id})>"
+
+
+class CombatEncounter(Base):
+    """Combat encounter tracking model"""
+    __tablename__ = "combat_encounters"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("game_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    
+    # Combat state
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    current_turn: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    round_number: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    
+    # Participants: list of {character_id, name, initiative, hp_current, hp_max, ac, is_enemy}
+    participants: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    
+    # Turn order: sorted list of participant indices
+    turn_order: Mapped[list] = mapped_column(JSONB, nullable=False)
+    
+    # Combat log: list of action descriptions
+    combat_log: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    session = relationship("GameSession", back_populates="combat_encounters")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_combat_session_active", "session_id", "is_active"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<CombatEncounter(id={self.id}, session_id={self.session_id}, active={self.is_active})>"
 
