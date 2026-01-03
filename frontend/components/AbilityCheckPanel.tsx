@@ -1,24 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Dices, 
-  TrendingUp, 
-  TrendingDown, 
-  CheckCircle2, 
-  XCircle,
-  Eye,
-  Footprints,
-  Search,
-  Brain,
-  MessageCircle,
-  Users
+import {
+    Brain,
+    CheckCircle2,
+    Dices,
+    Eye,
+    Footprints,
+    MessageCircle,
+    Search,
+    TrendingDown,
+    TrendingUp,
+    Users,
+    XCircle
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface AbilityCheckPanelProps {
   characterId: string;
@@ -52,6 +52,50 @@ const SKILLS_BY_ABILITY: Record<string, string[]> = {
   INT: ["Arcana", "History", "Investigation", "Nature", "Religion"],
   WIS: ["Animal Handling", "Insight", "Medicine", "Perception", "Survival"],
   CHA: ["Deception", "Intimidation", "Performance", "Persuasion"],
+};
+
+// Map display names to API snake_case format
+const SKILL_NAME_MAP: Record<string, string> = {
+  "Athletics": "athletics",
+  "Acrobatics": "acrobatics",
+  "Sleight of Hand": "sleight_of_hand",
+  "Stealth": "stealth",
+  "Arcana": "arcana",
+  "History": "history",
+  "Investigation": "investigation",
+  "Nature": "nature",
+  "Religion": "religion",
+  "Animal Handling": "animal_handling",
+  "Insight": "insight",
+  "Medicine": "medicine",
+  "Perception": "perception",
+  "Survival": "survival",
+  "Deception": "deception",
+  "Intimidation": "intimidation",
+  "Performance": "performance",
+  "Persuasion": "persuasion",
+};
+
+// Map skills to their primary ability
+const SKILL_TO_ABILITY: Record<string, string> = {
+  "Athletics": "strength",
+  "Acrobatics": "dexterity",
+  "Sleight of Hand": "dexterity",
+  "Stealth": "dexterity",
+  "Arcana": "intelligence",
+  "History": "intelligence",
+  "Investigation": "intelligence",
+  "Nature": "intelligence",
+  "Religion": "intelligence",
+  "Animal Handling": "wisdom",
+  "Insight": "wisdom",
+  "Medicine": "wisdom",
+  "Perception": "wisdom",
+  "Survival": "wisdom",
+  "Deception": "charisma",
+  "Intimidation": "charisma",
+  "Performance": "charisma",
+  "Persuasion": "charisma",
 };
 
 const ABILITY_ICONS: Record<string, any> = {
@@ -118,14 +162,19 @@ export function AbilityCheckPanel({ characterId }: AbilityCheckPanelProps) {
   const performCheck = async (skillName: string) => {
     setRolling(true);
     try {
+      // Convert skill name to API format
+      const apiSkillName = SKILL_NAME_MAP[skillName];
+      const ability = SKILL_TO_ABILITY[skillName];
+      
       const response = await fetch(
         `http://localhost:8000/api/dice/check`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            character_id: parseInt(characterId),
-            skill: skillName,
+            character_id: characterId, // Send as UUID string
+            ability: ability,
+            skill: apiSkillName,
             advantage,
             disadvantage,
             dc: dc || undefined,
