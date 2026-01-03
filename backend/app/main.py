@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.utils.logger import logger
 from app.routers import health, narrate
-from app.api import characters, sessions, conversations, dice, random_status, inventory, spells, combat
+from app.api import characters, sessions, conversations, dice, random_status, inventory, spells, combat, loot, progression, rest, conditions, npcs, quests
 from app.db.base import init_db, close_db
 from app.services.redis_service import session_service
 
@@ -132,7 +132,12 @@ app.include_router(random_status.router)
 app.include_router(inventory.router)
 app.include_router(spells.router)
 app.include_router(combat.router)
-
+app.include_router(loot.router)
+app.include_router(progression.router)
+app.include_router(rest.router)
+app.include_router(conditions.router)
+app.include_router(npcs.router)
+app.include_router(quests.router)
 
 # Root endpoint
 @app.get("/")
