@@ -116,7 +116,7 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
     }
   };
 
-  const sortedItems = inventory?.items.slice().sort((a, b) => {
+  const sortedItems = (inventory?.items || []).slice().sort((a, b) => {
     switch (sortBy) {
       case "name":
         return a.name.localeCompare(b.name);

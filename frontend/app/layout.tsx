@@ -1,3 +1,5 @@
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ToastProvider } from "@/components/ui/toast";
 import type { Metadata } from "next";
 import { Cinzel, UnifrakturMaguntia } from "next/font/google";
 import "./globals.css";
@@ -29,7 +31,11 @@ export default function RootLayout({
       <body
         className={`${unifraktur.variable} ${cinzel.variable} antialiased`}
       >
-        {children}
+        <ErrorBoundary>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

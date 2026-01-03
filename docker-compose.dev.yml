@@ -47,6 +47,7 @@ services:
     volumes:
       - ./backend/app:/app/app:ro
       - ./backend/tests:/app/tests:ro
+      - ./backend/alembic:/app/alembic:ro
     environment:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
       - REDIS_HOST=redis

@@ -127,6 +127,15 @@ export function AbilityCheckPanel({ characterId }: AbilityCheckPanelProps) {
 
   useEffect(() => {
     fetchSkills();
+    // Load roll history from localStorage
+    const savedHistory = localStorage.getItem(`rollHistory_${characterId}`);
+    if (savedHistory) {
+      try {
+        setRollHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error('Failed to parse saved roll history:', e);
+      }
+    }
   }, [characterId]);
 
   const fetchSkills = async () => {
@@ -188,7 +197,7 @@ export function AbilityCheckPanel({ characterId }: AbilityCheckPanelProps) {
         skill: skillName,
         roll: data.roll,
         total: data.total,
-        modifier: data.modifier,
+        modifier: data.ability_modifier, // Backend returns 'ability_modifier'
         proficiency_bonus: data.proficiency_bonus,
         advantage: data.advantage || false,
         disadvantage: data.disadvantage || false,
@@ -198,7 +207,11 @@ export function AbilityCheckPanel({ characterId }: AbilityCheckPanelProps) {
         timestamp: new Date().toLocaleTimeString(),
       };
       
-      setRollHistory([result, ...rollHistory.slice(0, 4)]);
+      const newHistory = [result, ...rollHistory.slice(0, 4)];
+      setRollHistory(newHistory);
+      
+      // Save to localStorage
+      localStorage.setItem(`rollHistory_${characterId}`, JSON.stringify(newHistory));
       
       // Reset toggles after roll
       setAdvantage(false);
@@ -442,7 +455,7 @@ export function AbilityCheckPanel({ characterId }: AbilityCheckPanelProps) {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="text-3xl font-bold">{result.total}</div>
-                        {result.success !== undefined && (
+                        {result.dc != null && result.success != null && (
                           result.success ? (
                             <CheckCircle2 className="w-6 h-6 text-green-500" />
                           ) : (

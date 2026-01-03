@@ -12,6 +12,7 @@ from app.config import settings
 from app.utils.logger import logger
 from app.routers import health, narrate
 from app.api import characters, sessions, conversations, dice, random_status, inventory, spells, combat, loot, progression, rest, conditions, npcs, quests
+from app.api.routes import rules
 from app.db.base import init_db, close_db
 from app.services.redis_service import session_service
 
@@ -138,6 +139,7 @@ app.include_router(rest.router)
 app.include_router(conditions.router)
 app.include_router(npcs.router)
 app.include_router(quests.router)
+app.include_router(rules.router)  # D&D 5e rules helpers
 
 # Root endpoint
 @app.get("/")

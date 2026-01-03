@@ -9,6 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Character, CharacterType, CharacterClass, Item
 from app.schemas.character import CharacterCreate, CharacterUpdate
 from app.utils.starting_equipment import get_starting_equipment
+from app.utils.dnd_rules import (
+    apply_racial_bonuses,
+    apply_asi_distribution,
+    validate_asi_distribution,
+    validate_skill_selection
+)
 
 
 class CharacterService:
@@ -20,20 +26,37 @@ class CharacterService:
         
         D&D 5e HP calculation:
         - Level 1: Class hit die max + CON modifier
+        - Levels 2+: Level 1 HP + (average roll + CON modifier) per additional level
+        - Average roll = (hit die / 2) + 1 (rounded down)
         - CON modifier = (constitution - 10) // 2
         """
         hit_dice = {
+            'Barbarian': 12,
             'Fighter': 10,
+            'Paladin': 10,
+            'Ranger': 10,
+            'Bard': 8,
             'Cleric': 8,
+            'Druid': 8,
+            'Monk': 8,
             'Rogue': 8,
+            'Warlock': 8,
+            'Sorcerer': 6,
             'Wizard': 6
         }
         
         con_modifier = (constitution - 10) // 2
         hit_die = hit_dice.get(character_class, 8)
         
-        # Level 1: max hit die + CON modifier
-        return hit_die + con_modifier
+        if level == 1:
+            # Level 1: max hit die + CON modifier
+            return hit_die + con_modifier
+        else:
+            # Levels 2+: Level 1 HP + (average hit die + CON modifier) per level
+            level_1_hp = hit_die + con_modifier
+            avg_roll = (hit_die // 2) + 1
+            additional_levels = level - 1
+            return level_1_hp + (additional_levels * (avg_roll + con_modifier))
     
     @staticmethod
     async def create_character(
@@ -41,18 +64,46 @@ class CharacterService:
         character_data: CharacterCreate,
         user_id: Optional[UUID] = None
     ) -> Character:
-        """Create a new character with starting equipment."""
-        # Get ability scores from either format
-        ability_scores = character_data.get_ability_scores()
+        """Create a new character with starting equipment, racial bonuses, and ASI."""
+        # Get base ability scores from either format (point buy scores)
+        base_scores = character_data.get_ability_scores()
         
-        # Calculate initial HP
+        # Apply racial bonuses to base scores
+        scores_with_race = apply_racial_bonuses(base_scores, character_data.race)
+        
+        # Apply ASI distribution if provided (for higher-level characters)
+        if character_data.asi_distribution:
+            # Validate ASI distribution
+            is_valid, error_msg = validate_asi_distribution(
+                character_data.asi_distribution,
+                character_data.character_class,
+                character_data.level
+            )
+            if not is_valid:
+                raise ValueError(f"Invalid ASI distribution: {error_msg}")
+            
+            final_scores = apply_asi_distribution(scores_with_race, character_data.asi_distribution)
+        else:
+            final_scores = scores_with_race
+        
+        # Validate skill selection if provided
+        if character_data.skill_proficiencies:
+            is_valid, error_msg = validate_skill_selection(
+                character_data.skill_proficiencies,
+                character_data.character_class
+            )
+            if not is_valid:
+                raise ValueError(f"Invalid skill selection: {error_msg}")
+        
+        # Calculate initial HP based on level and final constitution
         hp_max = CharacterService.calculate_hp_max(
             character_data.character_class,
-            ability_scores['constitution']
+            final_scores['constitution'],
+            character_data.level
         )
         
         # Calculate carrying capacity (STR × 15 pounds)
-        carrying_capacity = ability_scores['strength'] * 15
+        carrying_capacity = final_scores['strength'] * 15
         
         character = Character(
             id=uuid.uuid4(),
@@ -64,15 +115,19 @@ class CharacterService:
             level=character_data.level,
             hp_current=hp_max,
             hp_max=hp_max,
-            strength=ability_scores['strength'],
-            dexterity=ability_scores['dexterity'],
-            constitution=ability_scores['constitution'],
-            intelligence=ability_scores['intelligence'],
-            wisdom=ability_scores['wisdom'],
-            charisma=ability_scores['charisma'],
+            strength=final_scores['strength'],
+            dexterity=final_scores['dexterity'],
+            constitution=final_scores['constitution'],
+            intelligence=final_scores['intelligence'],
+            wisdom=final_scores['wisdom'],
+            charisma=final_scores['charisma'],
             background=character_data.background,
             personality=character_data.personality,
-            carrying_capacity=carrying_capacity
+            carrying_capacity=carrying_capacity,
+            skill_proficiencies=character_data.skill_proficiencies or [],
+            known_spells=character_data.known_spells or [],
+            cantrips=character_data.cantrips or [],
+            asi_distribution=character_data.asi_distribution or {}
         )
         
         db.add(character)
