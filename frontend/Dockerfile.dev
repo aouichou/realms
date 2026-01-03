@@ -17,5 +17,5 @@ EXPOSE 3000
 ENV NODE_ENV=development
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Start dev server
-CMD ["npm", "run", "dev"]
+# Start dev server with Turbopack
+CMD ["npm", "run", "dev", "--", "--turbopack"]

@@ -5,16 +5,8 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   output: "standalone",
   
-  // Enable hot-reload in Docker
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.watchOptions = {
-        poll: 1000, // Check for changes every second
-        aggregateTimeout: 300,
-      };
-    }
-    return config;
-  },
+  // Empty turbopack config to enable Turbopack (default in Next.js 16)
+  turbopack: {},
 };
 
 export default nextConfig;
