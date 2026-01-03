@@ -1,8 +1,10 @@
 'use client';
 
+import { AbilityCheckPanel } from '@/components/AbilityCheckPanel';
 import { CombatTracker } from '@/components/CombatTracker';
 import { EnhancedCharacterSheet } from '@/components/EnhancedCharacterSheet';
 import { InventoryPanel } from '@/components/InventoryPanel';
+import { SpellsPanel } from '@/components/SpellsPanel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,7 +36,7 @@ interface Character {
   charisma: number;
 }
 
-type PanelType = 'stats' | 'inventory' | 'dice' | 'combat' | null;
+type PanelType = 'stats' | 'inventory' | 'dice' | 'combat' | 'spells' | 'checks' | null;
 
 export default function GamePage() {
   const params = useParams();
@@ -253,6 +255,22 @@ export default function GamePage() {
           >
             ⚔️ Combat
           </button>
+          
+          <button
+            onClick={() => togglePanel('spells')}
+            className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 
+                     hover:bg-white/20 transition-all text-white font-body text-sm"
+          >
+            ✨ Spells
+          </button>
+          
+          <button
+            onClick={() => togglePanel('checks')}
+            className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 
+                     hover:bg-white/20 transition-all text-white font-body text-sm"
+          >
+            🎲 Checks
+          </button>
         </div>
 
         {/* Center - Messages Area */}
@@ -322,7 +340,7 @@ export default function GamePage() {
         {/* Right Panel - Expanded Content */}
         {openPanel && (
           <div className={`p-6 bg-white/10 backdrop-blur-xl border-l border-white/20 overflow-y-auto ${
-            openPanel === 'stats' || openPanel === 'inventory' || openPanel === 'combat' ? 'w-[800px]' : 'w-96'
+            openPanel === 'stats' || openPanel === 'inventory' || openPanel === 'combat' || openPanel === 'spells' || openPanel === 'checks' ? 'w-[800px]' : 'w-96'
           }`}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-display text-xl text-white">
@@ -330,6 +348,8 @@ export default function GamePage() {
                 {openPanel === 'inventory' && '🎒 Inventory'}
                 {openPanel === 'dice' && '🎲 Dice Roller'}
                 {openPanel === 'combat' && '⚔️ Combat'}
+                {openPanel === 'spells' && '✨ Spells'}
+                {openPanel === 'checks' && '🎲 Ability Checks'}
               </h2>
               <button
                 onClick={() => setOpenPanel(null)}
@@ -369,6 +389,20 @@ export default function GamePage() {
                     loadCharacter();
                   }}
                 />
+              </div>
+            )}
+
+            {/* Spells Panel */}
+            {openPanel === 'spells' && (
+              <div className="bg-neutral-900 rounded-lg">
+                <SpellsPanel characterId={characterId} />
+              </div>
+            )}
+
+            {/* Ability Checks Panel */}
+            {openPanel === 'checks' && (
+              <div className="bg-neutral-900 rounded-lg">
+                <AbilityCheckPanel characterId={characterId} />
               </div>
             )}
 

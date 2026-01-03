@@ -82,6 +82,31 @@ class CastingTime(str, PyEnum):
     RITUAL = "1 minute (ritual)"
 
 
+class ConditionType(str, PyEnum):
+    """D&D 5e conditions"""
+    BLINDED = "Blinded"
+    CHARMED = "Charmed"
+    DEAFENED = "Deafened"
+    FRIGHTENED = "Frightened"
+    GRAPPLED = "Grappled"
+    INCAPACITATED = "Incapacitated"
+    INVISIBLE = "Invisible"
+    PARALYZED = "Paralyzed"
+    PETRIFIED = "Petrified"
+    POISONED = "Poisoned"
+    PRONE = "Prone"
+    RESTRAINED = "Restrained"
+    STUNNED = "Stunned"
+    UNCONSCIOUS = "Unconscious"
+
+
+class QuestState(str, PyEnum):
+    """Quest state enumeration"""
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
 
 class MessageRole(str, PyEnum):
     """Conversation message roles"""
@@ -175,6 +200,9 @@ class Character(Base):
     # Format: {"1": {"total": 2, "used": 0}, "2": {"total": 0, "used": 0}, ...}
     spell_slots: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True, default=dict)
     
+    # Experience points for leveling
+    experience_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    
     # Additional attributes for AI companions and NPCs
     background: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     personality: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -202,6 +230,7 @@ class Character(Base):
     )
     items = relationship("Item", back_populates="character", cascade="all, delete-orphan")
     character_spells = relationship("CharacterSpell", back_populates="character", cascade="all, delete-orphan")
+    conditions = relationship("CharacterCondition", back_populates="character", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (
@@ -508,17 +537,159 @@ class CombatEncounter(Base):
     # Combat log: list of action descriptions
     combat_log: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-
+    
     # Relationships
     session = relationship("GameSession", back_populates="combat_encounters")
 
-    # Indexes
+    def __repr__(self) -> str:
+        return f"<CombatEncounter(id={self.id}, session_id={self.session_id}, round={self.round_number})>"
+
+
+class CharacterCondition(Base):
+    """Character condition tracking model"""
+    __tablename__ = "character_conditions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    character_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("characters.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    
+    condition: Mapped[ConditionType] = mapped_column(
+        Enum(ConditionType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False
+    )
+    
+    # Duration in rounds (combat) or minutes (out of combat), 0 = indefinite
+    duration: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    
+    # Source of condition (spell name, ability, etc.)
+    source: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    
+    applied_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    character = relationship("Character", back_populates="conditions")
+
+    def __repr__(self) -> str:
+        return f"<CharacterCondition(id={self.id}, condition={self.condition}, character_id={self.character_id})>"
+
+
+class Quest(Base):
+    """Quest model"""
+    __tablename__ = "quests"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    state: Mapped[QuestState] = mapped_column(
+        Enum(QuestState, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=QuestState.NOT_STARTED,
+        index=True
+    )
+    
+    # Quest giver (optional NPC reference)
+    quest_giver_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("characters.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    
+    # Rewards (stored as JSONB)
+    # Format: {"xp": 100, "gold": 50, "items": ["Potion of Healing"]}
+    rewards: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    # Relationships
+    objectives = relationship("QuestObjective", back_populates="quest", cascade="all, delete-orphan")
+    character_quests = relationship("CharacterQuest", back_populates="quest", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<Quest(id={self.id}, title={self.title}, state={self.state})>"
+
+
+class QuestObjective(Base):
+    """Quest objective model"""
+    __tablename__ = "quest_objectives"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    quest_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("quests.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    order: Mapped[int] = mapped_column(Integer, nullable=False)  # Display order
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    
+    # Relationships
+    quest = relationship("Quest", back_populates="objectives")
+
+    def __repr__(self) -> str:
+        return f"<QuestObjective(id={self.id}, quest_id={self.quest_id}, completed={self.is_completed})>"
+
+
+class CharacterQuest(Base):
+    """Character-Quest relationship (tracks which characters have which quests)"""
+    __tablename__ = "character_quests"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    character_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("characters.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    quest_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("quests.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    
+    accepted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    character = relationship("Character")
+    quest = relationship("Quest", back_populates="character_quests")
+
+    # Unique constraint - character can only have quest once
     __table_args__ = (
-        Index("ix_combat_session_active", "session_id", "is_active"),
+        Index("ix_character_quest_unique", "character_id", "quest_id", unique=True),
     )
 
     def __repr__(self) -> str:
-        return f"<CombatEncounter(id={self.id}, session_id={self.session_id}, active={self.is_active})>"
+        return f"<CharacterQuest(character_id={self.character_id}, quest_id={self.quest_id})>"
 
