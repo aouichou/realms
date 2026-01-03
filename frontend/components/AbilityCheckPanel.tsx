@@ -431,11 +431,11 @@ export function AbilityCheckPanel({ characterId }: AbilityCheckPanelProps) {
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           {result.rolls && result.rolls.length > 1 ? (
                             <span className="font-mono">
-                              Rolls: [{result.rolls.join(", ")}] + {result.modifier} = {result.total}
+                              Rolls: [{result.rolls.join(", ")}] + {result.modifier ?? 0} = {result.total}
                             </span>
                           ) : (
                             <span className="font-mono">
-                              d20: {result.roll} + {result.modifier} = {result.total}
+                              d20: {result.roll} + {result.modifier ?? 0} = {result.total}
                             </span>
                           )}
                         </div>
