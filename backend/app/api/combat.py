@@ -307,8 +307,8 @@ async def end_combat(
     defeated = len(combat.participants) - survived
     
     duration_seconds = None
-    if combat.ended_at and combat.created_at:
-        duration_seconds = (combat.ended_at - combat.created_at).total_seconds()
+    if combat.ended_at and combat.started_at:
+        duration_seconds = (combat.ended_at - combat.started_at).total_seconds()
     
     combat.combat_log.append(f"Combat ended after {combat.round_number} rounds!")
     

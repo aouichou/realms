@@ -386,6 +386,299 @@ STARTING_EQUIPMENT = {
             }
         ),
     ],
+    
+    CharacterClass.BARBARIAN: [
+        StartingEquipmentItem(
+            name="Greataxe",
+            item_type=ItemType.WEAPON,
+            weight=7,
+            value=30,
+            equipped=True,
+            properties={
+                "damage_dice": "1d12",
+                "damage_type": "slashing",
+                "weapon_properties": ["heavy", "two-handed"]
+            }
+        ),
+        StartingEquipmentItem(
+            name="Handaxe",
+            item_type=ItemType.WEAPON,
+            weight=2,
+            value=5,
+            equipped=True,
+            quantity=2,
+            properties={
+                "damage_dice": "1d6",
+                "damage_type": "slashing",
+                "weapon_properties": ["light", "thrown"],
+                "range": "20/60"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Javelin",
+            item_type=ItemType.WEAPON,
+            weight=2,
+            value=5,
+            quantity=4,
+            properties={
+                "damage_dice": "1d6",
+                "damage_type": "piercing",
+                "weapon_properties": ["thrown"],
+                "range": "30/120"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Explorer's Pack",
+            item_type=ItemType.MISC,
+            weight=59,
+            value=10,
+            properties={
+                "contents": ["backpack", "bedroll", "mess kit", "tinderbox", "10 torches", "10 rations", "waterskin", "50ft rope"]
+            }
+        ),
+    ],
+    
+    CharacterClass.BARD: [
+        StartingEquipmentItem(
+            name="Rapier",
+            item_type=ItemType.WEAPON,
+            weight=2,
+            value=25,
+            equipped=True,
+            properties={
+                "damage_dice": "1d8",
+                "damage_type": "piercing",
+                "weapon_properties": ["finesse"]
+            }
+        ),
+        StartingEquipmentItem(
+            name="Dagger",
+            item_type=ItemType.WEAPON,
+            weight=1,
+            value=2,
+            equipped=True,
+            properties={
+                "damage_dice": "1d4",
+                "damage_type": "piercing",
+                "weapon_properties": ["finesse", "light", "thrown"],
+                "range": "20/60"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Leather Armor",
+            item_type=ItemType.ARMOR,
+            weight=10,
+            value=5,
+            equipped=True,
+            properties={
+                "ac_base": 11,
+                "ac_dex_bonus": True,
+                "armor_type": "light"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Lute",
+            item_type=ItemType.MISC,
+            weight=2,
+            value=35,
+            equipped=True,
+            properties={
+                "item_type": "spellcasting_focus",
+                "description": "Musical instrument for casting bard spells"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Entertainer's Pack",
+            item_type=ItemType.MISC,
+            weight=38,
+            value=40,
+            properties={
+                "contents": ["backpack", "bedroll", "2 costumes", "5 candles", "5 rations", "waterskin", "disguise kit"]
+            }
+        ),
+    ],
+    
+    CharacterClass.DRUID: [
+        StartingEquipmentItem(
+            name="Scimitar",
+            item_type=ItemType.WEAPON,
+            weight=3,
+            value=25,
+            equipped=True,
+            properties={
+                "damage_dice": "1d6",
+                "damage_type": "slashing",
+                "weapon_properties": ["finesse", "light"]
+            }
+        ),
+        StartingEquipmentItem(
+            name="Wooden Shield",
+            item_type=ItemType.ARMOR,
+            weight=6,
+            value=10,
+            equipped=True,
+            properties={
+                "ac_bonus": 2,
+                "armor_type": "shield",
+                "description": "Made of wood (druids avoid metal)"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Leather Armor",
+            item_type=ItemType.ARMOR,
+            weight=10,
+            value=5,
+            equipped=True,
+            properties={
+                "ac_base": 11,
+                "ac_dex_bonus": True,
+                "armor_type": "light"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Druidic Focus",
+            item_type=ItemType.MISC,
+            weight=1,
+            value=5,
+            equipped=True,
+            properties={
+                "item_type": "spellcasting_focus",
+                "description": "Totem or wooden staff for casting druid spells"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Explorer's Pack",
+            item_type=ItemType.MISC,
+            weight=59,
+            value=10,
+            properties={
+                "contents": ["backpack", "bedroll", "mess kit", "tinderbox", "10 torches", "10 rations", "waterskin", "50ft rope"]
+            }
+        ),
+    ],
+    
+    CharacterClass.MONK: [
+        StartingEquipmentItem(
+            name="Shortsword",
+            item_type=ItemType.WEAPON,
+            weight=2,
+            value=10,
+            equipped=True,
+            properties={
+                "damage_dice": "1d6",
+                "damage_type": "piercing",
+                "weapon_properties": ["finesse", "light"]
+            }
+        ),
+        StartingEquipmentItem(
+            name="Dart",
+            item_type=ItemType.WEAPON,
+            weight=0,
+            value=1,
+            quantity=10,
+            properties={
+                "damage_dice": "1d4",
+                "damage_type": "piercing",
+                "weapon_properties": ["finesse", "thrown"],
+                "range": "20/60"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Dungeoneer's Pack",
+            item_type=ItemType.MISC,
+            weight=61,
+            value=12,
+            properties={
+                "contents": ["backpack", "crowbar", "hammer", "10 pitons", "10 torches", "tinderbox", "10 rations", "waterskin", "50ft rope"]
+            }
+        ),
+    ],
+    
+    CharacterClass.SORCERER: [
+        StartingEquipmentItem(
+            name="Dagger",
+            item_type=ItemType.WEAPON,
+            weight=1,
+            value=2,
+            equipped=True,
+            quantity=2,
+            properties={
+                "damage_dice": "1d4",
+                "damage_type": "piercing",
+                "weapon_properties": ["finesse", "light", "thrown"],
+                "range": "20/60"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Component Pouch",
+            item_type=ItemType.MISC,
+            weight=2,
+            value=25,
+            equipped=True,
+            properties={
+                "item_type": "spellcasting_focus",
+                "description": "Material components for spells"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Dungeoneer's Pack",
+            item_type=ItemType.MISC,
+            weight=61,
+            value=12,
+            properties={
+                "contents": ["backpack", "crowbar", "hammer", "10 pitons", "10 torches", "tinderbox", "10 rations", "waterskin", "50ft rope"]
+            }
+        ),
+    ],
+    
+    CharacterClass.WARLOCK: [
+        StartingEquipmentItem(
+            name="Dagger",
+            item_type=ItemType.WEAPON,
+            weight=1,
+            value=2,
+            equipped=True,
+            quantity=2,
+            properties={
+                "damage_dice": "1d4",
+                "damage_type": "piercing",
+                "weapon_properties": ["finesse", "light", "thrown"],
+                "range": "20/60"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Leather Armor",
+            item_type=ItemType.ARMOR,
+            weight=10,
+            value=5,
+            equipped=True,
+            properties={
+                "ac_base": 11,
+                "ac_dex_bonus": True,
+                "armor_type": "light"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Arcane Focus",
+            item_type=ItemType.MISC,
+            weight=1,
+            value=10,
+            equipped=True,
+            properties={
+                "item_type": "spellcasting_focus",
+                "description": "Crystal, orb, or rod for casting warlock spells"
+            }
+        ),
+        StartingEquipmentItem(
+            name="Scholar's Pack",
+            item_type=ItemType.MISC,
+            weight=10,
+            value=40,
+            properties={
+                "contents": ["backpack", "book of lore", "ink", "ink pen", "10 parchment", "bag of sand", "small knife"]
+            }
+        ),
+    ],
 }
 
 

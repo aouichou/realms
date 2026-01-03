@@ -1,12 +1,9 @@
 "use client";
 
 import { ChatMessage } from "@/components/ChatMessage";
-import { useToast } from "@/components/ui/toast";
 import { Message, narrateStream } from "@/lib/api";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
-
-// Memoized ChatMessage component to prevent unnecessary re-renders
-const MemoizedChatMessage = memo(ChatMessage);
+import { useToast } from "@/components/ui/toast";
+import { useEffect, useRef, useState } from "react";
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -17,15 +14,15 @@ export function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
-  const scrollToBottom = useCallback(() => {
+  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+  };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, streamingMessage, scrollToBottom]);
+  }, [messages, streamingMessage]);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
@@ -75,17 +72,7 @@ export function ChatInterface() {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, showToast]);
-
-  const handleNewAdventure = useCallback(() => {
-    setMessages([]);
-    setConnectionError(false);
-    showToast("Adventure reset. Ready for a new journey!", "info");
-  }, [showToast]);
-
-  const handleSuggestionClick = useCallback((suggestion: string) => {
-    setInput(suggestion);
-  }, []);
+  };
 
   return (
     <div className="flex h-screen flex-col bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900">
@@ -105,7 +92,11 @@ export function ChatInterface() {
             </span>
           </div>
           <button
-            onClick={handleNewAdventure}
+            onClick={() => {
+              setMessages([]);
+              setConnectionError(false);
+              showToast("Adventure reset. Ready for a new journey!", "info");
+            }}
             className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-slate-700 hover:scale-105"
           >
             New Adventure
@@ -128,19 +119,23 @@ export function ChatInterface() {
                 </p>
                 <div className="flex flex-wrap justify-center gap-2 pt-4">
                   <button
-                    onClick={() => handleSuggestionClick("I enter the tavern and look around")}
+                    onClick={() =>
+                      setInput("I enter the tavern and look around")
+                    }
                     className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-slate-700"
                   >
                     Enter the tavern
                   </button>
                   <button
-                    onClick={() => handleSuggestionClick("I search for clues in the forest")}
+                    onClick={() =>
+                      setInput("I search for clues in the forest")
+                    }
                     className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-slate-700"
                   >
                     Explore the forest
                   </button>
                   <button
-                    onClick={() => handleSuggestionClick("I cast a detection spell")}
+                    onClick={() => setInput("I cast a detection spell")}
                     className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-slate-700"
                   >
                     Cast a spell
@@ -151,11 +146,11 @@ export function ChatInterface() {
           )}
 
           {messages.map((message, index) => (
-            <MemoizedChatMessage key={`${message.role}-${index}`} message={message} />
+            <ChatMessage key={index} message={message} />
           ))}
 
           {streamingMessage && (
-            <MemoizedChatMessage
+            <ChatMessage
               message={{
                 role: "assistant",
                 content: streamingMessage,
@@ -189,7 +184,7 @@ export function ChatInterface() {
               {isLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span className="hidden sm:inline">Thinking...</span>
+                  <span>Thinking...</span>
                 </div>
               ) : (
                 "Send"

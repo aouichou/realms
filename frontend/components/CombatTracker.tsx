@@ -60,7 +60,7 @@ interface CombatStatus {
   current_turn: number;
   round_number: number;
   participants: CombatParticipant[];
-  turn_order: number[];
+  turn_order: number[] | null;
   combat_log: CombatLogEntry[];
   current_participant?: CombatParticipant;
 }
@@ -309,7 +309,7 @@ export function CombatTracker({
           <CardContent>
             <ScrollArea className="h-[400px]">
               <div className="space-y-3">
-                {combatStatus.turn_order.map((index) => {
+                {combatStatus.turn_order?.map((index) => {
                   const participant = combatStatus.participants[index];
                   const isCurrentTurn = combatStatus.current_turn === index;
                   const hpPercentage =

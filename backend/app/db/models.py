@@ -200,6 +200,22 @@ class Character(Base):
     # Format: {"1": {"total": 2, "used": 0}, "2": {"total": 0, "used": 0}, ...}
     spell_slots: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True, default=dict)
     
+    # Skill proficiencies (list of skill names)
+    skill_proficiencies: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True, default=list)
+    
+    # Known spells (for Bard, Sorcerer, Ranger, Warlock, etc.)
+    known_spells: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True, default=list)
+    
+    # Prepared spells (for Wizard, Cleric, Druid, Paladin)
+    prepared_spells: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True, default=list)
+    
+    # Cantrips known
+    cantrips: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True, default=list)
+    
+    # ASI distribution tracking
+    # Format: {"4": {"strength": 2}, "8": {"dexterity": 1, "constitution": 1}, ...}
+    asi_distribution: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True, default=dict)
+    
     # Experience points for leveling
     experience_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     

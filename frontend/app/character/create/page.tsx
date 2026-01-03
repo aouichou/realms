@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/components/ui/toast';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -38,20 +40,44 @@ interface AbilityScores {
   charisma: number;
 }
 
+// D&D 5e Point Buy System
+// Score 8 = 0 points, 9 = 1, 10 = 2, 11 = 3, 12 = 4, 13 = 5, 14 = 7, 15 = 9
+const POINT_BUY_COSTS: Record<number, number> = {
+  8: 0,
+  9: 1,
+  10: 2,
+  11: 3,
+  12: 4,
+  13: 5,
+  14: 7,
+  15: 9,
+};
+
+const POINT_BUY_MAX = 27; // Standard D&D 5e point buy
+
 export default function CharacterCreation() {
   const router = useRouter();
+  const { showToast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedRace, setSelectedRace] = useState('');
   const [level, setLevel] = useState(1);
+  const [nameError, setNameError] = useState('');
   const [abilities, setAbilities] = useState<AbilityScores>({
-    strength: 10,
-    dexterity: 10,
-    constitution: 10,
-    intelligence: 10,
-    wisdom: 10,
-    charisma: 10,
+    strength: 8,
+    dexterity: 8,
+    constitution: 8,
+    intelligence: 8,
+    wisdom: 8,
+    charisma: 8,
   });
+
+  const calculatePointsSpent = (): number => {
+    return Object.values(abilities).reduce((total, score) => {
+      return total + (POINT_BUY_COSTS[score] || 0);
+    }, 0);
+  };
 
   const calculateModifier = (score: number): number => {
     return Math.floor((score - 10) / 2);
@@ -66,23 +92,59 @@ export default function CharacterCreation() {
   };
 
   const handleAbilityChange = (ability: keyof AbilityScores, value: string) => {
-    const numValue = parseInt(value) || 10;
-    const clampedValue = Math.max(1, Math.min(20, numValue));
-    setAbilities(prev => ({ ...prev, [ability]: clampedValue }));
+    const numValue = parseInt(value) || 8;
+    // Point buy allows 8-15 before racial modifiers
+    const clampedValue = Math.max(8, Math.min(15, numValue));
+    
+    // Check if this change would exceed point budget
+    const newAbilities = { ...abilities, [ability]: clampedValue };
+    const newTotal = Object.values(newAbilities).reduce((total, score) => {
+      return total + (POINT_BUY_COSTS[score] || 0);
+    }, 0);
+    
+    // Only allow change if within budget
+    if (newTotal <= POINT_BUY_MAX) {
+      setAbilities(newAbilities);
+    }
+  };
+
+  const validateForm = (): boolean => {
+    if (!name.trim()) {
+      setNameError('Character name is required');
+      showToast('Please enter a character name', 'error');
+      return false;
+    }
+    if (name.trim().length < 2) {
+      setNameError('Name must be at least 2 characters');
+      showToast('Name is too short', 'error');
+      return false;
+    }
+    if (!selectedClass) {
+      showToast('Please select a class', 'error');
+      return false;
+    }
+    if (!selectedRace) {
+      showToast('Please select a race', 'error');
+      return false;
+    }
+    setNameError('');
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
+
     const characterData = {
-      name,
+      name: name.trim(),
       character_class: selectedClass,
       race: selectedRace,
       level,
       ability_scores: abilities,
     };
-
-    console.log('Sending character data:', characterData);
 
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/characters`, {
@@ -91,21 +153,24 @@ export default function CharacterCreation() {
         body: JSON.stringify(characterData),
       });
 
-      console.log('Response status:', response.status);
-
       if (response.ok) {
         const character = await response.json();
-        console.log('Character created:', character);
+        showToast(`${character.name} created successfully!`, 'success');
         // Navigate to game with the new character
-        router.push(`/game/${character.id}`);
+        setTimeout(() => router.push(`/game/${character.id}`), 1000);
       } else {
-        const errorData = await response.json();
-        console.error('Failed to create character:', errorData);
-        alert(`Failed to create character: ${errorData.message || 'Unknown error'}`);
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        const errorMsg = errorData.detail || errorData.message || 'Failed to create character';
+        showToast(errorMsg, 'error');
       }
     } catch (error) {
       console.error('Error creating character:', error);
-      alert('An error occurred while creating your character. Please try again.');
+      const errorMsg = error instanceof Error && error.message.includes('fetch')
+        ? 'Cannot connect to server. Please check your connection.'
+        : 'An error occurred while creating your character.';
+      showToast(errorMsg, 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -133,10 +198,17 @@ export default function CharacterCreation() {
                   <Input
                     id="name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (nameError) setNameError('');
+                    }}
                     placeholder="Enter your character's name"
+                    className={nameError ? 'border-red-500 focus:ring-red-500' : ''}
                     required
                   />
+                  {nameError && (
+                    <p className="text-sm text-red-500">{nameError}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -188,8 +260,11 @@ export default function CharacterCreation() {
             {/* Ability Scores */}
             <Card>
               <CardHeader>
-                <CardTitle className="font-display">Ability Scores</CardTitle>
-                <CardDescription>Your hero's core attributes</CardDescription>
+                <CardTitle className="font-display">Ability Scores (Point Buy)</CardTitle>
+                <CardDescription>
+                  {POINT_BUY_MAX - calculatePointsSpent()} of {POINT_BUY_MAX} points remaining
+                  <span className="block text-xs mt-1">Scores range from 8 to 15 (before racial modifiers)</span>
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
@@ -204,8 +279,8 @@ export default function CharacterCreation() {
                           type="number"
                           value={score}
                           onChange={(e) => handleAbilityChange(ability as keyof AbilityScores, e.target.value)}
-                          min="1"
-                          max="20"
+                          min="8"
+                          max="15"
                           className="w-16"
                         />
                         <span className="text-sm text-muted-foreground font-mono w-12">
@@ -244,10 +319,17 @@ export default function CharacterCreation() {
                 <Button 
                   type="submit" 
                   size="lg"
-                  disabled={!name || !selectedClass || !selectedRace}
-                  className="font-body"
+                  disabled={!name || !selectedClass || !selectedRace || isSubmitting}
+                  className="font-body min-w-[180px] transition-all hover:scale-105 disabled:scale-100"
                 >
-                  Create Character
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <LoadingSpinner size="sm" />
+                      Creating...
+                    </span>
+                  ) : (
+                    'Create Character'
+                  )}
                 </Button>
               </div>
             </CardContent>

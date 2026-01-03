@@ -1,16 +1,18 @@
 'use client';
 
-import { AbilityCheckPanel } from '@/components/AbilityCheckPanel';
-import { CombatTracker } from '@/components/CombatTracker';
-import { EnhancedCharacterSheet } from '@/components/EnhancedCharacterSheet';
-import { InventoryPanel } from '@/components/InventoryPanel';
-import { SpellsPanel } from '@/components/SpellsPanel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, useEffect, useRef, useState } from 'react';
+
+// Lazy load heavy components for better initial load
+const AbilityCheckPanel = lazy(() => import('@/components/AbilityCheckPanel').then(mod => ({ default: mod.AbilityCheckPanel })));
+const CombatTracker = lazy(() => import('@/components/CombatTracker').then(mod => ({ default: mod.CombatTracker })));
+const EnhancedCharacterSheet = lazy(() => import('@/components/EnhancedCharacterSheet').then(mod => ({ default: mod.EnhancedCharacterSheet })));
+const InventoryPanel = lazy(() => import('@/components/InventoryPanel').then(mod => ({ default: mod.InventoryPanel })));
+const SpellsPanel = lazy(() => import('@/components/SpellsPanel').then(mod => ({ default: mod.SpellsPanel })));
 
 interface Message {
   id: number;
@@ -217,9 +219,26 @@ export default function GamePage() {
       )}
 
       {/* Main Layout */}
-      <div className="relative z-10 h-full flex">
+      <div className="relative z-10 h-full flex flex-col md:flex-row">
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setOpenPanel(openPanel ? null : 'stats')}
+          className="md:hidden fixed top-4 left-4 z-50 p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 hover:bg-white/20 transition-all text-white"
+          aria-label="Toggle menu"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
         {/* Left Sidebar - Collapsible Panels */}
-        <div className="w-64 p-4 space-y-3">
+        <div className={`
+          fixed md:relative inset-y-0 left-0 z-40 
+          w-64 p-4 space-y-3 bg-neutral-900 md:bg-transparent
+          transform transition-transform duration-300 ease-in-out
+          ${openPanel ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          overflow-y-auto
+        `}>
           {/* Stats Button */}
           <button
             onClick={() => togglePanel('stats')}
@@ -274,28 +293,28 @@ export default function GamePage() {
         </div>
 
         {/* Center - Messages Area */}
-        <div className="flex-1 flex flex-col p-6">
+        <div className="flex-1 flex flex-col p-3 md:p-6">
           {/* Character Header */}
           {character && (
-            <div className="mb-4 p-4 bg-white/10 backdrop-blur-md rounded-lg border border-white/20">
-              <h1 className="font-display text-2xl text-white">
+            <div className="mb-3 md:mb-4 p-3 md:p-4 bg-white/10 backdrop-blur-md rounded-lg border border-white/20">
+              <h1 className="font-display text-xl md:text-2xl text-white">
                 {character.name}
               </h1>
-              <p className="text-sm text-white/80 font-body">
+              <p className="text-xs md:text-sm text-white/80 font-body">
                 Level {character.level} {character.race} {character.character_class}
               </p>
             </div>
           )}
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+          <div className="flex-1 overflow-y-auto space-y-3 md:space-y-4 mb-3 md:mb-4">
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`p-4 rounded-lg backdrop-blur-md ${
+                className={`p-3 md:p-4 rounded-lg backdrop-blur-md ${
                   message.role === 'user'
-                    ? 'bg-accent-400/20 border border-accent-400/30 ml-12'
-                    : 'bg-white/10 border border-white/20 mr-12'
+                    ? 'bg-accent-400/20 border border-accent-400/30 ml-6 md:ml-12'
+                    : 'bg-white/10 border border-white/20 mr-6 md:mr-12'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
@@ -428,7 +447,7 @@ export default function GamePage() {
                         setDiceNotation(notation);
                         setLastDiceResult(null);
                       }}
-                      className="font-mono border-white/20 text-white hover:bg-white/10"
+                      className="font-mono border-white/20 text-neutral-900 hover:bg-white/10 hover:text-white"
                     >
                       {notation}
                     </Button>

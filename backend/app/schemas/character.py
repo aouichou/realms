@@ -67,6 +67,12 @@ class CharacterCreate(CharacterBase):
     wisdom: Optional[int] = Field(None, ge=1, le=20, description="Wisdom stat (1-20)")
     charisma: Optional[int] = Field(None, ge=1, le=20, description="Charisma stat (1-20)")
     
+    # New D&D 5e fields
+    skill_proficiencies: Optional[list[str]] = Field(None, description="List of proficient skills")
+    known_spells: Optional[list[str]] = Field(None, description="List of known spells (for known casters)")
+    cantrips: Optional[list[str]] = Field(None, description="List of cantrips known")
+    asi_distribution: Optional[dict] = Field(None, description="ASI distribution by level")
+    
     def get_ability_scores(self) -> dict:
         """Get ability scores as dict, preferring ability_scores object."""
         if self.ability_scores:
