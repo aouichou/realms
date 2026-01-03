@@ -1,4 +1,24 @@
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: realms-postgres-dev
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=mistral_realms
+      - POSTGRES_USER=realms_user
+      - POSTGRES_PASSWORD=realms_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U realms_user -d mistral_realms"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - realms-network
+
   # Redis for session storage
   redis:
     image: redis:7-alpine
@@ -29,11 +49,14 @@ services:
       - ./backend/tests:/app/tests:ro
     environment:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - DATABASE_URL=postgresql+asyncpg://realms_user:realms_password@postgres:5432/mistral_realms
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - ENVIRONMENT=development
       - DEBUG=True
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -68,5 +91,8 @@ networks:
     driver: bridge
 
 volumes:
+  postgres-data:
+    external: true
+    name: realms_postgres-data
   redis-data:
     driver: local
