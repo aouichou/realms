@@ -49,11 +49,20 @@ services:
       - ./backend/tests:/app/tests:ro
     environment:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
-      - DATABASE_URL=postgresql+asyncpg://realms_user:realms_password@postgres:5432/mistral_realms
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=mistral_realms
+      - POSTGRES_USER=realms_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-realms_password}
       - ENVIRONMENT=development
       - DEBUG=True
+      - USE_TRUE_RANDOMNESS=${USE_TRUE_RANDOMNESS:-True}
+      - RANDOM_ORG_URL=${RANDOM_ORG_URL:-https://www.random.org/integers/}
+      - RANDOM_POOL_SIZE=${RANDOM_POOL_SIZE:-200}
+      - RANDOM_POOL_MIN_THRESHOLD=${RANDOM_POOL_MIN_THRESHOLD:-50}
+      - RANDOM_POOL_TIMEOUT=${RANDOM_POOL_TIMEOUT:-30.0}
     depends_on:
       postgres:
         condition: service_healthy
