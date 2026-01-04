@@ -1,8 +1,9 @@
 """Spell and character spell schemas"""
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, List
-from uuid import UUID
 from datetime import datetime
+from typing import Dict, List, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class SpellBase(BaseModel):
@@ -82,7 +83,7 @@ class PrepareSpellsRequest(BaseModel):
 class CastSpellRequest(BaseModel):
     """Schema for casting a spell"""
     spell_id: UUID
-    spell_level: int = Field(..., ge=1, le=9, description="Spell slot level to use")
+    spell_level: int = Field(..., ge=0, le=9, description="Spell level (0 for cantrips, 1-9 for other spells)")
     target_id: Optional[UUID] = None
 
 

@@ -22,8 +22,9 @@ alembic==1.14.0
 
 # Security
 python-jose[cryptography]==3.4.0
-passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
 python-multipart==0.0.20
+email-validator==2.1.0
 
 # Observability (for later)
 opentelemetry-api==1.29.0

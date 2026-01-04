@@ -82,7 +82,13 @@ export default function GamePage() {
 
   const loadCharacter = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/characters/${characterId}`);
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${API_URL}/api/characters/${characterId}`, { headers });
       if (response.ok) {
         const data = await response.json();
         setCharacter(data);
@@ -94,11 +100,17 @@ export default function GamePage() {
 
   const getOrCreateSession = async () => {
     try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       // For now, create a new session every time
       // TODO: Implement logic to get active session or create new one
       const response = await fetch(`${API_URL}/api/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           character_id: characterId,
           companion_id: null,
@@ -121,7 +133,13 @@ export default function GamePage() {
     if (!sessionId) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/conversations/${sessionId}`);
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${API_URL}/api/conversations/${sessionId}`, { headers });
       if (response.ok) {
         const data = await response.json();
         setMessages(data.messages || []);

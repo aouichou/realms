@@ -26,33 +26,50 @@ export default function Home() {
         </div>
 
         {/* CTA Buttons with stagger animation */}
-        <div className="mt-6 md:mt-8 flex flex-col sm:flex-row gap-3 md:gap-4 w-full sm:w-auto justify-center animate-fadeIn animation-delay-400">
-          <Link
-            href="/character/create"
-            className="group inline-flex items-center justify-center gap-2 rounded-lg bg-primary-900 px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-body font-semibold text-white transition-all hover:bg-accent-600 hover:scale-105 hover:shadow-2xl shadow-lg active:scale-95"
-          >
-            Create Character
-            <svg
-              className="h-5 w-5 transition-transform group-hover:translate-x-1"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        <div className="mt-6 md:mt-8 flex flex-col gap-3 md:gap-4 w-full sm:w-auto items-center animate-fadeIn animation-delay-400">
+          <div className="flex flex-col sm:flex-row gap-3 md:gap-4 w-full sm:w-auto justify-center">
+            <Link
+              href="/auth/login"
+              className="group inline-flex items-center justify-center gap-2 rounded-lg bg-primary-900 px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-body font-semibold text-white transition-all hover:bg-accent-600 hover:scale-105 hover:shadow-2xl shadow-lg active:scale-95"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 7l5 5m0 0l-5 5m5-5H6"
-              />
-            </svg>
-          </Link>
+              Sign In
+              <svg
+                className="h-5 w-5 transition-transform group-hover:translate-x-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 7l5 5m0 0l-5 5m5-5H6"
+                />
+              </svg>
+            </Link>
+            
+            <Link
+              href="/auth/register"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-secondary-600 px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-body font-semibold text-white transition-all hover:bg-accent-400 hover:text-primary-900 hover:scale-105 hover:shadow-2xl shadow-lg active:scale-95"
+            >
+              Register
+            </Link>
+          </div>
+          
+          <p className="text-sm text-neutral-500 font-body">
+            or
+          </p>
           
           <Link
-            href="/game/1"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-secondary-600 px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-body font-semibold text-white transition-all hover:bg-accent-400 hover:text-primary-900 hover:scale-105 hover:shadow-2xl shadow-lg active:scale-95"
+            href="/auth/login"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-accent-600 px-6 md:px-8 py-2 md:py-3 text-sm md:text-base font-body font-semibold text-accent-600 transition-all hover:bg-accent-600 hover:text-white hover:scale-105 hover:shadow-2xl shadow-lg active:scale-95"
           >
-            Continue Adventure
+            🎮 Play as Guest
           </Link>
+          
+          <p className="text-xs text-neutral-400 font-body max-w-md text-center mt-2">
+            Guest mode: No email required. You can claim your account later to save progress.
+          </p>
         </div>
 
         {/* Features with stagger animation */}

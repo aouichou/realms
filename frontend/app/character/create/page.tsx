@@ -1,5 +1,6 @@
 'use client';
 
+import { SpellSelectionStep } from '@/components/SpellSelectionStep';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -72,6 +73,7 @@ export default function CharacterCreation() {
     wisdom: 8,
     charisma: 8,
   });
+  const [selectedSpells, setSelectedSpells] = useState<Set<string>>(new Set());
 
   const calculatePointsSpent = (): number => {
     return Object.values(abilities).reduce((total, score) => {
@@ -138,23 +140,62 @@ export default function CharacterCreation() {
     
     setIsSubmitting(true);
 
+    // Get authentication token
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      showToast('Not authenticated. Please log in or play as guest.', 'error');
+      setIsSubmitting(false);
+      router.push('/');
+      return;
+    }
+
     const characterData = {
       name: name.trim(),
       character_class: selectedClass,
       race: selectedRace,
       level,
       ability_scores: abilities,
+      selected_spells: Array.from(selectedSpells),
     };
 
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/characters`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(characterData),
       });
 
       if (response.ok) {
         const character = await response.json();
+        
+        // If spells were selected, add them to the character
+        if (selectedSpells.size > 0) {
+          try {
+            await Promise.all(
+              Array.from(selectedSpells).map(spellId =>
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/spells/character/${character.id}/spells`, {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({
+                    spell_id: spellId,
+                    is_known: true,
+                    is_prepared: false,
+                  }),
+                })
+              )
+            );
+          } catch (spellError) {
+            console.error('Error adding spells:', spellError);
+            // Don't fail character creation if spells fail
+          }
+        }
+        
         showToast(`${character.name} created successfully!`, 'success');
         // Navigate to game with the new character
         setTimeout(() => router.push(`/game/${character.id}`), 1000);
@@ -293,6 +334,21 @@ export default function CharacterCreation() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Spell Selection (for spellcasting classes) */}
+          {selectedClass && (
+            <SpellSelectionStep
+              characterClass={selectedClass}
+              level={level}
+              abilityScores={{
+                intelligence: abilities.intelligence,
+                wisdom: abilities.wisdom,
+                charisma: abilities.charisma,
+              }}
+              selectedSpells={selectedSpells}
+              onSpellsChange={setSelectedSpells}
+            />
+          )}
 
           {/* Character Preview */}
           <Card className="mt-6">

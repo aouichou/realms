@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
+from app.db.models import User
+from app.middleware.auth import get_current_active_user
 from app.schemas.session import (
     SessionCreate,
     SessionResponse,
@@ -22,7 +24,7 @@ router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 @router.post("", response_model=SessionResponse, status_code=201)
 async def create_session(
     session_data: SessionCreate,
-    user_id: Optional[UUID] = Query(None, description="User ID (temporary - will be from JWT)"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new game session.
@@ -35,11 +37,8 @@ async def create_session(
     Returns:
         Created session
     """
-    # Pass None if no user_id provided (for development without auth)
-    # The database allows nullable user_id for game_sessions
-    
-    # Create session in PostgreSQL
-    session = await GameSessionService.create_session(db, user_id, session_data)
+    # Create session in PostgreSQL with authenticated user
+    session = await GameSessionService.create_session(db, current_user.id, session_data)
     
     # Create session state in Redis
     await session_service.create_session_state(

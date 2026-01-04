@@ -92,19 +92,97 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
   const [filterSchool, setFilterSchool] = useState<string>("All Schools");
   const [showPreparedOnly, setShowPreparedOnly] = useState(false);
   const [selectedSpellsToPrepare, setSelectedSpellsToPrepare] = useState<Set<string>>(new Set());
+  const [characterClass, setCharacterClass] = useState<string>("");
+  const [characterLevel, setCharacterLevel] = useState<number>(1);
+  const [spellcastingModifier, setSpellcastingModifier] = useState<number>(0);
+  const [maxPreparedSpells, setMaxPreparedSpells] = useState<number>(0);
 
   useEffect(() => {
+    fetchCharacterData();
     fetchSpells();
     fetchSpellSlots();
   }, [characterId]);
 
+  const fetchCharacterData = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`http://localhost:8000/api/characters/${characterId}/stats`, {
+        headers
+      });
+      
+      if (response.ok) {
+        const stats = await response.json();
+        
+        // Get character basic data
+        const charResponse = await fetch(`http://localhost:8000/api/characters/${characterId}`, {
+          headers
+        });
+        
+        if (charResponse.ok) {
+          const charData = await charResponse.json();
+          const charClass = charData.character_class.toLowerCase();
+          setCharacterClass(charClass);
+          setCharacterLevel(charData.level);
+          
+          // Determine spellcasting modifier based on class
+          let modifier = 0;
+          if (charClass === 'wizard') {
+            modifier = stats.intelligence_modifier;
+          } else if (charClass === 'cleric' || charClass === 'druid' || charClass === 'ranger') {
+            modifier = stats.wisdom_modifier;
+          } else if (charClass === 'sorcerer' || charClass === 'bard' || charClass === 'warlock' || charClass === 'paladin') {
+            modifier = stats.charisma_modifier;
+          }
+          
+          setSpellcastingModifier(modifier);
+          
+          // Calculate max prepared spells based on class
+          let maxPrepared = 0;
+          if (charClass === 'wizard' || charClass === 'cleric' || charClass === 'druid') {
+            // Full casters: ability mod + level (min 1)
+            maxPrepared = Math.max(1, modifier + charData.level);
+          } else if (charClass === 'paladin') {
+            // Paladin: CHA mod + half level (min 1)
+            maxPrepared = Math.max(1, modifier + Math.floor(charData.level / 2));
+          }
+          // Known casters (sorcerer, bard, warlock, ranger) don't prepare spells
+          
+          setMaxPreparedSpells(maxPrepared);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch character data:", error);
+    }
+  };
+
   const fetchSpells = async () => {
     try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(
-        `http://localhost:8000/api/spells/character/${characterId}/spells`
+        `http://localhost:8000/api/spells/character/${characterId}/spells`,
+        { headers }
       );
       const data = await response.json();
-      setSpells(data);
+      
+      // The API returns an array of objects with spell data nested
+      // Need to extract the spell information properly
+      const formattedSpells = data.map((item: any) => ({
+        ...item.spell,
+        is_known: item.is_known,
+        is_prepared: item.is_prepared,
+      }));
+      
+      setSpells(formattedSpells);
     } catch (error) {
       console.error("Failed to fetch spells:", error);
     } finally {
@@ -114,8 +192,15 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 
   const fetchSpellSlots = async () => {
     try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(
-        `http://localhost:8000/api/spells/character/${characterId}/slots`
+        `http://localhost:8000/api/spells/character/${characterId}/slots`,
+        { headers }
       );
       const data = await response.json();
       setSpellSlots(data.spell_slots || {});
@@ -126,11 +211,17 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 
   const castSpell = async (spellId: string, spellLevel: number) => {
     try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(
         `http://localhost:8000/api/spells/character/${characterId}/cast`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             spell_id: spellId,
             spell_level: spellLevel,
@@ -161,11 +252,17 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 
   const savePreparedSpells = async () => {
     try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(
         `http://localhost:8000/api/spells/character/${characterId}/prepare`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             spell_ids: Array.from(selectedSpellsToPrepare),
           }),
@@ -183,10 +280,17 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 
   const longRest = async () => {
     try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(
         `http://localhost:8000/api/spells/character/${characterId}/rest`,
         {
           method: "POST",
+          headers,
         }
       );
       
@@ -377,7 +481,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
             })
             .map(([level, spellsInLevel]) => (
               <div key={level}>
-                <h3 className="font-semibold text-lg mb-3">{level}</h3>
+                <h3 className="font-bold text-lg mb-3 text-foreground">{level}</h3>
                 <div className="grid grid-cols-1 gap-3">
                   {spellsInLevel.map((spell) => (
                     <Card
@@ -585,6 +689,11 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
             <DialogTitle>Prepare Spells</DialogTitle>
             <DialogDescription>
               Select which spells you want to prepare for today
+              {maxPreparedSpells > 0 && (
+                <span className="block mt-1 font-semibold">
+                  Prepared: {selectedSpellsToPrepare.size} / {maxPreparedSpells}
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -592,45 +701,56 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
             <div className="space-y-4">
               {Object.entries(
                 spells.reduce((acc, spell) => {
-                  if (spell.level === 0) return acc; // Skip cantrips
-                  const level = `Level ${spell.level}`;
+                  const level = spell.level === 0 ? "Cantrips" : `Level ${spell.level}`;
                   if (!acc[level]) acc[level] = [];
                   acc[level].push(spell);
                   return acc;
                 }, {} as Record<string, CharacterSpell[]>)
-              ).map(([level, spellsInLevel]) => (
+              )
+              .sort(([a], [b]) => {
+                if (a === "Cantrips") return -1;
+                if (b === "Cantrips") return 1;
+                return parseInt(a.split(" ")[1]) - parseInt(b.split(" ")[1]);
+              })
+              .map(([level, spellsInLevel]) => (
                 <div key={level}>
-                  <h4 className="font-semibold mb-2">{level}</h4>
+                  <h4 className="font-bold mb-2 text-foreground">{level}</h4>
                   <div className="space-y-2">
-                    {spellsInLevel.map((spell) => (
-                      <div
-                        key={spell.id}
-                        className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-accent"
-                        onClick={() => toggleSpellToPrepare(spell.id)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedSpellsToPrepare.has(spell.id)}
-                            onChange={() => toggleSpellToPrepare(spell.id)}
-                            className="w-4 h-4"
-                          />
-                          <div>
-                            <p className="font-medium">{spell.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {spell.school} • {spell.casting_time}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge
-                          className={`${
-                            SCHOOL_COLORS[spell.school] || "bg-gray-500"
-                          } text-white`}
+                    {spellsInLevel.map((spell) => {
+                      const canToggle = spell.level === 0 || selectedSpellsToPrepare.has(spell.id) || selectedSpellsToPrepare.size < maxPreparedSpells;
+                      return (
+                        <div
+                          key={spell.id}
+                          className={`flex items-center justify-between p-3 border rounded-lg ${
+                            canToggle ? "cursor-pointer hover:bg-accent" : "opacity-50 cursor-not-allowed"
+                          }`}
+                          onClick={() => canToggle && toggleSpellToPrepare(spell.id)}
                         >
-                          {spell.school}
-                        </Badge>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedSpellsToPrepare.has(spell.id)}
+                              onChange={() => canToggle && toggleSpellToPrepare(spell.id)}
+                              disabled={!canToggle}
+                              className="w-4 h-4"
+                            />
+                            <div>
+                              <p className="font-medium">{spell.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {spell.school} • {spell.casting_time}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge
+                            className={`${
+                              SCHOOL_COLORS[spell.school] || "bg-gray-500"
+                            } text-white`}
+                          >
+                            {spell.school}
+                          </Badge>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}

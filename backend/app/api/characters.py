@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
+from app.db.models import User
+from app.middleware.auth import get_current_active_user
 from app.schemas.character import (
     CharacterCreate,
     CharacterListResponse,
@@ -21,32 +23,34 @@ router = APIRouter(prefix="/api/characters", tags=["characters"])
 @router.post("", response_model=CharacterResponse, status_code=201)
 async def create_character(
     character_data: CharacterCreate,
-    user_id: Optional[UUID] = None,  # TODO: Replace with auth user from JWT
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new D&D character.
     
     Args:
         character_data: Character creation data
-        user_id: User ID (from authentication)
+        current_user: Authenticated user (from JWT)
         db: Database session
         
     Returns:
         Created character
     """
-    character = await CharacterService.create_character(db, character_data, user_id)
+    character = await CharacterService.create_character(db, character_data, current_user.id)
     return character
 
 
 @router.get("/{character_id}", response_model=CharacterResponse)
 async def get_character(
     character_id: UUID,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get a character by ID.
     
     Args:
         character_id: Character UUID
+        current_user: Authenticated user
         db: Database session
         
     Returns:
@@ -63,15 +67,15 @@ async def get_character(
 
 @router.get("", response_model=CharacterListResponse)
 async def list_characters(
-    user_id: Optional[UUID] = Query(None, description="Filter by user ID"),
+    current_user: User = Depends(get_current_active_user),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     db: AsyncSession = Depends(get_db)
 ):
-    """List characters with pagination.
+    """List characters for the authenticated user with pagination.
     
     Args:
-        user_id: Optional user ID filter
+        current_user: Authenticated user
         page: Page number (1-indexed)
         page_size: Number of items per page
         db: Database session
@@ -81,14 +85,10 @@ async def list_characters(
     """
     skip = (page - 1) * page_size
     
-    if user_id:
-        characters, total = await CharacterService.get_user_characters(
-            db, user_id, skip=skip, limit=page_size
-        )
-    else:
-        # TODO: For now, return empty if no user_id
-        # Later, implement admin endpoint to list all characters
-        characters, total = [], 0
+    # Get characters for the authenticated user
+    characters, total = await CharacterService.get_user_characters(
+        db, current_user.id, skip=skip, limit=page_size
+    )
     
     return CharacterListResponse(
         characters=characters,

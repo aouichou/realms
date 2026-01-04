@@ -1,26 +1,26 @@
 """Spells API endpoints"""
 import random
 import uuid
-from typing import Optional, List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.base import get_db
-from app.db.models import Spell, CharacterSpell, Character, CharacterClass
+from app.db.models import Character, CharacterClass, CharacterSpell, Spell
 from app.schemas.spell import (
-    SpellCreate,
-    SpellResponse,
-    SpellListResponse,
+    CastSpellRequest,
+    CastSpellResponse,
     CharacterSpellCreate,
     CharacterSpellResponse,
     PrepareSpellsRequest,
-    CastSpellRequest,
-    CastSpellResponse,
-    SpellSlotsResponse
+    SpellCreate,
+    SpellListResponse,
+    SpellResponse,
+    SpellSlotsResponse,
 )
 from app.services.character_service import CharacterService
 
@@ -72,6 +72,9 @@ async def list_spells(
     level: Optional[int] = Query(None, ge=0, le=9, description="Filter by spell level"),
     school: Optional[str] = Query(None, description="Filter by school of magic"),
     character_class: Optional[str] = Query(None, description="Filter by class availability"),
+    concentration: Optional[bool] = Query(None, description="Filter concentration spells"),
+    ritual: Optional[bool] = Query(None, description="Filter ritual spells"),
+    search: Optional[str] = Query(None, description="Search spell name or description"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     db: AsyncSession = Depends(get_db)
@@ -82,31 +85,63 @@ async def list_spells(
         level: Filter by spell level (0-9)
         school: Filter by school of magic
         character_class: Filter by class (e.g., 'wizard', 'cleric')
+        concentration: Filter concentration spells (true/false)
+        ritual: Filter ritual spells (true/false)
+        search: Full-text search on spell name/description
         page: Page number
         page_size: Items per page
         db: Database session
         
     Returns:
-        Paginated list of spells
+        Paginated list of spells with total count
     """
+    from sqlalchemy import func, or_
+    
     query = select(Spell)
+    count_query = select(func.count()).select_from(Spell)
     
-    # Apply filters
+    # Apply filters to both queries
+    filters = []
+    
     if level is not None:
-        query = query.where(Spell.level == level)
-    if school:
-        query = query.where(Spell.school == school)
-    if character_class:
-        # Filter spells available to this class
-        query = query.where(Spell.available_to_classes[character_class.lower()].astext.cast(db.bind.dialect.BOOLEAN) == True)
+        filters.append(Spell.level == level)
     
-    # Get total count
-    count_result = await db.execute(query)
-    total = len(count_result.all())
+    if school:
+        filters.append(Spell.school == school.title())
+    
+    if character_class:
+        # Use JSONB containment for class filtering
+        class_key = character_class.lower()
+        filters.append(Spell.available_to_classes[class_key].astext == 'true')
+    
+    if concentration is not None:
+        filters.append(Spell.is_concentration == concentration)
+    
+    if ritual is not None:
+        filters.append(Spell.is_ritual == ritual)
+    
+    if search:
+        # Search in name and description
+        search_term = f"%{search}%"
+        filters.append(
+            or_(
+                Spell.name.ilike(search_term),
+                Spell.description.ilike(search_term)
+            )
+        )
+    
+    # Apply all filters
+    if filters:
+        query = query.where(and_(*filters))
+        count_query = count_query.where(and_(*filters))
+    
+    # Get total count efficiently
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
     
     # Apply pagination
     skip = (page - 1) * page_size
-    query = query.offset(skip).limit(page_size)
+    query = query.order_by(Spell.level, Spell.name).offset(skip).limit(page_size)
     
     result = await db.execute(query)
     spells = result.scalars().all()
@@ -296,7 +331,7 @@ async def prepare_spells(
     
     # Unprepare all spells first
     await db.execute(
-        select(CharacterSpell)
+        update(CharacterSpell)
         .where(CharacterSpell.character_id == character_id)
         .values(is_prepared=False)
     )
