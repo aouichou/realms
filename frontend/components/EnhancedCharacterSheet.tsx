@@ -94,16 +94,27 @@ export function EnhancedCharacterSheet({
 
   const fetchCharacterData = async () => {
     try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       // Fetch stats
       const statsResponse = await fetch(
-        `http://localhost:8000/api/characters/${characterId}/stats`
+        `http://localhost:8000/api/characters/${characterId}/stats`,
+        { headers }
       );
       const statsData = await statsResponse.json();
       setStats(statsData);
 
       // Fetch spell slots
       const slotsResponse = await fetch(
-        `http://localhost:8000/api/spells/character/${characterId}/slots`
+        `http://localhost:8000/api/spells/character/${characterId}/slots`,
+        { headers }
       );
       const slotsData = await slotsResponse.json();
       setSpellSlots(slotsData.spell_slots || {});

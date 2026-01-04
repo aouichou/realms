@@ -2,19 +2,39 @@
 Main FastAPI application
 Configures the API server with middleware, routers, and error handlers
 """
-from fastapi import FastAPI, Request, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 
-from app.config import settings
-from app.utils.logger import logger
-from app.routers import health, narrate
-from app.api import characters, sessions, conversations, dice, random_status, inventory, spells, combat, loot, progression, rest, conditions, npcs, quests
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from app.api import (
+    auth,
+    characters,
+    combat,
+    companion,
+    conditions,
+    conversations,
+    dice,
+    game,
+    images,
+    inventory,
+    loot,
+    npcs,
+    progression,
+    quests,
+    random_status,
+    rest,
+    sessions,
+    spells,
+)
 from app.api.routes import rules
-from app.db.base import init_db, close_db
+from app.config import settings
+from app.db.base import close_db, init_db
+from app.routers import health, narrate
 from app.services.redis_service import session_service
+from app.utils.logger import logger
 
 
 @asynccontextmanager
@@ -124,6 +144,10 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 # Include routers
 app.include_router(health.router)
+app.include_router(auth.router)  # Authentication endpoints
+app.include_router(companion.router)  # AI Companion
+app.include_router(images.router)  # Scene Image Generation
+app.include_router(game.router)  # Save/Load System
 app.include_router(narrate.router)
 app.include_router(characters.router)
 app.include_router(sessions.router)

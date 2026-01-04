@@ -1,15 +1,12 @@
 """SQLAlchemy database models for Mistral Realms"""
 import uuid
 from datetime import datetime
-from typing import Optional
 from enum import Enum as PyEnum
+from typing import Optional
 
-from sqlalchemy import (
-    String, Integer, Boolean, DateTime, Text, Enum, ForeignKey,
-    Index
-)
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.db.base import Base
 
@@ -116,7 +113,7 @@ class MessageRole(str, PyEnum):
 
 
 class User(Base):
-    """User account model"""
+    """User account model with guest mode support"""
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -124,14 +121,27 @@ class User(Base):
         primary_key=True,
         default=uuid.uuid4
     )
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     
+    # Email is nullable for guest mode
+    email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True, index=True)
+    
+    # Username is always required (generated for guests)
+    username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    
+    # Password hash is nullable for guest mode (changed from hashed_password to password_hash for consistency)
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    
+    # Guest mode flags
+    is_guest: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    guest_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, unique=True, index=True)
+    
+    # User status flags
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     
+    # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
@@ -144,7 +154,8 @@ class User(Base):
     game_sessions = relationship("GameSession", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
-        return f"<User(id={self.id}, username={self.username})>"
+        guest_str = " (guest)" if self.is_guest else ""
+        return f"<User(id={self.id}, username={self.username}{guest_str})>"
 
 
 class Character(Base):

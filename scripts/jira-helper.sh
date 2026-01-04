@@ -174,6 +174,61 @@ cmd_get_issue() {
     jira_api "GET" "issue/${issue_key}" | jq '.'
 }
 
+# Command: List Open Tickets
+cmd_list_tickets() {
+    echo -e "${BLUE}Fetching open tickets for project ${PROJECT_KEY}...${NC}"
+    
+    # JQL query to get open tickets - status values must be properly quoted
+    local jql='project='"${PROJECT_KEY}"' AND status in ("Open","In Progress","To Do") ORDER BY created DESC'
+    
+    local data=$(cat <<EOF
+{
+    "jql": $(echo "$jql" | jq -R .),
+    "fields": ["summary", "status", "issuetype", "assignee", "priority"]
+}
+EOF
+)
+    
+    local response=$(jira_api "POST" "search/jql" "$data")
+    
+    # Check if response is valid
+    if echo "$response" | jq -e '.issues' > /dev/null 2>&1; then
+        echo "$response" | jq -r '.issues[] | select(.fields.issuetype.name != "Epic") | "\(.key)\t\(.fields.status.name)\t\(.fields.issuetype.name)\t\(.fields.summary)"'
+        
+        local total=$(echo "$response" | jq -r '.total // 0')
+        echo ""
+        echo -e "${GREEN}Total open tickets: ${total}${NC}"
+    else
+        echo -e "${RED}Error fetching tickets. Check credentials.${NC}"
+        echo "$response" | jq '.' 2>/dev/null || echo "$response"
+    fi
+}
+
+# Command: List Epics
+cmd_list_epics() {
+    echo -e "${BLUE}Fetching epics for project ${PROJECT_KEY}...${NC}"
+    
+    local jql="project=${PROJECT_KEY} AND issuetype=Epic ORDER BY created DESC"
+    
+    local data=$(cat <<EOF
+{
+    "jql": "${jql}",
+    "fields": ["summary", "status"]
+}
+EOF
+)
+    
+    local response=$(jira_api "POST" "search/jql" "$data")
+    
+    # Check if response is valid
+    if echo "$response" | jq -e '.issues' > /dev/null 2>&1; then
+        echo "$response" | jq -r '.issues[] | "\(.key)\t\(.fields.status.name)\t\(.fields.summary)"'
+    else
+        echo -e "${RED}Error fetching epics. Check credentials.${NC}"
+        echo "$response" | jq '.' 2>/dev/null || echo "$response"
+    fi
+}
+
 # Main command router
 case "${1:-}" in
     list-projects|lp)
@@ -191,16 +246,26 @@ case "${1:-}" in
         shift
         cmd_get_issue "$@"
         ;;
+    list-tickets|lt)
+        shift
+        cmd_list_tickets "$@"
+        ;;
+    list-epics|le)
+        shift
+        cmd_list_epics "$@"
+        ;;
     help|--help|-h|"")
         echo "Jira Helper Script for Mistral Realms"
         echo ""
         echo "Usage: $0 <command> [args]"
         echo ""
         echo "Commands:"
-        echo "  list-projects (lp)           List all projects"
+        echo "  list-projects (lp)              List all projects"
+        echo "  list-epics (le)                 List all epics"
+        echo "  list-tickets (lt) [status]      List open tickets (default: Open,In Progress,To Do)"
         echo "  create-epic (ce) <summary> [description]"
         echo "  create-story (cs) <summary> [description] [epic_key] [points]"
-        echo "  get-issue (gi) <issue_key>   Get issue details"
+        echo "  get-issue (gi) <issue_key>      Get issue details"
         echo ""
         echo "Environment Variables:"
         echo "  JIRA_EMAIL      Your Atlassian email"

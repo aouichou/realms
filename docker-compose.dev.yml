@@ -48,6 +48,8 @@ services:
       - ./backend/app:/app/app:ro
       - ./backend/tests:/app/tests:ro
       - ./backend/alembic:/app/alembic:ro
+      - ./backend/scripts:/app/scripts:ro
+      - ./backend/data:/app/data:ro
     environment:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
       - REDIS_HOST=redis
