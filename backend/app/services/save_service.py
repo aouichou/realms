@@ -1,4 +1,5 @@
 """Save/Load System for Game Sessions"""
+
 import json
 from datetime import datetime
 from typing import Dict, Optional
@@ -13,38 +14,34 @@ from app.services.redis_service import session_service
 
 class SaveService:
     """Service for saving and loading game sessions"""
-    
+
     @staticmethod
     async def save_game(
-        db: AsyncSession,
-        session_id: UUID,
-        save_name: Optional[str] = None
+        db: AsyncSession, session_id: UUID, save_name: Optional[str] = None
     ) -> Dict:
         """Save current game state
-        
+
         Args:
             db: Database session
             session_id: Game session ID
             save_name: Optional name for the save
-            
+
         Returns:
             Dict with save information
         """
         # Get session from database
-        result = await db.execute(
-            select(GameSession).where(GameSession.id == session_id)
-        )
+        result = await db.execute(select(GameSession).where(GameSession.id == session_id))
         game_session = result.scalar_one_or_none()
-        
+
         if not game_session:
             raise ValueError(f"Session {session_id} not found")
-        
+
         # Get character
         character = await db.get(Character, game_session.character_id)
-        
+
         # Get session state from Redis
         redis_state = await session_service.get_session_state(session_id)
-        
+
         # Create save data
         save_data = {
             "save_name": save_name or f"Auto-save {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}",
@@ -55,87 +52,79 @@ class SaveService:
             "game_data": {
                 "location": game_session.current_location,
                 "story_progress": game_session.story_progress,
-                "redis_state": redis_state
-            }
+                "redis_state": redis_state,
+            },
         }
-        
+
         # Store in Redis with session ID as key
         save_key = f"save:{session_id}"
-        await session_service.redis.setex(
-            save_key,
-            60 * 60 * 24 * 30,  # 30 days TTL
-            json.dumps(save_data)
-        )
-        
+        if session_service.redis:
+            await session_service.redis.setex(
+                save_key,
+                60 * 60 * 24 * 30,  # 30 days TTL
+                json.dumps(save_data),
+            )  # type: ignore[misc]
+
         return save_data
-    
+
     @staticmethod
-    async def load_game(
-        db: AsyncSession,
-        session_id: UUID
-    ) -> Optional[Dict]:
+    async def load_game(db: AsyncSession, session_id: UUID) -> Optional[Dict]:
         """Load saved game state
-        
+
         Args:
             db: Database session
             session_id: Game session ID to load
-            
+
         Returns:
             Dict with save data or None if not found
         """
         save_key = f"save:{session_id}"
-        save_data = await session_service.redis.get(save_key)
-        
+        if not session_service.redis:
+            return None
+
+        save_data = await session_service.redis.get(save_key)  # type: ignore[misc]
+
         if not save_data:
             return None
-        
+
         return json.loads(save_data)
-    
+
     @staticmethod
-    async def auto_save(
-        db: AsyncSession,
-        session_id: UUID
-    ) -> Dict:
+    async def auto_save(db: AsyncSession, session_id: UUID) -> Dict:
         """Perform automatic save
-        
+
         Args:
             db: Database session
             session_id: Game session ID
-            
+
         Returns:
             Dict with save information
         """
         return await SaveService.save_game(
-            db,
-            session_id,
-            save_name=f"Auto-save {datetime.utcnow().strftime('%H:%M')}"
+            db, session_id, save_name=f"Auto-save {datetime.utcnow().strftime('%H:%M')}"
         )
-    
+
     @staticmethod
-    async def list_saves(
-        db: AsyncSession,
-        user_id: UUID
-    ) -> list[Dict]:
+    async def list_saves(db: AsyncSession, user_id: UUID) -> list[Dict]:
         """List all saves for a user
-        
+
         Args:
             db: Database session
             user_id: User ID
-            
+
         Returns:
             List of save dictionaries
         """
         # Get all sessions for user
-        result = await db.execute(
-            select(GameSession).where(GameSession.user_id == user_id)
-        )
+        result = await db.execute(select(GameSession).where(GameSession.user_id == user_id))
         sessions = result.scalars().all()
-        
+
         saves = []
         for session in sessions:
             save_key = f"save:{session.id}"
-            save_data = await session_service.redis.get(save_key)
-            if save_data:
-                saves.append(json.loads(save_data))
-        
+            if session_service.redis:
+                save_data = await session_service.redis.get(save_key)  # type: ignore[misc]
+                if save_data:
+                    saves.append(json.loads(save_data))
+
         return sorted(saves, key=lambda x: x["timestamp"], reverse=True)

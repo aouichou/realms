@@ -1,12 +1,15 @@
 """Ability check and skill roll schemas"""
-from pydantic import BaseModel, Field
+
+from enum import Enum
 from typing import Optional
 from uuid import UUID
-from enum import Enum
+
+from pydantic import BaseModel, Field
 
 
 class Ability(str, Enum):
     """D&D 5e abilities"""
+
     STRENGTH = "strength"
     DEXTERITY = "dexterity"
     CONSTITUTION = "constitution"
@@ -17,28 +20,29 @@ class Ability(str, Enum):
 
 class Skill(str, Enum):
     """D&D 5e skills"""
+
     # Strength
     ATHLETICS = "athletics"
-    
+
     # Dexterity
     ACROBATICS = "acrobatics"
     SLEIGHT_OF_HAND = "sleight_of_hand"
     STEALTH = "stealth"
-    
+
     # Intelligence
     ARCANA = "arcana"
     HISTORY = "history"
     INVESTIGATION = "investigation"
     NATURE = "nature"
     RELIGION = "religion"
-    
+
     # Wisdom
     ANIMAL_HANDLING = "animal_handling"
     INSIGHT = "insight"
     MEDICINE = "medicine"
     PERCEPTION = "perception"
     SURVIVAL = "survival"
-    
+
     # Charisma
     DECEPTION = "deception"
     INTIMIDATION = "intimidation"
@@ -71,6 +75,7 @@ SKILL_TO_ABILITY = {
 
 class AbilityCheckRequest(BaseModel):
     """Request for an ability check or skill roll"""
+
     character_id: UUID
     ability: Ability
     skill: Optional[Skill] = None
@@ -82,6 +87,7 @@ class AbilityCheckRequest(BaseModel):
 
 class AbilityCheckResponse(BaseModel):
     """Response for an ability check or skill roll"""
+
     character_id: UUID
     character_name: str
     ability: Ability
@@ -90,19 +96,19 @@ class AbilityCheckResponse(BaseModel):
     ability_modifier: int
     proficiency_bonus: int
     is_proficient: bool
-    
+
     # Roll details
     roll: int
     rolls: list[int]  # Multiple rolls if advantage/disadvantage
     advantage: bool
     disadvantage: bool
-    
+
     # Total calculation
     total: int
     breakdown: str
-    
+
     # DC check
     dc: Optional[int]
     success: Optional[bool]
-    
+
     reason: Optional[str]

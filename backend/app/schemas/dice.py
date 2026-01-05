@@ -1,4 +1,5 @@
 """Dice rolling schemas."""
+
 from enum import Enum
 from typing import Optional
 
@@ -7,6 +8,7 @@ from pydantic import BaseModel, Field
 
 class DiceType(str, Enum):
     """Standard D&D dice types."""
+
     D4 = "d4"
     D6 = "d6"
     D8 = "d8"
@@ -18,6 +20,7 @@ class DiceType(str, Enum):
 
 class RollType(str, Enum):
     """Roll type modifiers."""
+
     NORMAL = "normal"
     ADVANTAGE = "advantage"
     DISADVANTAGE = "disadvantage"
@@ -25,6 +28,7 @@ class RollType(str, Enum):
 
 class DiceRollRequest(BaseModel):
     """Request for rolling dice."""
+
     dice: str = Field(..., description="Dice notation (e.g., '2d6+3', 'd20', '3d8-2')")
     roll_type: RollType = Field(RollType.NORMAL, description="Normal, advantage, or disadvantage")
     reason: Optional[str] = Field(None, max_length=255, description="Reason for the roll")
@@ -32,6 +36,7 @@ class DiceRollRequest(BaseModel):
 
 class DiceRollResult(BaseModel):
     """Individual die roll result."""
+
     die_type: str
     roll: int
     dropped: bool = False  # For advantage/disadvantage
@@ -39,6 +44,7 @@ class DiceRollResult(BaseModel):
 
 class DiceRollResponse(BaseModel):
     """Response from dice roll."""
+
     notation: str = Field(..., description="Original dice notation")
     roll_type: str
     individual_rolls: list[DiceRollResult]

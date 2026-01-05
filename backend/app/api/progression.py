@@ -1,14 +1,16 @@
 """
 Character progression and leveling API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
+
 from typing import Dict
 
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.api.spells import get_spell_slots_for_class
 from app.db.base import get_db
 from app.db.models import Character, CharacterClass
-from app.api.spells import get_spell_slots_for_class
 
 router = APIRouter(prefix="/api", tags=["progression"])
 
@@ -82,11 +84,7 @@ def can_level_up(xp: int, current_level: int) -> bool:
 
 
 @router.post("/characters/{character_id}/add-xp")
-async def add_experience(
-    character_id: int,
-    request: AddXPRequest,
-    db: Session = Depends(get_db)
-):
+async def add_experience(character_id: int, request: AddXPRequest, db: Session = Depends(get_db)):
     """
     Add experience points to a character
     Returns updated XP and whether character can level up
@@ -94,15 +92,15 @@ async def add_experience(
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
-    
+
     # Add XP
     character.experience_points += request.amount
     db.commit()
-    
+
     # Check if can level up
     can_level = can_level_up(character.experience_points, character.level)
     next_level_xp = get_xp_for_level(character.level + 1) if character.level < 20 else None
-    
+
     return {
         "character_id": character.id,
         "experience_points": character.experience_points,
@@ -121,17 +119,17 @@ async def get_xp_progress(character_id: int, db: Session = Depends(get_db)):
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
-    
+
     current_level_xp = get_xp_for_level(character.level)
     next_level_xp = get_xp_for_level(character.level + 1) if character.level < 20 else None
-    
+
     if next_level_xp:
         xp_in_level = character.experience_points - current_level_xp
         xp_needed = next_level_xp - current_level_xp
         progress_percent = (xp_in_level / xp_needed) * 100
     else:
         progress_percent = 100.0
-    
+
     return {
         "character_id": character.id,
         "level": character.level,
@@ -145,9 +143,7 @@ async def get_xp_progress(character_id: int, db: Session = Depends(get_db)):
 
 @router.post("/characters/{character_id}/level-up")
 async def level_up_character(
-    character_id: int,
-    request: LevelUpRequest,
-    db: Session = Depends(get_db)
+    character_id: int, request: LevelUpRequest, db: Session = Depends(get_db)
 ):
     """
     Level up a character
@@ -156,22 +152,22 @@ async def level_up_character(
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
-    
+
     # Check if can level up
     if not can_level_up(character.experience_points, character.level):
         raise HTTPException(
             status_code=400,
-            detail=f"Not enough XP to level up. Need {get_xp_for_level(character.level + 1)} XP"
+            detail=f"Not enough XP to level up. Need {get_xp_for_level(character.level + 1)} XP",
         )
-    
+
     if character.level >= 20:
         raise HTTPException(status_code=400, detail="Already at maximum level")
-    
+
     new_level = character.level + 1
-    
+
     # Get hit die for class
     hit_die = CLASS_HIT_DICE.get(character.character_class, 8)
-    
+
     # Calculate HP increase
     con_modifier = (character.constitution - 10) // 2
     if request.hp_roll > 0:
@@ -180,40 +176,49 @@ async def level_up_character(
     else:
         # Take average (rounded up)
         hp_increase = ((hit_die // 2) + 1) + con_modifier
-    
+
     # Ensure minimum 1 HP gained
     hp_increase = max(1, hp_increase)
-    
+
     # Update character
     character.level = new_level
     character.hp_max += hp_increase
     character.hp_current += hp_increase  # Also heal on level up!
-    
+
     # Apply ability score increases (every 4 levels)
     if new_level in [4, 8, 12, 16, 19]:
         total_increases = sum(request.ability_increases.values())
         if total_increases != 2:
             raise HTTPException(
                 status_code=400,
-                detail=f"Must increase ability scores by exactly 2 points total (got {total_increases})"
+                detail=f"Must increase ability scores by exactly 2 points total (got {total_increases})",
             )
-        
+
         # Apply increases
         for ability, increase in request.ability_increases.items():
-            if ability not in ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]:
+            if ability not in [
+                "strength",
+                "dexterity",
+                "constitution",
+                "intelligence",
+                "wisdom",
+                "charisma",
+            ]:
                 raise HTTPException(status_code=400, detail=f"Invalid ability: {ability}")
-            
+
             if increase < 0 or increase > 2:
-                raise HTTPException(status_code=400, detail=f"Each ability can increase by 0-2 points")
-            
+                raise HTTPException(
+                    status_code=400, detail="Each ability can increase by 0-2 points"
+                )
+
             current_value = getattr(character, ability)
             new_value = min(20, current_value + increase)  # Cap at 20
             setattr(character, ability, new_value)
-            
+
             # Update carrying capacity if strength increased
             if ability == "strength":
                 character.carrying_capacity = character.strength * 15
-    
+
     # Update spell slots for spellcasting classes
     is_caster = character.character_class in [
         CharacterClass.WIZARD,
@@ -223,7 +228,7 @@ async def level_up_character(
         CharacterClass.DRUID,
         CharacterClass.WARLOCK,
     ]
-    
+
     new_spell_slots = {}
     if is_caster:
         new_spell_slots = get_spell_slots_for_class(character.character_class, new_level)
@@ -232,13 +237,13 @@ async def level_up_character(
             for level, total in new_spell_slots.items()
             if total > 0
         }
-    
+
     db.commit()
     db.refresh(character)
-    
+
     # Calculate new proficiency bonus
     new_prof_bonus = get_proficiency_bonus(new_level)
-    
+
     return {
         "success": True,
         "character_id": character.id,

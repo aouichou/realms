@@ -2,6 +2,7 @@
 Main FastAPI application
 Configures the API server with middleware, routers, and error handlers
 """
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
@@ -31,7 +32,7 @@ from app.api import (
 )
 from app.api.routes import rules
 from app.config import settings
-from app.db.base import close_db, init_db
+from app.db.base import close_db
 from app.routers import health, narrate
 from app.services.redis_service import session_service
 from app.utils.logger import logger
@@ -47,7 +48,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
-    
+
     # Initialize database
     try:
         logger.info("Initializing database connection...")
@@ -57,7 +58,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
         raise
-    
+
     # Initialize Redis connection
     try:
         logger.info("Initializing Redis connection...")
@@ -66,9 +67,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to initialize Redis: {e}")
         raise
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down application")
     await close_db()
@@ -82,7 +83,7 @@ app = FastAPI(
     version=settings.app_version,
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 
@@ -102,29 +103,25 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     """Handle validation errors with custom response"""
     errors = exc.errors()
     logger.error(f"Validation error: {errors}")
-    
+
     # Clean up error details to make them JSON serializable
     cleaned_errors = []
     for error in errors:
-        cleaned_error = {
-            'loc': error['loc'],
-            'msg': error['msg'],
-            'type': error['type']
-        }
+        cleaned_error = {"loc": error["loc"], "msg": error["msg"], "type": error["type"]}
         # Convert ValueError or other objects to string
-        if 'ctx' in error and 'error' in error['ctx']:
-            cleaned_error['detail'] = str(error['ctx']['error'])
-        if 'input' in error:
-            cleaned_error['input'] = error['input']
+        if "ctx" in error and "error" in error["ctx"]:
+            cleaned_error["detail"] = str(error["ctx"]["error"])
+        if "input" in error:
+            cleaned_error["input"] = error["input"]
         cleaned_errors.append(cleaned_error)
-    
+
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
             "error": "ValidationError",
             "message": "Request validation failed",
-            "detail": cleaned_errors
-        }
+            "detail": cleaned_errors,
+        },
     )
 
 
@@ -137,8 +134,8 @@ async def generic_exception_handler(request: Request, exc: Exception):
         content={
             "error": "InternalServerError",
             "message": "An unexpected error occurred",
-            "detail": str(exc) if settings.debug else None
-        }
+            "detail": str(exc) if settings.debug else None,
+        },
     )
 
 
@@ -165,6 +162,7 @@ app.include_router(npcs.router)
 app.include_router(quests.router)
 app.include_router(rules.router)  # D&D 5e rules helpers
 
+
 # Root endpoint
 @app.get("/")
 async def root():
@@ -173,17 +171,17 @@ async def root():
         "app": settings.app_name,
         "version": settings.app_version,
         "docs": "/docs" if settings.debug else "disabled",
-        "health": "/health"
+        "health": "/health",
     }
 
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "app.main:app",
         host=settings.host,
         port=settings.port,
         reload=settings.debug,
-        log_level=settings.log_level.lower()
+        log_level=settings.log_level.lower(),
     )

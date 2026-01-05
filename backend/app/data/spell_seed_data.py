@@ -1,5 +1,6 @@
 """Seed data for common D&D 5e spells"""
-from app.db.models import SpellSchool, CastingTime
+
+from app.db.models import CastingTime, SpellSchool
 
 # Sample spells for each level (cantrips + levels 1-3)
 SPELL_SEED_DATA = [
@@ -20,7 +21,7 @@ SPELL_SEED_DATA = [
         "damage_dice": "1d10",
         "damage_type": "fire",
         "save_ability": None,
-        "available_to_classes": {"wizard": True, "sorcerer": True}
+        "available_to_classes": {"wizard": True, "sorcerer": True},
     },
     {
         "name": "Sacred Flame",
@@ -38,7 +39,7 @@ SPELL_SEED_DATA = [
         "damage_dice": "1d8",
         "damage_type": "radiant",
         "save_ability": "dexterity",
-        "available_to_classes": {"cleric": True}
+        "available_to_classes": {"cleric": True},
     },
     {
         "name": "Mage Hand",
@@ -56,7 +57,7 @@ SPELL_SEED_DATA = [
         "damage_dice": None,
         "damage_type": None,
         "save_ability": None,
-        "available_to_classes": {"wizard": True, "sorcerer": True, "warlock": True}
+        "available_to_classes": {"wizard": True, "sorcerer": True, "warlock": True},
     },
     {
         "name": "Light",
@@ -74,7 +75,7 @@ SPELL_SEED_DATA = [
         "damage_dice": None,
         "damage_type": None,
         "save_ability": None,
-        "available_to_classes": {"wizard": True, "cleric": True, "bard": True}
+        "available_to_classes": {"wizard": True, "cleric": True, "bard": True},
     },
     {
         "name": "Guidance",
@@ -92,9 +93,8 @@ SPELL_SEED_DATA = [
         "damage_dice": None,
         "damage_type": None,
         "save_ability": None,
-        "available_to_classes": {"cleric": True, "druid": True}
+        "available_to_classes": {"cleric": True, "druid": True},
     },
-    
     # Level 1 Spells
     {
         "name": "Magic Missile",
@@ -112,7 +112,7 @@ SPELL_SEED_DATA = [
         "damage_dice": "1d4+1",
         "damage_type": "force",
         "save_ability": None,
-        "available_to_classes": {"wizard": True, "sorcerer": True}
+        "available_to_classes": {"wizard": True, "sorcerer": True},
     },
     {
         "name": "Cure Wounds",
@@ -130,7 +130,13 @@ SPELL_SEED_DATA = [
         "damage_dice": "1d8",
         "damage_type": "healing",
         "save_ability": None,
-        "available_to_classes": {"cleric": True, "paladin": True, "bard": True, "druid": True, "ranger": True}
+        "available_to_classes": {
+            "cleric": True,
+            "paladin": True,
+            "bard": True,
+            "druid": True,
+            "ranger": True,
+        },
     },
     {
         "name": "Shield",
@@ -148,7 +154,7 @@ SPELL_SEED_DATA = [
         "damage_dice": None,
         "damage_type": None,
         "save_ability": None,
-        "available_to_classes": {"wizard": True, "sorcerer": True}
+        "available_to_classes": {"wizard": True, "sorcerer": True},
     },
     {
         "name": "Detect Magic",
@@ -166,7 +172,13 @@ SPELL_SEED_DATA = [
         "damage_dice": None,
         "damage_type": None,
         "save_ability": None,
-        "available_to_classes": {"wizard": True, "cleric": True, "bard": True, "paladin": True, "ranger": True}
+        "available_to_classes": {
+            "wizard": True,
+            "cleric": True,
+            "bard": True,
+            "paladin": True,
+            "ranger": True,
+        },
     },
     {
         "name": "Bless",
@@ -184,9 +196,8 @@ SPELL_SEED_DATA = [
         "damage_dice": None,
         "damage_type": None,
         "save_ability": None,
-        "available_to_classes": {"cleric": True, "paladin": True}
+        "available_to_classes": {"cleric": True, "paladin": True},
     },
-    
     # Level 2 Spells
     {
         "name": "Scorching Ray",
@@ -204,7 +215,7 @@ SPELL_SEED_DATA = [
         "damage_dice": "2d6",
         "damage_type": "fire",
         "save_ability": None,
-        "available_to_classes": {"wizard": True, "sorcerer": True}
+        "available_to_classes": {"wizard": True, "sorcerer": True},
     },
     {
         "name": "Hold Person",
@@ -222,7 +233,14 @@ SPELL_SEED_DATA = [
         "damage_dice": None,
         "damage_type": None,
         "save_ability": "wisdom",
-        "available_to_classes": {"wizard": True, "cleric": True, "bard": True, "warlock": True, "sorcerer": True, "druid": True}
+        "available_to_classes": {
+            "wizard": True,
+            "cleric": True,
+            "bard": True,
+            "warlock": True,
+            "sorcerer": True,
+            "druid": True,
+        },
     },
     {
         "name": "Spiritual Weapon",
@@ -240,9 +258,8 @@ SPELL_SEED_DATA = [
         "damage_dice": "1d8",
         "damage_type": "force",
         "save_ability": None,
-        "available_to_classes": {"cleric": True}
+        "available_to_classes": {"cleric": True},
     },
-    
     # Level 3 Spells
     {
         "name": "Fireball",
@@ -260,7 +277,7 @@ SPELL_SEED_DATA = [
         "damage_dice": "8d6",
         "damage_type": "fire",
         "save_ability": "dexterity",
-        "available_to_classes": {"wizard": True, "sorcerer": True}
+        "available_to_classes": {"wizard": True, "sorcerer": True},
     },
     {
         "name": "Counterspell",
@@ -278,7 +295,7 @@ SPELL_SEED_DATA = [
         "damage_dice": None,
         "damage_type": None,
         "save_ability": None,
-        "available_to_classes": {"wizard": True, "sorcerer": True, "warlock": True}
+        "available_to_classes": {"wizard": True, "sorcerer": True, "warlock": True},
     },
     {
         "name": "Revivify",
@@ -296,6 +313,6 @@ SPELL_SEED_DATA = [
         "damage_dice": None,
         "damage_type": None,
         "save_ability": None,
-        "available_to_classes": {"cleric": True, "paladin": True}
+        "available_to_classes": {"cleric": True, "paladin": True},
     },
 ]

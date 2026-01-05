@@ -1,4 +1,5 @@
 """Random pool status API endpoint."""
+
 from fastapi import APIRouter
 
 from app.services.random_pool import random_pool
@@ -9,7 +10,7 @@ router = APIRouter(prefix="/api/random", tags=["random"])
 @router.get("/status")
 async def get_random_pool_status():
     """Get the current status of the true random pool.
-    
+
     Returns:
         Dictionary with pool status information including:
         - enabled: Whether true randomness is enabled

@@ -5,12 +5,12 @@ Revises: 001
 Create Date: 2026-01-01 00:00:00
 
 """
+
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
-revision = '002'
-down_revision = '001'
+revision = "002"
+down_revision = "001"
 branch_labels = None
 depends_on = None
 
@@ -26,7 +26,7 @@ def upgrade() -> None:
     op.execute("ALTER TYPE characterclass ADD VALUE IF NOT EXISTS 'Ranger'")
     op.execute("ALTER TYPE characterclass ADD VALUE IF NOT EXISTS 'Sorcerer'")
     op.execute("ALTER TYPE characterclass ADD VALUE IF NOT EXISTS 'Warlock'")
-    
+
     # Add new character races (5 new races)
     op.execute("ALTER TYPE characterrace ADD VALUE IF NOT EXISTS 'Dragonborn'")
     op.execute("ALTER TYPE characterrace ADD VALUE IF NOT EXISTS 'Gnome'")
@@ -37,12 +37,12 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """PostgreSQL does not support removing enum values.
-    
+
     To downgrade, you would need to:
     1. Remove all rows using the new enum values
     2. Recreate the enum type with only the old values
     3. Update all tables to use the new type
-    
+
     This is complex and risky, so we don't implement it here.
     """
     ...

@@ -2,10 +2,13 @@
 Health check router
 Provides endpoints for service health monitoring
 """
-from fastapi import APIRouter
+
 from datetime import datetime
-from app.models.schemas import HealthCheckResponse
+
+from fastapi import APIRouter
+
 from app.config import settings
+from app.models.schemas import HealthCheckResponse
 
 router = APIRouter(prefix="/health", tags=["health"])
 
@@ -15,7 +18,7 @@ router = APIRouter(prefix="/health", tags=["health"])
 async def health_check():
     """
     Health check endpoint
-    
+
     Returns service status and basic information
     """
     return HealthCheckResponse(
@@ -23,7 +26,7 @@ async def health_check():
         app_name=settings.app_name,
         version=settings.app_version,
         environment=settings.environment,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
 
 
@@ -31,7 +34,7 @@ async def health_check():
 async def readiness_check():
     """
     Readiness check endpoint
-    
+
     Checks if service is ready to accept requests
     Could include checks for Redis, database, etc.
     """
@@ -41,5 +44,5 @@ async def readiness_check():
         app_name=settings.app_name,
         version=settings.app_version,
         environment=settings.environment,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )

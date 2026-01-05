@@ -1,12 +1,14 @@
 """Combat encounter schemas"""
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+
+from typing import Dict, List, Optional
 from uuid import UUID
-from datetime import datetime
+
+from pydantic import BaseModel, Field
 
 
 class CombatParticipant(BaseModel):
     """A participant in combat"""
+
     character_id: Optional[UUID] = None
     name: str
     initiative: int
@@ -19,12 +21,14 @@ class CombatParticipant(BaseModel):
 
 class StartCombatRequest(BaseModel):
     """Request to start a combat encounter"""
+
     session_id: UUID
     participants: List[CombatParticipant]
 
 
 class CombatActionType(str):
     """Types of combat actions"""
+
     ATTACK = "attack"
     CAST_SPELL = "cast_spell"
     USE_ITEM = "use_item"
@@ -38,6 +42,7 @@ class CombatActionType(str):
 
 class CombatActionRequest(BaseModel):
     """Request to perform a combat action"""
+
     action_type: str = Field(..., description="Type of action")
     target_index: Optional[int] = Field(None, description="Index of target in participants list")
     spell_id: Optional[UUID] = Field(None, description="Spell ID if casting")
@@ -48,6 +53,7 @@ class CombatActionRequest(BaseModel):
 
 class CombatActionResponse(BaseModel):
     """Response from a combat action"""
+
     success: bool
     message: str
     damage_dealt: Optional[int] = None
@@ -57,6 +63,7 @@ class CombatActionResponse(BaseModel):
 
 class CombatStatusResponse(BaseModel):
     """Current combat status"""
+
     combat_id: UUID
     session_id: UUID
     is_active: bool
@@ -70,6 +77,7 @@ class CombatStatusResponse(BaseModel):
 
 class EndCombatResponse(BaseModel):
     """Response when combat ends"""
+
     combat_id: UUID
     total_rounds: int
     duration_seconds: Optional[float] = None

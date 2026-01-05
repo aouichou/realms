@@ -1,8 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* stylelint-disable-next-line at-rule-no-unknown */
 @custom-variant dark (&:is(.dark *));
 
+/* stylelint-disable-next-line at-rule-no-unknown */
 @theme inline {
   /* Modern Grimoire Color System */
   --color-primary-900: #2d1b2e;
@@ -130,42 +132,42 @@ body {
 
 :root {
   --radius: 0.625rem;
-  
+
   /* Modern Grimoire Theme */
   --background: #ffffff;
   --foreground: #2d1b2e;
-  
+
   --card: #ffffff;
   --card-foreground: #2d1b2e;
-  
+
   --popover: #ffffff;
   --popover-foreground: #2d1b2e;
-  
+
   --primary: #2d1b2e;
   --primary-foreground: #ffffff;
-  
+
   --secondary: #3a506b;
   --secondary-foreground: #ffffff;
-  
+
   --muted: #e9ecef;
   --muted-foreground: #a9927d;
-  
+
   --accent: #d4a574;
   --accent-foreground: #2d1b2e;
-  
+
   --destructive: #e53e3e;
   --destructive-foreground: #ffffff;
-  
+
   --border: #e9ecef;
   --input: #e9ecef;
   --ring: #d4a574;
-  
+
   --chart-1: #d4a574;
   --chart-2: #3a506b;
   --chart-3: #38b2ac;
   --chart-4: #a9927d;
   --chart-5: #c9934a;
-  
+
   --sidebar: #ffffff;
   --sidebar-foreground: #2d1b2e;
   --sidebar-primary: #2d1b2e;
@@ -212,9 +214,11 @@ body {
 
 @layer base {
   * {
+    /* stylelint-disable-next-line at-rule-no-unknown */
     @apply border-border outline-ring/50;
   }
   body {
+    /* stylelint-disable-next-line at-rule-no-unknown */
     @apply bg-background text-foreground;
   }
 }

@@ -2,13 +2,15 @@
 Starting equipment sets for D&D 5e classes
 Based on official D&D 5e Player's Handbook starting equipment
 """
-from typing import List, Dict, Any
+
+from typing import Any, Dict, List, Optional
+
 from app.db.models import CharacterClass, ItemType
 
 
 class StartingEquipmentItem:
     """Represents an item in a starting equipment set"""
-    
+
     def __init__(
         self,
         name: str,
@@ -17,7 +19,7 @@ class StartingEquipmentItem:
         value: int,
         equipped: bool = False,
         quantity: int = 1,
-        properties: Dict[str, Any] = None
+        properties: Optional[Dict[str, Any]] = None,
     ):
         self.name = name
         self.item_type = item_type
@@ -42,8 +44,8 @@ STARTING_EQUIPMENT = {
                 "damage_type": "slashing",
                 "weapon_properties": ["versatile"],
                 "versatile_damage": "1d10",
-                "attack_bonus": 0
-            }
+                "attack_bonus": 0,
+            },
         ),
         StartingEquipmentItem(
             name="Shield",
@@ -51,10 +53,7 @@ STARTING_EQUIPMENT = {
             weight=6,
             value=10,
             equipped=True,
-            properties={
-                "ac_bonus": 2,
-                "armor_type": "shield"
-            }
+            properties={"ac_bonus": 2, "armor_type": "shield"},
         ),
         StartingEquipmentItem(
             name="Chain Mail",
@@ -66,8 +65,8 @@ STARTING_EQUIPMENT = {
                 "ac_base": 16,
                 "armor_type": "heavy",
                 "stealth_disadvantage": True,
-                "str_requirement": 13
-            }
+                "str_requirement": 13,
+            },
         ),
         StartingEquipmentItem(
             name="Explorer's Pack",
@@ -75,8 +74,17 @@ STARTING_EQUIPMENT = {
             weight=59,
             value=10,
             properties={
-                "contents": ["backpack", "bedroll", "mess kit", "tinderbox", "10 torches", "10 rations", "waterskin", "50ft rope"]
-            }
+                "contents": [
+                    "backpack",
+                    "bedroll",
+                    "mess kit",
+                    "tinderbox",
+                    "10 torches",
+                    "10 rations",
+                    "waterskin",
+                    "50ft rope",
+                ]
+            },
         ),
         StartingEquipmentItem(
             name="Healing Potion",
@@ -86,11 +94,10 @@ STARTING_EQUIPMENT = {
             quantity=2,
             properties={
                 "healing_dice": "2d4+2",
-                "description": "Restores hit points when consumed"
-            }
+                "description": "Restores hit points when consumed",
+            },
         ),
     ],
-    
     CharacterClass.WIZARD: [
         StartingEquipmentItem(
             name="Quarterstaff",
@@ -102,8 +109,8 @@ STARTING_EQUIPMENT = {
                 "damage_dice": "1d6",
                 "damage_type": "bludgeoning",
                 "weapon_properties": ["versatile"],
-                "versatile_damage": "1d8"
-            }
+                "versatile_damage": "1d8",
+            },
         ),
         StartingEquipmentItem(
             name="Spellbook",
@@ -112,8 +119,8 @@ STARTING_EQUIPMENT = {
             value=50,
             properties={
                 "item_type": "spellcasting_focus",
-                "description": "Contains your wizard spells"
-            }
+                "description": "Contains your wizard spells",
+            },
         ),
         StartingEquipmentItem(
             name="Component Pouch",
@@ -123,8 +130,8 @@ STARTING_EQUIPMENT = {
             equipped=True,
             properties={
                 "item_type": "spellcasting_focus",
-                "description": "Material components for spells"
-            }
+                "description": "Material components for spells",
+            },
         ),
         StartingEquipmentItem(
             name="Scholar's Pack",
@@ -132,8 +139,16 @@ STARTING_EQUIPMENT = {
             weight=10,
             value=40,
             properties={
-                "contents": ["backpack", "book of lore", "ink", "ink pen", "10 parchment", "bag of sand", "small knife"]
-            }
+                "contents": [
+                    "backpack",
+                    "book of lore",
+                    "ink",
+                    "ink pen",
+                    "10 parchment",
+                    "bag of sand",
+                    "small knife",
+                ]
+            },
         ),
         StartingEquipmentItem(
             name="Robes",
@@ -141,14 +156,9 @@ STARTING_EQUIPMENT = {
             weight=4,
             value=1,
             equipped=True,
-            properties={
-                "ac_base": 10,
-                "ac_dex_bonus": True,
-                "armor_type": "clothing"
-            }
+            properties={"ac_base": 10, "ac_dex_bonus": True, "armor_type": "clothing"},
         ),
     ],
-    
     CharacterClass.ROGUE: [
         StartingEquipmentItem(
             name="Shortsword",
@@ -159,8 +169,8 @@ STARTING_EQUIPMENT = {
             properties={
                 "damage_dice": "1d6",
                 "damage_type": "piercing",
-                "weapon_properties": ["finesse", "light"]
-            }
+                "weapon_properties": ["finesse", "light"],
+            },
         ),
         StartingEquipmentItem(
             name="Dagger",
@@ -173,8 +183,8 @@ STARTING_EQUIPMENT = {
                 "damage_dice": "1d4",
                 "damage_type": "piercing",
                 "weapon_properties": ["finesse", "light", "thrown"],
-                "range": "20/60"
-            }
+                "range": "20/60",
+            },
         ),
         StartingEquipmentItem(
             name="Leather Armor",
@@ -182,11 +192,7 @@ STARTING_EQUIPMENT = {
             weight=10,
             value=5,
             equipped=True,
-            properties={
-                "ac_base": 11,
-                "ac_dex_bonus": True,
-                "armor_type": "light"
-            }
+            properties={"ac_base": 11, "ac_dex_bonus": True, "armor_type": "light"},
         ),
         StartingEquipmentItem(
             name="Thieves' Tools",
@@ -195,8 +201,8 @@ STARTING_EQUIPMENT = {
             value=25,
             properties={
                 "grants_ability": "lock_picking",
-                "description": "For disabling traps and picking locks"
-            }
+                "description": "For disabling traps and picking locks",
+            },
         ),
         StartingEquipmentItem(
             name="Burglar's Pack",
@@ -204,11 +210,25 @@ STARTING_EQUIPMENT = {
             weight=44,
             value=16,
             properties={
-                "contents": ["backpack", "bag of ball bearings", "10ft string", "bell", "5 candles", "crowbar", "hammer", "10 pitons", "hooded lantern", "2 flasks of oil", "5 rations", "tinderbox", "waterskin", "50ft rope"]
-            }
+                "contents": [
+                    "backpack",
+                    "bag of ball bearings",
+                    "10ft string",
+                    "bell",
+                    "5 candles",
+                    "crowbar",
+                    "hammer",
+                    "10 pitons",
+                    "hooded lantern",
+                    "2 flasks of oil",
+                    "5 rations",
+                    "tinderbox",
+                    "waterskin",
+                    "50ft rope",
+                ]
+            },
         ),
     ],
-    
     CharacterClass.CLERIC: [
         StartingEquipmentItem(
             name="Mace",
@@ -216,10 +236,7 @@ STARTING_EQUIPMENT = {
             weight=4,
             value=5,
             equipped=True,
-            properties={
-                "damage_dice": "1d6",
-                "damage_type": "bludgeoning"
-            }
+            properties={"damage_dice": "1d6", "damage_type": "bludgeoning"},
         ),
         StartingEquipmentItem(
             name="Shield",
@@ -227,10 +244,7 @@ STARTING_EQUIPMENT = {
             weight=6,
             value=10,
             equipped=True,
-            properties={
-                "ac_bonus": 2,
-                "armor_type": "shield"
-            }
+            properties={"ac_bonus": 2, "armor_type": "shield"},
         ),
         StartingEquipmentItem(
             name="Scale Mail",
@@ -243,8 +257,8 @@ STARTING_EQUIPMENT = {
                 "ac_dex_bonus": True,
                 "ac_dex_max": 2,
                 "armor_type": "medium",
-                "stealth_disadvantage": True
-            }
+                "stealth_disadvantage": True,
+            },
         ),
         StartingEquipmentItem(
             name="Holy Symbol",
@@ -254,8 +268,8 @@ STARTING_EQUIPMENT = {
             equipped=True,
             properties={
                 "item_type": "spellcasting_focus",
-                "description": "Divine focus for casting cleric spells"
-            }
+                "description": "Divine focus for casting cleric spells",
+            },
         ),
         StartingEquipmentItem(
             name="Priest's Pack",
@@ -263,11 +277,21 @@ STARTING_EQUIPMENT = {
             weight=24,
             value=19,
             properties={
-                "contents": ["backpack", "blanket", "10 candles", "tinderbox", "alms box", "2 incense blocks", "censer", "vestments", "2 rations", "waterskin"]
-            }
+                "contents": [
+                    "backpack",
+                    "blanket",
+                    "10 candles",
+                    "tinderbox",
+                    "alms box",
+                    "2 incense blocks",
+                    "censer",
+                    "vestments",
+                    "2 rations",
+                    "waterskin",
+                ]
+            },
         ),
     ],
-    
     CharacterClass.RANGER: [
         StartingEquipmentItem(
             name="Longbow",
@@ -279,8 +303,8 @@ STARTING_EQUIPMENT = {
                 "damage_dice": "1d8",
                 "damage_type": "piercing",
                 "weapon_properties": ["ammunition", "heavy", "two-handed"],
-                "range": "150/600"
-            }
+                "range": "150/600",
+            },
         ),
         StartingEquipmentItem(
             name="Arrows",
@@ -288,9 +312,7 @@ STARTING_EQUIPMENT = {
             weight=1,
             value=1,
             quantity=20,
-            properties={
-                "ammunition_type": "arrow"
-            }
+            properties={"ammunition_type": "arrow"},
         ),
         StartingEquipmentItem(
             name="Shortsword",
@@ -301,8 +323,8 @@ STARTING_EQUIPMENT = {
             properties={
                 "damage_dice": "1d6",
                 "damage_type": "piercing",
-                "weapon_properties": ["finesse", "light"]
-            }
+                "weapon_properties": ["finesse", "light"],
+            },
         ),
         StartingEquipmentItem(
             name="Leather Armor",
@@ -310,11 +332,7 @@ STARTING_EQUIPMENT = {
             weight=10,
             value=5,
             equipped=True,
-            properties={
-                "ac_base": 11,
-                "ac_dex_bonus": True,
-                "armor_type": "light"
-            }
+            properties={"ac_base": 11, "ac_dex_bonus": True, "armor_type": "light"},
         ),
         StartingEquipmentItem(
             name="Explorer's Pack",
@@ -322,11 +340,19 @@ STARTING_EQUIPMENT = {
             weight=59,
             value=10,
             properties={
-                "contents": ["backpack", "bedroll", "mess kit", "tinderbox", "10 torches", "10 rations", "waterskin", "50ft rope"]
-            }
+                "contents": [
+                    "backpack",
+                    "bedroll",
+                    "mess kit",
+                    "tinderbox",
+                    "10 torches",
+                    "10 rations",
+                    "waterskin",
+                    "50ft rope",
+                ]
+            },
         ),
     ],
-    
     CharacterClass.PALADIN: [
         StartingEquipmentItem(
             name="Longsword",
@@ -338,8 +364,8 @@ STARTING_EQUIPMENT = {
                 "damage_dice": "1d8",
                 "damage_type": "slashing",
                 "weapon_properties": ["versatile"],
-                "versatile_damage": "1d10"
-            }
+                "versatile_damage": "1d10",
+            },
         ),
         StartingEquipmentItem(
             name="Shield",
@@ -347,10 +373,7 @@ STARTING_EQUIPMENT = {
             weight=6,
             value=10,
             equipped=True,
-            properties={
-                "ac_bonus": 2,
-                "armor_type": "shield"
-            }
+            properties={"ac_bonus": 2, "armor_type": "shield"},
         ),
         StartingEquipmentItem(
             name="Chain Mail",
@@ -362,8 +385,8 @@ STARTING_EQUIPMENT = {
                 "ac_base": 16,
                 "armor_type": "heavy",
                 "stealth_disadvantage": True,
-                "str_requirement": 13
-            }
+                "str_requirement": 13,
+            },
         ),
         StartingEquipmentItem(
             name="Holy Symbol",
@@ -373,8 +396,8 @@ STARTING_EQUIPMENT = {
             equipped=True,
             properties={
                 "item_type": "spellcasting_focus",
-                "description": "Divine focus for casting paladin spells"
-            }
+                "description": "Divine focus for casting paladin spells",
+            },
         ),
         StartingEquipmentItem(
             name="Priest's Pack",
@@ -382,11 +405,21 @@ STARTING_EQUIPMENT = {
             weight=24,
             value=19,
             properties={
-                "contents": ["backpack", "blanket", "10 candles", "tinderbox", "alms box", "2 incense blocks", "censer", "vestments", "2 rations", "waterskin"]
-            }
+                "contents": [
+                    "backpack",
+                    "blanket",
+                    "10 candles",
+                    "tinderbox",
+                    "alms box",
+                    "2 incense blocks",
+                    "censer",
+                    "vestments",
+                    "2 rations",
+                    "waterskin",
+                ]
+            },
         ),
     ],
-    
     CharacterClass.BARBARIAN: [
         StartingEquipmentItem(
             name="Greataxe",
@@ -397,8 +430,8 @@ STARTING_EQUIPMENT = {
             properties={
                 "damage_dice": "1d12",
                 "damage_type": "slashing",
-                "weapon_properties": ["heavy", "two-handed"]
-            }
+                "weapon_properties": ["heavy", "two-handed"],
+            },
         ),
         StartingEquipmentItem(
             name="Handaxe",
@@ -411,8 +444,8 @@ STARTING_EQUIPMENT = {
                 "damage_dice": "1d6",
                 "damage_type": "slashing",
                 "weapon_properties": ["light", "thrown"],
-                "range": "20/60"
-            }
+                "range": "20/60",
+            },
         ),
         StartingEquipmentItem(
             name="Javelin",
@@ -424,8 +457,8 @@ STARTING_EQUIPMENT = {
                 "damage_dice": "1d6",
                 "damage_type": "piercing",
                 "weapon_properties": ["thrown"],
-                "range": "30/120"
-            }
+                "range": "30/120",
+            },
         ),
         StartingEquipmentItem(
             name="Explorer's Pack",
@@ -433,11 +466,19 @@ STARTING_EQUIPMENT = {
             weight=59,
             value=10,
             properties={
-                "contents": ["backpack", "bedroll", "mess kit", "tinderbox", "10 torches", "10 rations", "waterskin", "50ft rope"]
-            }
+                "contents": [
+                    "backpack",
+                    "bedroll",
+                    "mess kit",
+                    "tinderbox",
+                    "10 torches",
+                    "10 rations",
+                    "waterskin",
+                    "50ft rope",
+                ]
+            },
         ),
     ],
-    
     CharacterClass.BARD: [
         StartingEquipmentItem(
             name="Rapier",
@@ -448,8 +489,8 @@ STARTING_EQUIPMENT = {
             properties={
                 "damage_dice": "1d8",
                 "damage_type": "piercing",
-                "weapon_properties": ["finesse"]
-            }
+                "weapon_properties": ["finesse"],
+            },
         ),
         StartingEquipmentItem(
             name="Dagger",
@@ -461,8 +502,8 @@ STARTING_EQUIPMENT = {
                 "damage_dice": "1d4",
                 "damage_type": "piercing",
                 "weapon_properties": ["finesse", "light", "thrown"],
-                "range": "20/60"
-            }
+                "range": "20/60",
+            },
         ),
         StartingEquipmentItem(
             name="Leather Armor",
@@ -470,11 +511,7 @@ STARTING_EQUIPMENT = {
             weight=10,
             value=5,
             equipped=True,
-            properties={
-                "ac_base": 11,
-                "ac_dex_bonus": True,
-                "armor_type": "light"
-            }
+            properties={"ac_base": 11, "ac_dex_bonus": True, "armor_type": "light"},
         ),
         StartingEquipmentItem(
             name="Lute",
@@ -484,8 +521,8 @@ STARTING_EQUIPMENT = {
             equipped=True,
             properties={
                 "item_type": "spellcasting_focus",
-                "description": "Musical instrument for casting bard spells"
-            }
+                "description": "Musical instrument for casting bard spells",
+            },
         ),
         StartingEquipmentItem(
             name="Entertainer's Pack",
@@ -493,11 +530,18 @@ STARTING_EQUIPMENT = {
             weight=38,
             value=40,
             properties={
-                "contents": ["backpack", "bedroll", "2 costumes", "5 candles", "5 rations", "waterskin", "disguise kit"]
-            }
+                "contents": [
+                    "backpack",
+                    "bedroll",
+                    "2 costumes",
+                    "5 candles",
+                    "5 rations",
+                    "waterskin",
+                    "disguise kit",
+                ]
+            },
         ),
     ],
-    
     CharacterClass.DRUID: [
         StartingEquipmentItem(
             name="Scimitar",
@@ -508,8 +552,8 @@ STARTING_EQUIPMENT = {
             properties={
                 "damage_dice": "1d6",
                 "damage_type": "slashing",
-                "weapon_properties": ["finesse", "light"]
-            }
+                "weapon_properties": ["finesse", "light"],
+            },
         ),
         StartingEquipmentItem(
             name="Wooden Shield",
@@ -520,8 +564,8 @@ STARTING_EQUIPMENT = {
             properties={
                 "ac_bonus": 2,
                 "armor_type": "shield",
-                "description": "Made of wood (druids avoid metal)"
-            }
+                "description": "Made of wood (druids avoid metal)",
+            },
         ),
         StartingEquipmentItem(
             name="Leather Armor",
@@ -529,11 +573,7 @@ STARTING_EQUIPMENT = {
             weight=10,
             value=5,
             equipped=True,
-            properties={
-                "ac_base": 11,
-                "ac_dex_bonus": True,
-                "armor_type": "light"
-            }
+            properties={"ac_base": 11, "ac_dex_bonus": True, "armor_type": "light"},
         ),
         StartingEquipmentItem(
             name="Druidic Focus",
@@ -543,8 +583,8 @@ STARTING_EQUIPMENT = {
             equipped=True,
             properties={
                 "item_type": "spellcasting_focus",
-                "description": "Totem or wooden staff for casting druid spells"
-            }
+                "description": "Totem or wooden staff for casting druid spells",
+            },
         ),
         StartingEquipmentItem(
             name="Explorer's Pack",
@@ -552,11 +592,19 @@ STARTING_EQUIPMENT = {
             weight=59,
             value=10,
             properties={
-                "contents": ["backpack", "bedroll", "mess kit", "tinderbox", "10 torches", "10 rations", "waterskin", "50ft rope"]
-            }
+                "contents": [
+                    "backpack",
+                    "bedroll",
+                    "mess kit",
+                    "tinderbox",
+                    "10 torches",
+                    "10 rations",
+                    "waterskin",
+                    "50ft rope",
+                ]
+            },
         ),
     ],
-    
     CharacterClass.MONK: [
         StartingEquipmentItem(
             name="Shortsword",
@@ -567,8 +615,8 @@ STARTING_EQUIPMENT = {
             properties={
                 "damage_dice": "1d6",
                 "damage_type": "piercing",
-                "weapon_properties": ["finesse", "light"]
-            }
+                "weapon_properties": ["finesse", "light"],
+            },
         ),
         StartingEquipmentItem(
             name="Dart",
@@ -580,8 +628,8 @@ STARTING_EQUIPMENT = {
                 "damage_dice": "1d4",
                 "damage_type": "piercing",
                 "weapon_properties": ["finesse", "thrown"],
-                "range": "20/60"
-            }
+                "range": "20/60",
+            },
         ),
         StartingEquipmentItem(
             name="Dungeoneer's Pack",
@@ -589,11 +637,20 @@ STARTING_EQUIPMENT = {
             weight=61,
             value=12,
             properties={
-                "contents": ["backpack", "crowbar", "hammer", "10 pitons", "10 torches", "tinderbox", "10 rations", "waterskin", "50ft rope"]
-            }
+                "contents": [
+                    "backpack",
+                    "crowbar",
+                    "hammer",
+                    "10 pitons",
+                    "10 torches",
+                    "tinderbox",
+                    "10 rations",
+                    "waterskin",
+                    "50ft rope",
+                ]
+            },
         ),
     ],
-    
     CharacterClass.SORCERER: [
         StartingEquipmentItem(
             name="Dagger",
@@ -606,8 +663,8 @@ STARTING_EQUIPMENT = {
                 "damage_dice": "1d4",
                 "damage_type": "piercing",
                 "weapon_properties": ["finesse", "light", "thrown"],
-                "range": "20/60"
-            }
+                "range": "20/60",
+            },
         ),
         StartingEquipmentItem(
             name="Component Pouch",
@@ -617,8 +674,8 @@ STARTING_EQUIPMENT = {
             equipped=True,
             properties={
                 "item_type": "spellcasting_focus",
-                "description": "Material components for spells"
-            }
+                "description": "Material components for spells",
+            },
         ),
         StartingEquipmentItem(
             name="Dungeoneer's Pack",
@@ -626,11 +683,20 @@ STARTING_EQUIPMENT = {
             weight=61,
             value=12,
             properties={
-                "contents": ["backpack", "crowbar", "hammer", "10 pitons", "10 torches", "tinderbox", "10 rations", "waterskin", "50ft rope"]
-            }
+                "contents": [
+                    "backpack",
+                    "crowbar",
+                    "hammer",
+                    "10 pitons",
+                    "10 torches",
+                    "tinderbox",
+                    "10 rations",
+                    "waterskin",
+                    "50ft rope",
+                ]
+            },
         ),
     ],
-    
     CharacterClass.WARLOCK: [
         StartingEquipmentItem(
             name="Dagger",
@@ -643,8 +709,8 @@ STARTING_EQUIPMENT = {
                 "damage_dice": "1d4",
                 "damage_type": "piercing",
                 "weapon_properties": ["finesse", "light", "thrown"],
-                "range": "20/60"
-            }
+                "range": "20/60",
+            },
         ),
         StartingEquipmentItem(
             name="Leather Armor",
@@ -652,11 +718,7 @@ STARTING_EQUIPMENT = {
             weight=10,
             value=5,
             equipped=True,
-            properties={
-                "ac_base": 11,
-                "ac_dex_bonus": True,
-                "armor_type": "light"
-            }
+            properties={"ac_base": 11, "ac_dex_bonus": True, "armor_type": "light"},
         ),
         StartingEquipmentItem(
             name="Arcane Focus",
@@ -666,8 +728,8 @@ STARTING_EQUIPMENT = {
             equipped=True,
             properties={
                 "item_type": "spellcasting_focus",
-                "description": "Crystal, orb, or rod for casting warlock spells"
-            }
+                "description": "Crystal, orb, or rod for casting warlock spells",
+            },
         ),
         StartingEquipmentItem(
             name="Scholar's Pack",
@@ -675,8 +737,16 @@ STARTING_EQUIPMENT = {
             weight=10,
             value=40,
             properties={
-                "contents": ["backpack", "book of lore", "ink", "ink pen", "10 parchment", "bag of sand", "small knife"]
-            }
+                "contents": [
+                    "backpack",
+                    "book of lore",
+                    "ink",
+                    "ink pen",
+                    "10 parchment",
+                    "bag of sand",
+                    "small knife",
+                ]
+            },
         ),
     ],
 }
@@ -685,10 +755,10 @@ STARTING_EQUIPMENT = {
 def get_starting_equipment(character_class: CharacterClass) -> List[StartingEquipmentItem]:
     """
     Get the starting equipment for a character class
-    
+
     Args:
         character_class: The character's class
-        
+
     Returns:
         List of starting equipment items
     """

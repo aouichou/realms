@@ -1,7 +1,6 @@
 """
 Pytest configuration and shared fixtures
 """
-import pytest
 
 
 def pytest_addoption(parser):
@@ -10,7 +9,7 @@ def pytest_addoption(parser):
         "--integration",
         action="store_true",
         default=False,
-        help="Run integration tests that make real API calls"
+        help="Run integration tests that make real API calls",
     )
 
 
@@ -19,6 +18,4 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "integration: mark test as integration test (requires --integration flag)"
     )
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow running"
-    )
+    config.addinivalue_line("markers", "slow: mark test as slow running")

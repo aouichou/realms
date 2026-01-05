@@ -1,5 +1,6 @@
 """Scene Image Generation API"""
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,12 +14,14 @@ router = APIRouter(prefix="/api/images", tags=["images"])
 
 class ImageGenerationRequest(BaseModel):
     """Request model for image generation"""
+
     scene_description: str
     use_cache: bool = True
 
 
 class ImageGenerationResponse(BaseModel):
     """Response model for image generation"""
+
     image_data: str | None
     cached: bool
     scene_description: str
@@ -28,26 +31,25 @@ class ImageGenerationResponse(BaseModel):
 async def generate_scene_image(
     request: ImageGenerationRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Generate a scene image using Pixtral
-    
+
     Args:
         request: Image generation request
         current_user: Authenticated user
         db: Database session
-        
+
     Returns:
         Generated image data (base64) or None
     """
     # Generate or retrieve from cache
     image_data = await ImageService.generate_scene_image(
-        scene_description=request.scene_description,
-        use_cache=request.use_cache
+        scene_description=request.scene_description, use_cache=request.use_cache
     )
-    
+
     return ImageGenerationResponse(
         image_data=image_data,
         cached=False,  # Would need to track this in service
-        scene_description=request.scene_description
+        scene_description=request.scene_description,
     )

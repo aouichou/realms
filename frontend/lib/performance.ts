@@ -7,19 +7,19 @@ import { useEffect, useRef } from 'react';
  * Useful for search inputs and API calls
  */
 export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+	const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
+	useEffect(() => {
+		const handler = setTimeout(() => {
+			setDebouncedValue(value);
+		}, delay);
 
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
+		return () => {
+			clearTimeout(handler);
+		};
+	}, [value, delay]);
 
-  return debouncedValue;
+	return debouncedValue;
 }
 
 /**
@@ -27,18 +27,18 @@ export function useDebounce<T>(value: T, delay: number): T {
  * Useful for scroll handlers and frequent events
  */
 export function useThrottle<T extends (...args: any[]) => any>(
-  callback: T,
-  delay: number
+	callback: T,
+	delay: number
 ): T {
-  const lastRan = useRef(Date.now());
+	const lastRan = useRef(Date.now());
 
-  return ((...args) => {
-    const now = Date.now();
-    if (now - lastRan.current >= delay) {
-      callback(...args);
-      lastRan.current = now;
-    }
-  }) as T;
+	return ((...args) => {
+		const now = Date.now();
+		if (now - lastRan.current >= delay) {
+			callback(...args);
+			lastRan.current = now;
+		}
+	}) as T;
 }
 
 /**
@@ -46,16 +46,16 @@ export function useThrottle<T extends (...args: any[]) => any>(
  * Prevents state updates on unmounted components
  */
 export function useIsMounted(): () => boolean {
-  const isMounted = useRef(false);
+	const isMounted = useRef(false);
 
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
+	useEffect(() => {
+		isMounted.current = true;
+		return () => {
+			isMounted.current = false;
+		};
+	}, []);
 
-  return () => isMounted.current;
+	return () => isMounted.current;
 }
 
 /**
@@ -63,32 +63,32 @@ export function useIsMounted(): () => boolean {
  * Improves initial page load time
  */
 export function useLazyLoad(ref: React.RefObject<HTMLElement>) {
-  useEffect(() => {
-    if (!ref.current) return;
+	useEffect(() => {
+		if (!ref.current) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const img = entry.target as HTMLImageElement;
-            if (img.dataset.src) {
-              img.src = img.dataset.src;
-              observer.unobserve(img);
-            }
-          }
-        });
-      },
-      { rootMargin: '50px' }
-    );
+		const observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					if (entry.isIntersecting) {
+						const img = entry.target as HTMLImageElement;
+						if (img.dataset.src) {
+							img.src = img.dataset.src;
+							observer.unobserve(img);
+						}
+					}
+				});
+			},
+			{ rootMargin: '50px' }
+		);
 
-    observer.observe(ref.current);
+		observer.observe(ref.current);
 
-    return () => {
-      if (ref.current) {
-        observer.unobserve(ref.current);
-      }
-    };
-  }, [ref]);
+		return () => {
+			if (ref.current) {
+				observer.unobserve(ref.current);
+			}
+		};
+	}, [ref]);
 }
 
 import { useState } from 'react';
