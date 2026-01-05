@@ -32,7 +32,7 @@ const SPELL_CASTING_CLASSES = {
 		type: "known",
 		spellcastingAbility: "charisma",
 		cantripsKnown: { 1: 4, 4: 5, 10: 6 },
-		spellsKnown: { 1: 2, 2: 3, 3: 4, 4: 5, 5: 6 },
+		spellsKnown: { 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11, 11: 12, 13: 13, 14: 14, 15: 15 },
 	},
 	cleric: {
 		type: "prepared",
@@ -50,26 +50,26 @@ const SPELL_CASTING_CLASSES = {
 		type: "known",
 		spellcastingAbility: "charisma",
 		cantripsKnown: { 1: 2, 4: 3, 10: 4 },
-		spellsKnown: { 1: 4, 2: 5, 3: 6, 4: 7, 5: 8 },
+		spellsKnown: { 1: 4, 2: 5, 3: 6, 4: 7, 5: 8, 6: 9, 7: 10, 8: 11, 9: 12, 10: 14, 11: 15, 13: 16, 14: 18, 15: 19, 17: 20 },
 	},
 	warlock: {
 		type: "known",
 		spellcastingAbility: "charisma",
 		cantripsKnown: { 1: 2, 4: 3, 10: 4 },
-		spellsKnown: { 1: 2, 2: 3, 3: 4, 4: 5, 5: 6 },
+		spellsKnown: { 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 11: 11, 13: 12, 15: 13, 17: 14, 19: 15 },
 	},
 	paladin: {
 		type: "prepared",
 		spellcastingAbility: "charisma",
-		cantripsKnown: { 1: 0 }, // No cantrips at level 1
+		cantripsKnown: { 1: 0 }, // No cantrips
 		spellsKnown: "prepared", // CHA mod + half level
 		minLevel: 2, // Gets spells at level 2
 	},
 	ranger: {
 		type: "known",
 		spellcastingAbility: "wisdom",
-		cantripsKnown: { 1: 0 }, // No cantrips at level 1
-		spellsKnown: { 2: 2, 3: 3, 5: 4, 7: 5 },
+		cantripsKnown: { 1: 0 }, // No cantrips
+		spellsKnown: { 2: 2, 3: 3, 5: 4, 7: 5, 9: 6, 11: 7, 13: 8, 15: 9, 17: 10, 19: 11 },
 		minLevel: 2, // Gets spells at level 2
 	},
 };
@@ -187,8 +187,8 @@ export function SpellSelectionStep({
 				<CardTitle>Spell Selection</CardTitle>
 				<CardDescription>
 					{classData.type === "prepared"
-						? `Choose your starting spellbook. You can prepare ${maxSpells} spells per day.`
-						: `Choose ${maxSpells} spells your character knows.`
+ 						? `Choose your starting spellbook. You can prepare ${maxSpells} spells per day from your spellbook.`
+						: `Choose ${maxSpells} spells your ${characterClass} knows. These spells are always available to cast.`
 					}
 				</CardDescription>
 			</CardHeader>

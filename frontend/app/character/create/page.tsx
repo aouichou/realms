@@ -1,6 +1,7 @@
 'use client';
 
 import { BackgroundSelection } from '@/components/character/BackgroundSelection';
+import PersonalitySelection from '@/components/character/PersonalitySelection';
 import SkillProficiencySelection from '@/components/character/SkillProficiencySelection';
 import { SpellSelectionStep } from '@/components/SpellSelectionStep';
 import { Button } from '@/components/ui/button';
@@ -81,6 +82,10 @@ export default function CharacterCreation() {
 	const [backgroundName, setBackgroundName] = useState('');
 	const [backgroundDescription, setBackgroundDescription] = useState('');
 	const [backgroundSkills, setBackgroundSkills] = useState<string[]>([]);
+	const [personalityTrait, setPersonalityTrait] = useState('');
+	const [ideal, setIdeal] = useState('');
+	const [bond, setBond] = useState('');
+	const [flaw, setFlaw] = useState('');
 	const [selectedSpells, setSelectedSpells] = useState<Set<string>>(new Set());
 	const [characterId, setCharacterId] = useState<string | null>(null);
 
@@ -233,13 +238,8 @@ export default function CharacterCreation() {
 				setBackgroundDescription(background.description);
 				setBackgroundSkills(background.skillProficiencies);
 				showToast('Background saved successfully!', 'success');
-				// Move to spell selection if spellcaster, otherwise finish
-				if (['bard', 'cleric', 'druid', 'sorcerer', 'warlock', 'wizard'].includes(selectedClass)) {
-					setCurrentStep(4);
-				} else {
-					// Navigate to game
-					setTimeout(() => router.push(`/game/${characterId}`), 1000);
-				}
+				// Move to personality selection
+				setCurrentStep(4);
 			} else {
 				showToast('Failed to save background', 'error');
 			}
@@ -248,9 +248,50 @@ export default function CharacterCreation() {
 			showToast('Error saving background', 'error');
 		}
 	};
+	const handlePersonalityComplete = async (personality: {
+		personality_trait: string;
+		ideal: string;
+		bond: string;
+		flaw: string;
+	}) => {
+		if (!characterId) return;
 
+		try {
+			const params = new URLSearchParams();
+			params.append('personality_trait', personality.personality_trait);
+			params.append('ideal', personality.ideal);
+			params.append('bond', personality.bond);
+			params.append('flaw', personality.flaw);
+
+			const response = await apiClient.post(`/api/characters/${characterId}/personality?${params.toString()}`);
+
+			if (response.ok) {
+				setPersonalityTrait(personality.personality_trait);
+				setIdeal(personality.ideal);
+				setBond(personality.bond);
+				setFlaw(personality.flaw);
+				showToast('Personality saved successfully!', 'success');
+				// Move to spell selection if spellcaster, otherwise finish
+				if (['bard', 'cleric', 'druid', 'sorcerer', 'warlock', 'wizard'].includes(selectedClass)) {
+					setCurrentStep(5);
+				} else {
+					// Navigate to game
+					setTimeout(() => router.push(`/game/${characterId}`), 1000);
+				}
+			} else {
+				showToast('Failed to save personality', 'error');
+			}
+		} catch (error) {
+			console.error('Error saving personality:', error);
+			showToast('Error saving personality', 'error');
+		}
+	};
 	const handleSpellsComplete = async () => {
 		if (!characterId) return;
+
+		// Determine if this is a prepared caster or known caster
+		const preparedCasters = ['wizard', 'cleric', 'druid', 'paladin'];
+		const isPreparedCaster = preparedCasters.includes(selectedClass);
 
 		// If spells were selected, add them to the character
 		if (selectedSpells.size > 0) {
@@ -260,7 +301,9 @@ export default function CharacterCreation() {
 						apiClient.post(`/api/spells/character/${characterId}/spells`, {
 							spell_id: spellId,
 							is_known: true,
-							is_prepared: false,
+							// Only prepared casters need to prepare spells
+							// Known casters (bard, sorcerer, warlock, ranger) always have their spells available
+							is_prepared: isPreparedCaster,
 						})
 					)
 				);
@@ -312,8 +355,13 @@ export default function CharacterCreation() {
 						<div className={`flex items-center gap-2 ${currentStep === 4 ? 'text-primary-600 font-bold' : 'text-muted-foreground'}`}>
 							<div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 4 ? 'bg-primary-600 text-white' : 'bg-muted'}`}>
 								4
-							</div>
-							<span>Spells</span>
+							</div>						<span>Personality</span>
+						</div>
+						<div className="w-12 h-0.5 bg-muted" />
+						<div className={`flex items-center gap-2 ${currentStep === 5 ? 'text-primary-600 font-bold' : 'text-muted-foreground'}`}>
+							<div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 5 ? 'bg-primary-600 text-white' : 'bg-muted'}`}>
+								5
+							</div>							<span>Spells</span>
 						</div>
 					</div>
 				</div>
@@ -491,8 +539,17 @@ export default function CharacterCreation() {
 					/>
 				)}
 
-				{/* Step 4: Spell Selection (for spellcasting classes) */}
-				{currentStep === 4 && selectedClass && (
+				{/* Step 4: Personality Selection */}
+				{currentStep === 4 && (
+					<PersonalitySelection
+						backgroundName={backgroundName}
+						onComplete={handlePersonalityComplete}
+						onBack={() => setCurrentStep(3)}
+					/>
+				)}
+
+				{/* Step 5: Spell Selection (for spellcasting classes) */}
+				{currentStep === 5 && selectedClass && (
 					<div>
 						<SpellSelectionStep
 							characterClass={selectedClass}
@@ -506,7 +563,7 @@ export default function CharacterCreation() {
 							onSpellsChange={setSelectedSpells}
 						/>
 						<div className="flex justify-between mt-6">
-							<Button onClick={() => setCurrentStep(3)} variant="outline">
+							<Button onClick={() => setCurrentStep(4)} variant="outline">
 								Back
 							</Button>
 							<Button onClick={handleSpellsComplete}>

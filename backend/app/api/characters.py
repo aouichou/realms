@@ -136,7 +136,7 @@ async def delete_character(character_id: UUID, db: AsyncSession = Depends(get_db
 async def update_skill_proficiencies(
     character_id: UUID,
     skills: list[str],
-    current_user: dict = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Update character's skill proficiencies.
@@ -157,7 +157,7 @@ async def update_skill_proficiencies(
 
     # Verify character exists and belongs to user
     character = await CharacterService.get_character(db, character_id)
-    if not character or str(character.user_id) != current_user["sub"]:
+    if not character or character.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Character not found")
 
     # Update skills
@@ -173,10 +173,10 @@ async def update_skill_proficiencies(
 @router.post("/{character_id}/background", response_model=CharacterResponse)
 async def update_background(
     character_id: UUID,
-    background_name: str,
-    background_description: str,
-    background_skill_proficiencies: list[str],
-    current_user: dict = Depends(get_current_active_user),
+    background_name: str = Query(...),
+    background_description: str = Query(...),
+    background_skill_proficiencies: list[str] = Query(...),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Update character's background.
@@ -199,7 +199,7 @@ async def update_background(
 
     # Verify character exists and belongs to user
     character = await CharacterService.get_character(db, character_id)
-    if not character or str(character.user_id) != current_user["sub"]:
+    if not character or character.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Character not found")
 
     # Update background
@@ -207,6 +207,55 @@ async def update_background(
         background_name=background_name,
         background_description=background_description,
         background_skill_proficiencies=background_skill_proficiencies,
+    )
+    updated_character = await CharacterService.update_character(db, character_id, update_data)
+
+    if not updated_character:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    return updated_character
+
+
+@router.post("/{character_id}/personality", response_model=CharacterResponse)
+async def update_personality(
+    character_id: UUID,
+    personality_trait: str = Query(...),
+    ideal: str = Query(...),
+    bond: str = Query(...),
+    flaw: str = Query(...),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update character's D&D 5e personality traits.
+
+    Args:
+        character_id: Character UUID
+        personality_trait: Character's personality trait
+        ideal: Character's ideal
+        bond: Character's bond
+        flaw: Character's flaw
+        current_user: Currently authenticated user
+        db: Database session
+
+    Returns:
+        Updated character data
+
+    Raises:
+        HTTPException: 404 if character not found or doesn't belong to user
+    """
+    from app.schemas.character import CharacterUpdate
+
+    # Verify character exists and belongs to user
+    character = await CharacterService.get_character(db, character_id)
+    if not character or character.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    # Update personality
+    update_data = CharacterUpdate(
+        personality_trait=personality_trait,
+        ideal=ideal,
+        bond=bond,
+        flaw=flaw,
     )
     updated_character = await CharacterService.update_character(db, character_id, update_data)
 

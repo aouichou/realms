@@ -150,12 +150,14 @@ export function AbilityCheckPanel({ characterId }: AbilityCheckPanelProps) {
 			Object.entries(SKILLS_BY_ABILITY).forEach(([ability, abilitySkills]) => {
 				abilitySkills.forEach((skillName) => {
 					const skillData = data.skills[skillName];
-					skillsList.push({
-						name: skillName,
-						ability,
-						isProficient: skillData.proficient,
-						modifier: skillData.modifier,
-					});
+					if (skillData) {
+						skillsList.push({
+							name: skillName,
+							ability,
+							isProficient: skillData.proficient,
+							modifier: skillData.modifier,
+						});
+					}
 				});
 			});
 
@@ -358,6 +360,11 @@ export function AbilityCheckPanel({ characterId }: AbilityCheckPanelProps) {
 																title={skill.isProficient ? "Proficient" : "Not proficient"}
 															/>
 															<span className="font-medium">{skillName}</span>
+															{skill.isProficient && (
+																<Badge variant="default" className="text-xs px-1.5 py-0.5 bg-blue-600 text-white">
+																	PROF
+																</Badge>
+															)}
 															<Badge variant="secondary">
 																{skill.modifier >= 0 ? "+" : ""}
 																{skill.modifier}

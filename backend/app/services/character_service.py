@@ -321,12 +321,13 @@ class CharacterService:
         proficient_skills = character.skill_proficiencies or []
         skills = {}
         for skill, ability_mod in skill_abilities.items():
-            if skill in proficient_skills:
+            is_proficient = skill in proficient_skills
+            if is_proficient:
                 # Add proficiency bonus to proficient skills
-                skills[skill] = ability_mod + prof_bonus
+                skills[skill] = {"modifier": ability_mod + prof_bonus, "proficient": True}
             else:
                 # Only ability modifier for non-proficient skills
-                skills[skill] = ability_mod
+                skills[skill] = {"modifier": ability_mod, "proficient": False}
 
         # Saving throws (for now, no proficiencies)
         saving_throws = {

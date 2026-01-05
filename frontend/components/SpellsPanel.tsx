@@ -98,6 +98,12 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 	const [spellcastingModifier, setSpellcastingModifier] = useState<number>(0);
 	const [maxPreparedSpells, setMaxPreparedSpells] = useState<number>(0);
 
+	// Helper to determine if this class prepares spells
+	const isPreparedCaster = () => {
+		const preparedClasses = ['wizard', 'cleric', 'druid', 'paladin'];
+		return preparedClasses.includes(characterClass);
+	};
+
 	useEffect(() => {
 		fetchCharacterData();
 		fetchSpells();
@@ -176,6 +182,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 		try {
 			const response = await apiClient.get(`/api/spells/character/${characterId}/slots`);
 			const data = await response.json();
+			console.log('Spell slots fetched:', data);
 			setSpellSlots(data.spell_slots || {});
 		} catch (error) {
 			console.error("Failed to fetch spell slots:", error);
@@ -254,7 +261,8 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 		if (filterSchool !== "All Schools" && spell.school !== filterSchool) {
 			return false;
 		}
-		if (showPreparedOnly && !spell.is_prepared) {
+		// Only filter by prepared status for prepared casters
+		if (isPreparedCaster() && showPreparedOnly && !spell.is_prepared) {
 			return false;
 		}
 		return true;
@@ -276,9 +284,19 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 	};
 
 	const canCastSpell = (spell: CharacterSpell) => {
-		if (spell.level === 0) return true; // Cantrips
+		if (spell.level === 0) return true; // Cantrips always available
+
+		// For known casters, all known spells can be cast if slots available
+		// For prepared casters, only prepared spells can be cast
+		if (isPreparedCaster() && !spell.is_prepared) {
+			return false; // Prepared casters can't cast unprepared spells
+		}
+
+		// Check if spell slots are available
 		const slots = spellSlots[spell.level.toString()];
-		return slots && slots.used < slots.total;
+		const canCast = slots && slots.used < slots.total;
+		console.log(`Can cast ${spell.name} (level ${spell.level})?`, canCast, 'slots:', slots);
+		return canCast;
 	};
 
 	if (loading) {
@@ -304,14 +322,16 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 							Spells
 						</CardTitle>
 						<div className="flex gap-2">
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={openPrepareDialog}
-							>
-								<BookOpen className="w-4 h-4 mr-2" />
-								Prepare Spells
-							</Button>
+							{isPreparedCaster() && (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={openPrepareDialog}
+								>
+									<BookOpen className="w-4 h-4 mr-2" />
+									Prepare Spells
+								</Button>
+							)}
 							<Button
 								variant="outline"
 								size="sm"
@@ -393,13 +413,15 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 							</SelectContent>
 						</Select>
 
-						<Button
-							variant={showPreparedOnly ? "default" : "outline"}
-							size="sm"
-							onClick={() => setShowPreparedOnly(!showPreparedOnly)}
-						>
-							Prepared Only
-						</Button>
+						{isPreparedCaster() && (
+							<Button
+								variant={showPreparedOnly ? "default" : "outline"}
+								size="sm"
+								onClick={() => setShowPreparedOnly(!showPreparedOnly)}
+							>
+								Prepared Only
+							</Button>
+						)}
 					</div>
 				</CardContent>
 			</Card>
@@ -417,64 +439,69 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 							<div key={level}>
 								<h3 className="font-bold text-lg mb-3 text-foreground">{level}</h3>
 								<div className="grid grid-cols-1 gap-3">
-									{spellsInLevel.map((spell) => (
-										<Card
-											key={spell.id}
-											className={`cursor-pointer transition-all hover:shadow-md ${!spell.is_prepared ? "opacity-60" : ""
-												}`}
-											onClick={() => setSelectedSpell(spell)}
-										>
-											<CardContent className="p-4">
-												<div className="flex items-start justify-between">
-													<div className="flex-1">
-														<div className="flex items-center gap-2 mb-1">
-															<h4 className="font-semibold">{spell.name}</h4>
-															<Badge
-																className={`${SCHOOL_COLORS[spell.school] || "bg-gray-500"
-																	} text-white`}
+									{spellsInLevel.map((spell) => {
+										// For known casters, all spells are available; for prepared casters, only prepared spells
+										const isAvailable = !isPreparedCaster() || spell.is_prepared;
+										return (
+											<Card
+												key={spell.id}
+												className={`cursor-pointer transition-all hover:shadow-md ${!isAvailable ? "opacity-60" : ""
+													}`}
+												onClick={() => setSelectedSpell(spell)}
+											>
+												<CardContent className="p-4">
+													<div className="flex items-start justify-between">
+														<div className="flex-1">
+															<div className="flex items-center gap-2 mb-1">
+																<h4 className="font-semibold">{spell.name}</h4>
+																<Badge
+																	className={`${SCHOOL_COLORS[spell.school] || "bg-gray-500"
+																		} text-white`}
+																>
+																	{spell.school}
+																</Badge>
+																{/* Only show Prepared badge for prepared casters */}
+																{isPreparedCaster() && spell.is_prepared && (
+																	<Badge variant="outline">Prepared</Badge>
+																)}
+																{spell.is_concentration && (
+																	<Badge variant="secondary">Concentration</Badge>
+																)}
+																{spell.is_ritual && (
+																	<Badge variant="secondary">Ritual</Badge>
+																)}
+															</div>
+															<div className="flex items-center gap-4 text-sm text-muted-foreground">
+																<span className="flex items-center gap-1">
+																	<Clock className="w-3 h-3" />
+																	{spell.casting_time}
+																</span>
+																<span className="flex items-center gap-1">
+																	<Target className="w-3 h-3" />
+																	{spell.range}
+																</span>
+																<span>{getComponents(spell)}</span>
+															</div>
+														</div>
+														{isAvailable && (
+															<Button
+																size="sm"
+																onClick={(e) => {
+																	e.stopPropagation();
+																	setSelectedSpell(spell);
+																	setCastDialogOpen(true);
+																}}
+																disabled={!canCastSpell(spell)}
 															>
-																{spell.school}
-															</Badge>
-															{spell.is_prepared && (
-																<Badge variant="outline">Prepared</Badge>
-															)}
-															{spell.is_concentration && (
-																<Badge variant="secondary">Concentration</Badge>
-															)}
-															{spell.is_ritual && (
-																<Badge variant="secondary">Ritual</Badge>
-															)}
-														</div>
-														<div className="flex items-center gap-4 text-sm text-muted-foreground">
-															<span className="flex items-center gap-1">
-																<Clock className="w-3 h-3" />
-																{spell.casting_time}
-															</span>
-															<span className="flex items-center gap-1">
-																<Target className="w-3 h-3" />
-																{spell.range}
-															</span>
-															<span>{getComponents(spell)}</span>
-														</div>
+																<Zap className="w-4 h-4 mr-1" />
+																Cast
+															</Button>
+														)}
 													</div>
-													{spell.is_prepared && (
-														<Button
-															size="sm"
-															onClick={(e) => {
-																e.stopPropagation();
-																setSelectedSpell(spell);
-																setCastDialogOpen(true);
-															}}
-															disabled={!canCastSpell(spell)}
-														>
-															<Zap className="w-4 h-4 mr-1" />
-															Cast
-														</Button>
-													)}
-												</div>
-											</CardContent>
-										</Card>
-									))}
+												</CardContent>
+											</Card>
+										);
+									})}
 								</div>
 							</div>
 						))}

@@ -244,6 +244,12 @@ class Character(Base):
     background: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     personality: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # D&D 5e Personality System (Step 5 of character creation)
+    personality_trait: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ideal: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    bond: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    flaw: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False

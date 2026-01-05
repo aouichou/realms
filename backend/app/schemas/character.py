@@ -139,6 +139,11 @@ class CharacterUpdate(BaseModel):
     background_name: Optional[str] = Field(default=None, max_length=100)
     background_description: Optional[str] = Field(default=None, max_length=1000)
     background_skill_proficiencies: Optional[list[str]] = Field(default=None)
+    # D&D 5e Personality System
+    personality_trait: Optional[str] = Field(default=None)
+    ideal: Optional[str] = Field(default=None)
+    bond: Optional[str] = Field(default=None)
+    flaw: Optional[str] = Field(default=None)
 
 
 class CharacterResponse(CharacterBase):
@@ -160,6 +165,11 @@ class CharacterResponse(CharacterBase):
     background_name: Optional[str] = None
     background_description: Optional[str] = None
     background_skill_proficiencies: Optional[list[str]] = None
+    # D&D 5e Personality System
+    personality_trait: Optional[str] = None
+    ideal: Optional[str] = None
+    bond: Optional[str] = None
+    flaw: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

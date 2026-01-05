@@ -56,10 +56,18 @@ SPELL_SLOTS_BY_LEVEL = {
 
 def get_spell_slots_for_class(character_class: CharacterClass, level: int) -> dict:
     """Get spell slots for a character class and level"""
-    if character_class in [CharacterClass.WIZARD, CharacterClass.CLERIC, CharacterClass.SORCERER]:
+    if character_class in [
+        CharacterClass.WIZARD,
+        CharacterClass.CLERIC,
+        CharacterClass.SORCERER,
+        CharacterClass.BARD,
+        CharacterClass.DRUID,
+    ]:
         progression = SPELL_SLOTS_BY_LEVEL["full"]
     elif character_class in [CharacterClass.PALADIN, CharacterClass.RANGER]:
         progression = SPELL_SLOTS_BY_LEVEL["half"]
+    elif character_class == CharacterClass.WARLOCK:
+        progression = SPELL_SLOTS_BY_LEVEL.get("warlock", {})
     else:
         return {}
 
