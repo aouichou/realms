@@ -1,4 +1,5 @@
 """Spell and character spell schemas"""
+
 from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import UUID
@@ -8,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class SpellBase(BaseModel):
     """Base spell schema"""
+
     name: str = Field(..., min_length=1, max_length=100)
     level: int = Field(..., ge=0, le=9, description="Spell level (0=cantrip)")
     school: str
@@ -28,20 +30,23 @@ class SpellBase(BaseModel):
 
 class SpellCreate(SpellBase):
     """Schema for creating a new spell"""
+
     pass
 
 
 class SpellResponse(SpellBase):
     """Schema for spell response"""
+
     id: UUID
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
 
 class SpellListResponse(BaseModel):
     """Schema for list of spells with pagination"""
+
     spells: List[SpellResponse]
     total: int
     page: int
@@ -50,6 +55,7 @@ class SpellListResponse(BaseModel):
 
 class CharacterSpellCreate(BaseModel):
     """Schema for adding a spell to a character"""
+
     spell_id: UUID
     is_known: bool = True
     is_prepared: bool = False
@@ -57,12 +63,14 @@ class CharacterSpellCreate(BaseModel):
 
 class CharacterSpellUpdate(BaseModel):
     """Schema for updating character spell status"""
+
     is_known: Optional[bool] = None
     is_prepared: Optional[bool] = None
 
 
 class CharacterSpellResponse(BaseModel):
     """Schema for character spell response"""
+
     id: UUID
     character_id: UUID
     spell_id: UUID
@@ -70,25 +78,30 @@ class CharacterSpellResponse(BaseModel):
     is_prepared: bool
     spell: SpellResponse
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
 
 class PrepareSpellsRequest(BaseModel):
     """Schema for preparing daily spells"""
+
     spell_ids: List[UUID] = Field(..., description="List of spell IDs to prepare")
 
 
 class CastSpellRequest(BaseModel):
     """Schema for casting a spell"""
+
     spell_id: UUID
-    spell_level: int = Field(..., ge=0, le=9, description="Spell level (0 for cantrips, 1-9 for other spells)")
+    spell_level: int = Field(
+        ..., ge=0, le=9, description="Spell level (0 for cantrips, 1-9 for other spells)"
+    )
     target_id: Optional[UUID] = None
 
 
 class CastSpellResponse(BaseModel):
     """Schema for spell casting response"""
+
     character_id: UUID
     character_name: str
     spell_name: str
@@ -102,9 +115,10 @@ class CastSpellResponse(BaseModel):
 
 class SpellSlotsResponse(BaseModel):
     """Schema for character spell slots"""
+
     character_id: UUID
     character_name: str
     spell_slots: Dict[str, Dict[str, int]]  # {"1": {"total": 4, "used": 1}, ...}
-    
+
     class Config:
         from_attributes = True

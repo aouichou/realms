@@ -1,4 +1,5 @@
 """Conversation message schemas."""
+
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -8,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class MessageCreate(BaseModel):
     """Schema for creating a message."""
+
     session_id: UUID
     role: str = Field(..., description="Message role: user, assistant, or system")
     content: str = Field(..., min_length=1)
@@ -16,19 +18,21 @@ class MessageCreate(BaseModel):
 
 class MessageResponse(BaseModel):
     """Schema for message responses."""
+
     id: UUID
     session_id: UUID
     role: str
     content: str
     tokens_used: Optional[int]
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
 
 class ConversationHistoryResponse(BaseModel):
     """Schema for conversation history response."""
+
     session_id: UUID
     messages: list[MessageResponse]
     total_messages: int

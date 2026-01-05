@@ -1,11 +1,13 @@
 """
 Loot generation and crafting API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from typing import Dict, Optional
+
 import random
+from typing import Dict, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from app.db.base import get_db
 from app.db.models import Character, Item
@@ -152,7 +154,7 @@ def roll_dice(dice: str) -> int:
     parts = dice.split("+")
     base = parts[0]
     modifier = int(parts[1]) if len(parts) > 1 else 0
-    
+
     count, sides = map(int, base.split("d"))
     return sum(random.randint(1, sides) for _ in range(count)) + modifier
 
@@ -164,19 +166,21 @@ async def generate_loot(request: LootRequest, db: Session = Depends(get_db)):
     """
     tier = get_cr_tier(request.cr)
     loot = []
-    
+
     # Generate coins
     coin_table = COIN_TABLES[tier]
     for coin_type, (min_val, max_val) in coin_table.items():
         amount = random.randint(min_val, max_val)
         if amount > 0:
-            loot.append({
-                "name": f"{coin_type.upper()}",
-                "type": "currency",
-                "quantity": amount,
-                "value": amount,
-            })
-    
+            loot.append(
+                {
+                    "name": f"{coin_type.upper()}",
+                    "type": "currency",
+                    "quantity": amount,
+                    "value": amount,
+                }
+            )
+
     # Chance for gems (increases with CR)
     gem_chance = min(10 + request.cr * 2, 80)  # 10% at CR 0, up to 80% at CR 35+
     if random.randint(1, 100) <= gem_chance:
@@ -184,26 +188,30 @@ async def generate_loot(request: LootRequest, db: Session = Depends(get_db)):
         for _ in range(num_gems):
             # Higher CR = better gems
             max_gem_index = min(len(GEM_TABLE) - 1, request.cr // 3)
-            gem = random.choice(GEM_TABLE[:max_gem_index + 1])
-            loot.append({
-                "name": gem["name"],
-                "type": "gem",
-                "quantity": 1,
-                "value": gem["value"],
-            })
-    
+            gem = random.choice(GEM_TABLE[: max_gem_index + 1])
+            loot.append(
+                {
+                    "name": gem["name"],
+                    "type": "gem",
+                    "quantity": 1,
+                    "value": gem["value"],
+                }
+            )
+
     # Chance for art objects (rare)
     art_chance = min(5 + request.cr, 50)
     if random.randint(1, 100) <= art_chance:
         max_art_index = min(len(ART_OBJECTS) - 1, request.cr // 5)
-        art = random.choice(ART_OBJECTS[:max_art_index + 1])
-        loot.append({
-            "name": art["name"],
-            "type": "art",
-            "quantity": 1,
-            "value": art["value"],
-        })
-    
+        art = random.choice(ART_OBJECTS[: max_art_index + 1])
+        loot.append(
+            {
+                "name": art["name"],
+                "type": "art",
+                "quantity": 1,
+                "value": art["value"],
+            }
+        )
+
     # Chance for magic items
     if request.cr >= 1:
         magic_chance = min(5 + request.cr * 3, 90)
@@ -230,42 +238,53 @@ async def generate_loot(request: LootRequest, db: Session = Depends(get_db)):
             else:
                 magic_item = random.choice(MAGIC_ITEMS_RARE)
                 rarity = "rare"
-            
-            loot.append({
-                "name": magic_item,
-                "type": "magic_item",
-                "quantity": 1,
-                "rarity": rarity,
-                "value": 0,  # Priceless!
-            })
-    
+
+            loot.append(
+                {
+                    "name": magic_item,
+                    "type": "magic_item",
+                    "quantity": 1,
+                    "rarity": rarity,
+                    "value": 0,  # Priceless!
+                }
+            )
+
     # Environment-specific loot
     if request.environment == "forest":
         if random.randint(1, 100) <= 30:
-            loot.append({
-                "name": "Healing Herbs",
-                "type": "consumable",
-                "quantity": random.randint(1, 3),
-                "value": 5,
-            })
+            loot.append(
+                {
+                    "name": "Healing Herbs",
+                    "type": "consumable",
+                    "quantity": random.randint(1, 3),
+                    "value": 5,
+                }
+            )
     elif request.environment == "dungeon":
         if random.randint(1, 100) <= 20:
-            loot.append({
-                "name": "Ancient Key",
-                "type": "quest",
-                "quantity": 1,
-                "value": 0,
-            })
+            loot.append(
+                {
+                    "name": "Ancient Key",
+                    "type": "quest",
+                    "quantity": 1,
+                    "value": 0,
+                }
+            )
     elif request.environment == "underdark":
         if random.randint(1, 100) <= 25:
-            loot.append({
-                "name": "Rare Mushroom",
-                "type": "consumable",
-                "quantity": random.randint(1, 2),
-                "value": 10,
-            })
-    
-    return {"loot": loot, "total_value": sum(item.get("value", 0) * item["quantity"] for item in loot)}
+            loot.append(
+                {
+                    "name": "Rare Mushroom",
+                    "type": "consumable",
+                    "quantity": random.randint(1, 2),
+                    "value": 10,
+                }
+            )
+
+    return {
+        "loot": loot,
+        "total_value": sum(item.get("value", 0) * item["quantity"] for item in loot),
+    }
 
 
 @router.get("/crafting/recipes")
@@ -276,7 +295,7 @@ async def get_recipes(skill: Optional[str] = None):
     recipes = RECIPES
     if skill:
         recipes = [r for r in recipes if r.required_skill.lower() == skill.lower()]
-    
+
     return {"recipes": [r.dict() for r in recipes]}
 
 
@@ -289,31 +308,30 @@ async def craft_item(request: CraftRequest, db: Session = Depends(get_db)):
     character = db.query(Character).filter(Character.id == request.character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
-    
+
     # Find recipe
     recipe = next((r for r in RECIPES if r.id == request.recipe_id), None)
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
-    
+
     # Get character's inventory
     inventory_items = db.query(Item).filter(Item.character_id == request.character_id).all()
     inventory_dict = {item.name: item for item in inventory_items}
-    
+
     # Check if character has required materials
     missing_items = []
     for item_name, quantity in recipe.required_items.items():
         if item_name not in inventory_dict or inventory_dict[item_name].quantity < quantity:
             missing_items.append(f"{item_name} (need {quantity})")
-    
+
     if missing_items:
         raise HTTPException(
-            status_code=400,
-            detail=f"Missing required materials: {', '.join(missing_items)}"
+            status_code=400, detail=f"Missing required materials: {', '.join(missing_items)}"
         )
-    
+
     # Perform skill check
     skill_name = recipe.required_skill
-    
+
     # Get ability modifier for the skill
     skill_ability_map = {
         "Athletics": "strength",
@@ -335,20 +353,20 @@ async def craft_item(request: CraftRequest, db: Session = Depends(get_db)):
         "Performance": "charisma",
         "Persuasion": "charisma",
     }
-    
+
     ability = skill_ability_map.get(skill_name, "intelligence")
     ability_score = getattr(character, ability)
     ability_modifier = (ability_score - 10) // 2
-    
+
     # Calculate proficiency bonus
     proficiency_bonus = 2 + ((character.level - 1) // 4)
-    
+
     # Roll d20 + ability modifier + proficiency (assuming proficiency for crafting)
     roll = random.randint(1, 20)
     total = roll + ability_modifier + proficiency_bonus
-    
+
     success = total >= recipe.dc
-    
+
     if success:
         # Consume materials
         for item_name, quantity in recipe.required_items.items():
@@ -356,7 +374,7 @@ async def craft_item(request: CraftRequest, db: Session = Depends(get_db)):
             item.quantity -= quantity
             if item.quantity <= 0:
                 db.delete(item)
-        
+
         # Create result item
         result_item = Item(
             character_id=request.character_id,
@@ -369,7 +387,7 @@ async def craft_item(request: CraftRequest, db: Session = Depends(get_db)):
         )
         db.add(result_item)
         db.commit()
-        
+
         return {
             "success": True,
             "roll": roll,
@@ -386,9 +404,9 @@ async def craft_item(request: CraftRequest, db: Session = Depends(get_db)):
             item.quantity -= materials_lost
             if item.quantity <= 0:
                 db.delete(item)
-        
+
         db.commit()
-        
+
         return {
             "success": False,
             "roll": roll,
