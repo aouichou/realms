@@ -90,6 +90,11 @@ export function EnhancedCharacterSheet({
 	const [spellSlots, setSpellSlots] = useState<SpellSlots>({});
 	const [backgroundName, setBackgroundName] = useState<string>('');
 	const [backgroundDescription, setBackgroundDescription] = useState<string>('');
+	const [personalityTrait, setPersonalityTrait] = useState<string>('');
+	const [ideal, setIdeal] = useState<string>('');
+	const [bond, setBond] = useState<string>('');
+	const [flaw, setFlaw] = useState<string>('');
+	const [skillProficiencies, setSkillProficiencies] = useState<string[]>([]);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
@@ -100,9 +105,18 @@ export function EnhancedCharacterSheet({
 		try {
 			// Fetch character info for background
 			const charResponse = await apiClient.get(`/api/characters/${characterId}`);
-			const charData = await charResponse.json();
-			setBackgroundName(charData.background_name || '');
-			setBackgroundDescription(charData.background_description || '');
+			if (charResponse.ok) {
+				const charData = await charResponse.json();
+				setBackgroundName(charData.background_name || '');
+				setBackgroundDescription(charData.background_description || '');
+				setPersonalityTrait(charData.personality_trait || '');
+				setIdeal(charData.ideal || '');
+				setBond(charData.bond || '');
+				setFlaw(charData.flaw || '');
+				setSkillProficiencies(charData.skill_proficiencies || []);
+			} else {
+				console.warn('Failed to fetch character data:', charResponse.status);
+			}
 
 			// Fetch stats
 			const statsResponse = await apiClient.get(`/api/characters/${characterId}/stats`);
@@ -334,6 +348,44 @@ export function EnhancedCharacterSheet({
 				</Card>
 			)}
 
+			{/* Personality */}
+			{(personalityTrait || ideal || bond || flaw) && (
+				<Card>
+					<CardHeader>
+						<CardTitle className="text-lg flex items-center gap-2">
+							<Sparkles className="w-5 h-5" />
+							Personality
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						{personalityTrait && (
+							<div>
+								<h4 className="text-sm font-semibold mb-1">Personality Trait</h4>
+								<p className="text-sm text-muted-foreground">{personalityTrait}</p>
+							</div>
+						)}
+						{ideal && (
+							<div>
+								<h4 className="text-sm font-semibold mb-1">Ideal</h4>
+								<p className="text-sm text-muted-foreground">{ideal}</p>
+							</div>
+						)}
+						{bond && (
+							<div>
+								<h4 className="text-sm font-semibold mb-1">Bond</h4>
+								<p className="text-sm text-muted-foreground">{bond}</p>
+							</div>
+						)}
+						{flaw && (
+							<div>
+								<h4 className="text-sm font-semibold mb-1">Flaw</h4>
+								<p className="text-sm text-muted-foreground">{flaw}</p>
+							</div>
+						)}
+					</CardContent>
+				</Card>
+			)}
+
 			{/* Skills */}
 			<Card>
 				<CardHeader>
@@ -342,12 +394,21 @@ export function EnhancedCharacterSheet({
 				<CardContent>
 					<ScrollArea className="h-50">
 						<div className="grid grid-cols-2 gap-3">
-							{Object.entries(stats.skills).map(([skill, modifier]) => (
-								<div key={skill} className="flex justify-between items-center">
-									<span className="text-sm">{skill}</span>
-									<Badge variant="outline">{formatModifier(modifier)}</Badge>
-								</div>
-							))}
+							{Object.entries(stats.skills).map(([skill, skillData]) => {
+								return (
+									<div key={skill} className="flex justify-between items-center">
+										<div className="flex items-center gap-2">
+											<span className="text-sm">{skill}</span>
+											{skillData.proficient && (
+												<Badge variant="default" className="text-xs px-1.5 py-0.5 bg-blue-600 text-white">
+													PROF
+												</Badge>
+											)}
+										</div>
+										<Badge variant="outline">{formatModifier(skillData.modifier)}</Badge>
+									</div>
+								);
+							})}
 						</div>
 					</ScrollArea>
 				</CardContent>

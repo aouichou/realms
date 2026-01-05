@@ -5,6 +5,13 @@ from typing import Any, Dict, List
 from pydantic import BaseModel
 
 
+class SkillData(BaseModel):
+    """Skill data with modifier and proficiency status"""
+
+    modifier: int
+    proficient: bool
+
+
 class EquippedItemBonus(BaseModel):
     """Represents a bonus from an equipped item"""
 
@@ -60,7 +67,7 @@ class CharacterStatsResponse(BaseModel):
     saving_throws: Dict[str, int]
 
     # Skills (ability modifier + proficiency if proficient)
-    skills: Dict[str, int]
+    skills: Dict[str, SkillData]
 
     # Equipped items providing bonuses
     equipped_items: List[EquippedItemBonus]
