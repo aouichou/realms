@@ -13,7 +13,9 @@ const AbilityCheckPanel = lazy(() => import('@/components/AbilityCheckPanel').th
 const CombatTracker = lazy(() => import('@/components/CombatTracker').then(mod => ({ default: mod.CombatTracker })));
 const EnhancedCharacterSheet = lazy(() => import('@/components/EnhancedCharacterSheet').then(mod => ({ default: mod.EnhancedCharacterSheet })));
 const InventoryPanel = lazy(() => import('@/components/InventoryPanel').then(mod => ({ default: mod.InventoryPanel })));
+const QuestCompleteModal = lazy(() => import('@/components/QuestCompleteModal').then(mod => ({ default: mod.QuestCompleteModal })));
 const SpellsPanel = lazy(() => import('@/components/SpellsPanel').then(mod => ({ default: mod.SpellsPanel })));
+const StartAdventureModal = lazy(() => import('@/components/StartAdventureModal').then(mod => ({ default: mod.StartAdventureModal })));
 
 interface Message {
 	id: number;
@@ -21,6 +23,16 @@ interface Message {
 	content: string;
 	timestamp: string;
 	scene_image_url?: string;
+	quest_complete_id?: string;
+	roll_request?: {
+		type: string;
+		ability?: string;
+		skill?: string;
+		dc?: number;
+		dice?: string;
+		target?: string;
+		reason?: string;
+	};
 }
 
 interface Character {
@@ -53,6 +65,9 @@ export default function GamePage() {
 	const [openPanel, setOpenPanel] = useState<PanelType>(null);
 	const [diceNotation, setDiceNotation] = useState('1d20');
 	const [lastDiceResult, setLastDiceResult] = useState<any>(null);
+	const [pendingRollRequest, setPendingRollRequest] = useState<Message['roll_request'] | null>(null);
+	const [questCompleteData, setQuestCompleteData] = useState<{ questId: string; title: string; rewards: any } | null>(null);
+	const [showQuestCompleteModal, setShowQuestCompleteModal] = useState(false);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -127,7 +142,7 @@ export default function GamePage() {
 		}
 	};
 
-	const sendMessage = async (e: React.FormEvent) => {
+	const sendMessage = async (e: React.FormEvent, rollResult?: any) => {
 		e.preventDefault();
 		if (!inputValue.trim() || isLoading) return;
 
@@ -145,9 +160,11 @@ export default function GamePage() {
 		setMessages(prev => [...prev, tempUserMsg]);
 
 		try {
-			const response = await apiClient.post('/api/conversations/messages', {
+			const response = await apiClient.post('/api/conversations/action', {
 				character_id: parseInt(characterId),
-				message: userMessage,
+				session_id: sessionId,
+				action: userMessage,
+				roll_result: rollResult || null,
 			});
 
 			if (response.ok) {
@@ -158,11 +175,94 @@ export default function GamePage() {
 					content: data.response,
 					timestamp: new Date().toISOString(),
 					scene_image_url: data.scene_image_url,
+					roll_request: data.roll_request,
+					quest_complete_id: data.quest_complete_id,
 				};
 				setMessages(prev => [...prev, dmMessage]);
+
+				// Store pending roll request if DM asks for a roll
+				if (data.roll_request) {
+					setPendingRollRequest(data.roll_request);
+				} else if (rollResult) {
+					// Clear pending request after sending result
+					setPendingRollRequest(null);
+				}
+
+				// Handle quest completion
+				if (data.quest_complete_id) {
+					// Fetch quest details
+					try {
+						const questResponse = await apiClient.get(`/api/quests/${data.quest_complete_id}`);
+						if (questResponse.ok) {
+							const questData = await questResponse.json();
+							setQuestCompleteData({
+								questId: data.quest_complete_id,
+								title: questData.title,
+								rewards: questData.rewards,
+							});
+							setShowQuestCompleteModal(true);
+						}
+					} catch (error) {
+						console.error('Error fetching quest details:', error);
+					}
+				}
 			}
 		} catch (error) {
 			console.error('Error sending message:', error);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const handleRollComplete = async (rollResult: any) => {
+		if (!pendingRollRequest) return;
+
+		// Auto-send roll result to DM
+		const rollMessage = `I rolled a ${rollResult.total} (${rollResult.roll} + ${rollResult.modifier}) for ${rollResult.skill || rollResult.ability}${rollResult.success !== undefined ? ` and ${rollResult.success ? 'succeeded' : 'failed'}` : ''}`;
+
+		setInputValue(rollMessage);
+		setIsLoading(true);
+
+		// Add user message immediately
+		const tempUserMsg: Message = {
+			id: Date.now(),
+			role: 'user',
+			content: rollMessage,
+			timestamp: new Date().toISOString(),
+		};
+		setMessages(prev => [...prev, tempUserMsg]);
+
+		try {
+			const response = await apiClient.post('/api/conversations/action', {
+				character_id: parseInt(characterId),
+				session_id: sessionId,
+				action: rollMessage,
+				roll_result: rollResult,
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				const dmMessage: Message = {
+					id: Date.now() + 1,
+					role: 'assistant',
+					content: data.response,
+					timestamp: new Date().toISOString(),
+					scene_image_url: data.scene_image_url,
+					roll_request: data.roll_request,
+				};
+				setMessages(prev => [...prev, dmMessage]);
+
+				// Clear pending request after result sent
+				setPendingRollRequest(null);
+				setInputValue('');
+
+				// Store new roll request if DM asks for another
+				if (data.roll_request) {
+					setPendingRollRequest(data.roll_request);
+				}
+			}
+		} catch (error) {
+			console.error('Error sending roll result:', error);
 		} finally {
 			setIsLoading(false);
 		}
@@ -179,6 +279,45 @@ export default function GamePage() {
 		} catch (error) {
 			console.error('Error rolling dice:', error);
 		}
+	};
+
+	const claimQuestRewards = async () => {
+		if (!questCompleteData) return;
+
+		try {
+			const response = await apiClient.post(
+				`/api/quests/${questCompleteData.questId}/complete`,
+				{
+					character_id: parseInt(characterId),
+				}
+			);
+
+			if (response.ok) {
+				// Reload character to update XP, gold, etc.
+				await loadCharacter();
+			}
+		} catch (error) {
+			console.error('Error claiming quest rewards:', error);
+			throw error;
+		}
+	};
+
+	const handleAdventureStarted = (data: { session_id: string; quest_id: string; opening_narration: string }) => {
+		// Update session
+		setSessionId(data.session_id);
+
+		// Add DM message with opening narration
+		const dmMessage: Message = {
+			id: Date.now(),
+			role: 'assistant',
+			content: data.opening_narration,
+			timestamp: new Date().toISOString(),
+		};
+		setMessages([dmMessage]);
+
+		// Reload character and conversation history
+		loadCharacter();
+		loadConversationHistory();
 	};
 
 	const calculateModifier = (score: number): number => {
@@ -235,6 +374,17 @@ export default function GamePage() {
 					>
 						⚔️ Character Stats
 					</button>
+
+					{/* Start Adventure Button */}
+					{character && (
+						<div className="w-full">
+							<StartAdventureModal
+								characterId={characterId}
+								characterLevel={character.level}
+								onAdventureStarted={handleAdventureStarted}
+							/>
+						</div>
+					)}
 
 					{/* Inventory Button */}
 					<button
@@ -324,6 +474,52 @@ export default function GamePage() {
 					</div>
 
 					{/* Input */}
+					{pendingRollRequest && (
+						<div className="mb-3 p-3 bg-accent-400/20 border border-accent-400/30 rounded-lg backdrop-blur-md">
+							<div className="flex items-start gap-2">
+								<span className="text-xl">🎲</span>
+								<div className="flex-1">
+									<p className="text-sm font-body text-white font-semibold mb-1">
+										The DM requests a roll:
+									</p>
+									<p className="text-sm font-body text-white/90">
+										{pendingRollRequest.type === 'ability' && (
+											<>
+												{pendingRollRequest.ability}
+												{pendingRollRequest.skill && ` (${pendingRollRequest.skill})`}
+												{pendingRollRequest.dc && ` check (DC ${pendingRollRequest.dc})`}
+											</>
+										)}
+										{pendingRollRequest.type === 'save' && (
+											<>
+												{pendingRollRequest.ability} saving throw
+												{pendingRollRequest.dc && ` (DC ${pendingRollRequest.dc})`}
+											</>
+										)}
+										{pendingRollRequest.type === 'attack' && (
+											<>Attack roll {pendingRollRequest.target && `against ${pendingRollRequest.target}`}</>
+										)}
+										{pendingRollRequest.type === 'custom' && (
+											<>{pendingRollRequest.dice} {pendingRollRequest.reason && `- ${pendingRollRequest.reason}`}</>
+										)}
+									</p>
+									{pendingRollRequest.reason && pendingRollRequest.type !== 'custom' && (
+										<p className="text-xs font-body text-white/70 mt-1">
+											{pendingRollRequest.reason}
+										</p>
+									)}
+								</div>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => setOpenPanel(pendingRollRequest.type === 'ability' || pendingRollRequest.type === 'save' ? 'checks' : 'dice')}
+									className="border-accent-400/30 text-accent-400 hover:bg-accent-400/20 font-body"
+								>
+									Roll Now
+								</Button>
+							</div>
+						</div>
+					)}
 					<form onSubmit={sendMessage} className="flex gap-2">
 						<Input
 							value={inputValue}
@@ -407,7 +603,10 @@ export default function GamePage() {
 						{/* Ability Checks Panel */}
 						{openPanel === 'checks' && (
 							<div className="bg-neutral-900 rounded-lg">
-								<AbilityCheckPanel characterId={characterId} />
+								<AbilityCheckPanel
+									characterId={characterId}
+									onRollComplete={handleRollComplete}
+								/>
 							</div>
 						)}
 
@@ -473,6 +672,17 @@ export default function GamePage() {
 					</div>
 				)}
 			</div>
+
+			{/* Quest Complete Modal */}
+			{questCompleteData && (
+				<QuestCompleteModal
+					isOpen={showQuestCompleteModal}
+					questTitle={questCompleteData.title}
+					rewards={questCompleteData.rewards}
+					onClose={() => setShowQuestCompleteModal(false)}
+					onClaimRewards={claimQuestRewards}
+				/>
+			)}
 		</div>
 	);
 }

@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 
 interface AbilityCheckPanelProps {
 	characterId: string;
+	onRollComplete?: (result: any) => void;
 }
 
 interface Skill {
@@ -116,7 +117,7 @@ const QUICK_CHECKS = [
 	{ name: "Deception", icon: Users },
 ];
 
-export function AbilityCheckPanel({ characterId }: AbilityCheckPanelProps) {
+export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckPanelProps) {
 	const [skills, setSkills] = useState<Skill[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [selectedSkill, setSelectedSkill] = useState<string>("");
@@ -206,6 +207,20 @@ export function AbilityCheckPanel({ characterId }: AbilityCheckPanelProps) {
 
 			// Save to localStorage
 			localStorage.setItem(`rollHistory_${characterId}`, JSON.stringify(newHistory));
+
+			// Notify parent component of roll completion
+			if (onRollComplete) {
+				onRollComplete({
+					type: 'ability',
+					ability: ability,
+					skill: apiSkillName,
+					total: data.total,
+					roll: data.roll,
+					modifier: data.ability_modifier,
+					success: data.success,
+					dc: data.dc,
+				});
+			}
 
 			// Reset toggles after roll
 			setAdvantage(false);

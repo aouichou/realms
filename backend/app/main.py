@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import (
+    adventures,
     auth,
     characters,
     combat,
@@ -160,6 +161,7 @@ app.include_router(rest.router)
 app.include_router(conditions.router)
 app.include_router(npcs.router)
 app.include_router(quests.router)
+app.include_router(adventures.router)  # Preset adventures
 app.include_router(rules.router)  # D&D 5e rules helpers
 
 

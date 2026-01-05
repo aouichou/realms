@@ -326,18 +326,8 @@ def complete_quest(quest_id: UUID, character_id: UUID, db: Session = Depends(get
 
     # Gold reward
     if rewards.get("gold", 0) > 0:
-        # Add gold to character's inventory (create gold item)
-        from app.db.models import Item
-
-        gold_item = Item(
-            character_id=character_id,
-            name="Gold",
-            type="currency",
-            quantity=rewards["gold"],
-            weight=0.0,
-            description="Gold pieces",
-        )
-        db.add(gold_item)
+        # Add gold directly to character
+        character.gold += rewards["gold"]
         rewards_granted.append(f"{rewards['gold']} gold")
 
     # Item rewards
@@ -348,10 +338,11 @@ def complete_quest(quest_id: UUID, character_id: UUID, db: Session = Depends(get
             item = Item(
                 character_id=character_id,
                 name=item_name,
-                type="quest_reward",
+                item_type=ItemType.QUEST,
                 quantity=1,
                 weight=0.0,
-                description=f"Reward from quest: {quest.title}",
+                value=0,
+                properties={"description": f"Reward from quest: {quest.title}"},
             )
             db.add(item)
             rewards_granted.append(item_name)

@@ -41,12 +41,86 @@ NEVER include:
 - Questions about what the player wants
 - Explanations of what you can do as a DM
 - Breaking the fourth wall
-- Lists of possible actions"""
+- Lists of possible actions
+
+ROLL REQUESTS:
+When you need the player to make a roll, include this EXACT format anywhere in your response:
+[ROLL_REQUEST: type="ability", ability="DEX", skill="stealth", dc=15, reason="to sneak past the guards"]
+[ROLL_REQUEST: type="attack", target="goblin", reason="with your sword"]
+[ROLL_REQUEST: type="save", ability="WIS", dc=13, reason="to resist the charm"]
+[ROLL_REQUEST: type="custom", dice="1d20+3", reason="to climb the wall"]
+
+The player will roll automatically and the result will be sent back to you. DO NOT wait for them to say they're rolling - just continue your narration after the tag.
+
+QUEST COMPLETION:
+When the player has completed all objectives of their current quest, recognize this moment and celebrate their success.
+Include this EXACT tag to trigger reward distribution:
+[QUEST_COMPLETE: quest_id="<quest_id>"]
+
+You will be told the quest_id in the character context. After completing a quest, narrate the victory and what comes next."""
 
     def __init__(self):
         """Initialize DM Engine"""
         self.mistral_client = get_mistral_client()
         logger.info("DM Engine initialized")
+
+    @staticmethod
+    def extract_roll_request(response_text: str) -> tuple[str, Optional[Dict]]:
+        """Extract roll request from DM response if present.
+
+        Returns:
+            Tuple of (cleaned_text, roll_request_dict or None)
+        """
+        import re
+
+        pattern = r"\[ROLL_REQUEST:\s*([^\]]+)\]"
+        match = re.search(pattern, response_text)
+
+        if not match:
+            return response_text, None
+
+        # Extract the roll request parameters
+        params_str = match.group(1)
+        roll_request = {}
+
+        # Parse key="value" or key=value patterns
+        param_pattern = r'(\w+)="?([^,"\\]]+)"?'
+        for param_match in re.finditer(param_pattern, params_str):
+            key = param_match.group(1).strip()
+            value = param_match.group(2).strip()
+
+            # Convert numeric values
+            if value.isdigit():
+                value = int(value)
+
+            roll_request[key] = value
+
+        # Remove the roll request tag from the narrative
+        cleaned_text = re.sub(pattern, "", response_text).strip()
+
+        return cleaned_text, roll_request
+
+    @staticmethod
+    def extract_quest_complete(response_text: str) -> tuple[str, Optional[str]]:
+        """Extract quest complete notification from DM response if present.
+
+        Returns:
+            Tuple of (cleaned_text, quest_id or None)
+        """
+        import re
+
+        pattern = r'\[QUEST_COMPLETE:\s*quest_id="?([^"\\]]+)"?\]'
+        match = re.search(pattern, response_text)
+
+        if not match:
+            return response_text, None
+
+        quest_id = match.group(1).strip()
+
+        # Remove the quest complete tag from the narrative
+        cleaned_text = re.sub(pattern, "", response_text).strip()
+
+        return cleaned_text, quest_id
 
     def _build_messages(
         self,
@@ -153,13 +227,26 @@ NEVER include:
 
             response = await self.mistral_client.chat_completion(messages)
 
-            narration = response.choices[0].message.content
+            narration_content = response.choices[0].message.content
+            narration = str(narration_content) if narration_content else ""
             tokens_used = response.usage.total_tokens
 
+            # Extract roll request if present
+            cleaned_narration, roll_request = self.extract_roll_request(narration)
+
+            # Extract quest complete if present
+            cleaned_narration, quest_complete_id = self.extract_quest_complete(cleaned_narration)
+
             logger.info(f"Narration generated: {tokens_used} tokens")
+            if roll_request:
+                logger.info(f"Roll request detected: {roll_request}")
+            if quest_complete_id:
+                logger.info(f"Quest completion detected: {quest_complete_id}")
 
             return {
-                "narration": narration,
+                "narration": cleaned_narration,
+                "roll_request": roll_request,
+                "quest_complete_id": quest_complete_id,
                 "tokens_used": tokens_used,
                 "timestamp": datetime.now(),
                 "model": self.mistral_client.model,
