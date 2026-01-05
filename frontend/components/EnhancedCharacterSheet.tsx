@@ -55,7 +55,7 @@ interface CharacterStats {
 	hp_max: number;
 
 	// Skills and saves
-	skills: Record<string, number>;
+	skills: Record<string, number | { modifier: number; proficient: boolean }>;
 	saving_throws: Record<string, number>;
 
 	// Equipment bonuses
@@ -395,17 +395,21 @@ export function EnhancedCharacterSheet({
 					<ScrollArea className="h-50">
 						<div className="grid grid-cols-2 gap-3">
 							{Object.entries(stats.skills).map(([skill, skillData]) => {
+								// Handle both old (number) and new ({modifier, proficient}) formats
+								const modifier = typeof skillData === 'number' ? skillData : skillData.modifier;
+								const proficient = typeof skillData === 'object' && skillData.proficient;
+
 								return (
 									<div key={skill} className="flex justify-between items-center">
 										<div className="flex items-center gap-2">
 											<span className="text-sm">{skill}</span>
-											{skillData.proficient && (
+											{proficient && (
 												<Badge variant="default" className="text-xs px-1.5 py-0.5 bg-blue-600 text-white">
 													PROF
 												</Badge>
 											)}
 										</div>
-										<Badge variant="outline">{formatModifier(skillData.modifier)}</Badge>
+										<Badge variant="outline">{formatModifier(modifier)}</Badge>
 									</div>
 								);
 							})}

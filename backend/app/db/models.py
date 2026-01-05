@@ -240,6 +240,9 @@ class Character(Base):
     # Experience points for leveling
     experience_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    # Gold pieces (currency)
+    gold: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
     # Additional attributes for AI companions and NPCs
     background: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     personality: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
