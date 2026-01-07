@@ -26,6 +26,11 @@ class SpellBase(BaseModel):
     damage_type: Optional[str] = None
     save_ability: Optional[str] = None
     available_to_classes: Optional[Dict[str, bool]] = None
+    upcast_damage_dice: Optional[str] = Field(
+        None, description="Damage scaling per level (e.g., '+1d6')"
+    )
+    material_cost: Optional[int] = Field(None, description="Material component cost in gold pieces")
+    material_consumed: bool = Field(False, description="Whether material is consumed on casting")
 
 
 class SpellCreate(SpellBase):
@@ -96,6 +101,10 @@ class CastSpellRequest(BaseModel):
     spell_level: int = Field(
         ..., ge=0, le=9, description="Spell level (0 for cantrips, 1-9 for other spells)"
     )
+    slot_level: Optional[int] = Field(
+        None, ge=1, le=9, description="Spell slot level to use (for upcasting)"
+    )
+    is_ritual_cast: bool = Field(False, description="Whether to cast as ritual (no slot consumed)")
     target_id: Optional[UUID] = None
 
 

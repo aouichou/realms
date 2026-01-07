@@ -28,6 +28,9 @@ interface Spell {
 	ritual: boolean;
 	damage_dice: string | null;
 	damage_type: string | null;
+	upcast_damage_dice?: string | null;
+	material_cost?: number | null;
+	material_consumed?: boolean;
 }
 
 interface CharacterSpell {
@@ -116,16 +119,16 @@ export function SpellCastingPanel({
 	const castSpell = async (spell: CharacterSpell, slotLevel: number, isRitual: boolean = false) => {
 		setCasting(true);
 		try {
-			const endpoint = isRitual
-				? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/spells/character/${characterId}/cast-ritual`
-				: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/spells/character/${characterId}/cast`;
+			const endpoint = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/spells/character/${characterId}/cast`;
 
 			const response = await fetch(endpoint, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					spell_id: spell.spell_id,
-					spell_level: slotLevel || spell.spell.level,
+					spell_level: spell.spell.level,
+					slot_level: isRitual ? undefined : (slotLevel || spell.spell.level),
+					is_ritual_cast: isRitual,
 				}),
 			});
 
@@ -146,10 +149,12 @@ export function SpellCastingPanel({
 
 				let message = `Cast ${data.spell_name}!`;
 				if (isRitual) {
-					message += ' (as ritual)';
+					message += ' (as ritual, +10 minutes)';
+				} else if (slotLevel > spell.spell.level) {
+					message += ` (upcast at level ${slotLevel})`;
 				}
 				if (data.total_damage) {
-					message += ` Dealt ${data.total_damage} ${data.damage_roll} damage!`;
+					message += ` Dealt ${data.total_damage} damage! (${data.damage_roll})`;
 				}
 				showToast(message, 'success');
 
@@ -396,11 +401,22 @@ function SpellItem({ spell, onCast, casting }: SpellItemProps) {
 							Ritual
 						</Badge>
 					)}
+					{spell.spell.upcast_damage_dice && (
+						<Badge variant="default" className="text-xs">
+							Upcast: {spell.spell.upcast_damage_dice}/level
+						</Badge>
+					)}
 				</div>
 				<p className="text-xs text-muted-foreground">
 					{spell.spell.casting_time} • {spell.spell.range}
 					{spell.spell.damage_dice && ` • ${spell.spell.damage_dice} ${spell.spell.damage_type}`}
 				</p>
+				{spell.spell.material_cost && spell.spell.material_cost > 0 && (
+					<p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">
+						Requires: {spell.spell.material_cost} gp worth of materials
+						{spell.spell.material_consumed && " (consumed)"}
+					</p>
+				)}
 			</div>
 			<Button
 				size="sm"

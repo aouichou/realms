@@ -388,11 +388,133 @@ async def get_spell_slots(character_id: UUID, db: AsyncSession = Depends(get_db)
     )
 
 
+def _check_spell_preparation(character: "Character", character_spell: CharacterSpell, spell: Spell) -> None:
+    """Check if spell needs to be prepared for prepared casters
+    
+    Raises:
+        HTTPException: If spell is not prepared
+    """
+    prepared_caster_classes = [
+        CharacterClass.WIZARD,
+        CharacterClass.CLERIC,
+        CharacterClass.DRUID,
+        CharacterClass.PALADIN,
+    ]
+    
+    if character.character_class in prepared_caster_classes:
+        if not character_spell.is_prepared and spell.level > 0:  # Cantrips don't need preparation
+            raise HTTPException(status_code=400, detail="Spell not prepared")
+
+
+def _validate_ritual_cast(request: CastSpellRequest, spell: Spell) -> None:
+    """Validate ritual casting request
+    
+    Raises:
+        HTTPException: If spell cannot be cast as ritual
+    """
+    if request.is_ritual_cast and not spell.is_ritual:
+        raise HTTPException(status_code=400, detail="This spell cannot be cast as a ritual")
+
+
+def _validate_slot_level(request: CastSpellRequest, spell: Spell) -> int:
+    """Validate and determine the slot level to use
+    
+    Returns:
+        The slot level to use for casting
+        
+    Raises:
+        HTTPException: If slot level is invalid
+    """
+    slot_level = request.slot_level if request.slot_level is not None else spell.level
+    
+    if slot_level < spell.level:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot cast level {spell.level} spell using level {slot_level} slot",
+        )
+    
+    return slot_level
+
+
+def _handle_concentration(character: "Character", spell: Spell) -> None:
+    """Handle concentration tracking for spells
+    
+    Updates character's active concentration spell
+    """
+    if spell.is_concentration:
+        # Drop any existing concentration spell
+        character.active_concentration_spell = spell.id
+
+
+def _consume_spell_slot(character: "Character", slot_level: int, is_ritual: bool) -> None:
+    """Consume a spell slot if not ritual casting
+    
+    Raises:
+        HTTPException: If no spell slots available
+    """
+    if not is_ritual:
+        spell_slots = character.spell_slots or {}
+        slot_key = str(slot_level)
+
+        if slot_key not in spell_slots:
+            raise HTTPException(status_code=400, detail=f"No level {slot_level} spell slots")
+
+        slot_info = spell_slots[slot_key]
+        if slot_info["used"] >= slot_info["total"]:
+            raise HTTPException(
+                status_code=400, detail=f"No level {slot_level} spell slots remaining"
+            )
+
+        # Consume spell slot
+        spell_slots[slot_key]["used"] += 1
+        character.spell_slots = spell_slots
+
+
+def _calculate_spell_damage(spell: Spell, slot_level: int) -> tuple[Optional[str], Optional[int]]:
+    """Calculate damage with upcasting support
+    
+    Returns:
+        Tuple of (damage_roll_string, total_damage)
+    """
+    if not spell.damage_dice:
+        return None, None
+    
+    # Calculate upcast levels
+    upcast_levels = slot_level - spell.level
+
+    # Start with base damage
+    damage_roll = spell.damage_dice
+    total_damage = _roll_dice(damage_roll)
+
+    # Add upcast damage if applicable
+    if upcast_levels > 0 and spell.upcast_damage_dice:
+        upcast_roll = spell.upcast_damage_dice
+        # Handle different upcast formats
+        if upcast_roll.startswith("+"):
+            # Format: "+1d6" means add this per level
+            upcast_dice = upcast_roll[1:]  # Remove the +
+            for _ in range(upcast_levels):
+                total_damage += _roll_dice(upcast_dice)
+            damage_roll = f"{damage_roll} + {upcast_levels}x{upcast_dice}"
+        else:
+            # Direct formula (rare)
+            total_damage += _roll_dice(upcast_roll) * upcast_levels
+            damage_roll = f"{damage_roll} + {upcast_roll}x{upcast_levels}"
+    
+    return damage_roll, total_damage
+
+
 @router.post("/character/{character_id}/cast", response_model=CastSpellResponse)
 async def cast_spell(
     character_id: UUID, request: CastSpellRequest, db: AsyncSession = Depends(get_db)
 ):
     """Cast a spell, consuming a spell slot
+
+    Supports:
+    - Spell upcasting (cast at higher level for more damage)
+    - Ritual casting (no slot consumed, +10 min cast time)
+    - Concentration tracking (drop existing concentration spell)
+    - Material component checking
 
     Args:
         character_id: Character UUID
@@ -427,24 +549,23 @@ async def cast_spell(
 
     spell = character_spell.spell
 
-    # Check if spell needs to be prepared
-    if character.character_class in [CharacterClass.WIZARD, CharacterClass.CLERIC]:
-        if not character_spell.is_prepared and spell.level > 0:  # Cantrips don't need preparation
-            raise HTTPException(status_code=400, detail="Spell not prepared")
+    # Validate spell preparation
+    _check_spell_preparation(character, character_spell, spell)
+
+    # Validate ritual casting
+    _validate_ritual_cast(request, spell)
+
+    # Determine and validate slot level
+    slot_level = _validate_slot_level(request, spell)
+
+    # Handle concentration
+    _handle_concentration(character, spell)
 
     # Cantrips don't consume spell slots
     if spell.level == 0:
-        damage_roll = None
-        total_damage = None
-        if spell.damage_dice:
-            # Roll damage for cantrip
-            damage_roll = spell.damage_dice
-            # Simple damage calculation (would be more complex in real implementation)
-            dice_parts = damage_roll.split("d")
-            if len(dice_parts) == 2:
-                num_dice = int(dice_parts[0])
-                die_size = int(dice_parts[1])
-                total_damage = sum(random.randint(1, die_size) for _ in range(num_dice))
+        damage_roll, total_damage = _calculate_spell_damage(spell, 0) if spell.damage_dice else (None, None)
+        
+        await db.commit()
 
         return CastSpellResponse(
             character_id=character.id,
@@ -458,36 +579,11 @@ async def cast_spell(
             remaining_slots=character.spell_slots or {},
         )
 
-    # Check spell slot availability
-    spell_slots = character.spell_slots or {}
-    slot_key = str(request.spell_level)
+    # Consume spell slot (unless ritual casting)
+    _consume_spell_slot(character, slot_level, request.is_ritual_cast)
 
-    if slot_key not in spell_slots:
-        raise HTTPException(status_code=400, detail=f"No level {request.spell_level} spell slots")
-
-    slot_info = spell_slots[slot_key]
-    if slot_info["used"] >= slot_info["total"]:
-        raise HTTPException(
-            status_code=400, detail=f"No level {request.spell_level} spell slots remaining"
-        )
-
-    # Consume spell slot
-    spell_slots[slot_key]["used"] += 1
-    character.spell_slots = spell_slots
-
-    # Roll damage if applicable
-    damage_roll = None
-    total_damage = None
-    if spell.damage_dice:
-        damage_roll = spell.damage_dice
-        # Simple damage calculation
-        dice_parts = damage_roll.replace("+", " ").split("d")
-        if len(dice_parts) == 2:
-            num_dice = int(dice_parts[0])
-            die_info = dice_parts[1].split()
-            die_size = int(die_info[0])
-            bonus = int(die_info[1]) if len(die_info) > 1 else 0
-            total_damage = sum(random.randint(1, die_size) for _ in range(num_dice)) + bonus
+    # Calculate damage with upcasting
+    damage_roll, total_damage = _calculate_spell_damage(spell, slot_level)
 
     await db.commit()
 
@@ -496,12 +592,46 @@ async def cast_spell(
         character_name=character.name,
         spell_name=spell.name,
         spell_level=spell.level,
-        slot_level_used=request.spell_level,
+        slot_level_used=slot_level if not request.is_ritual_cast else 0,
         damage_roll=damage_roll,
         total_damage=total_damage,
         description=spell.description,
-        remaining_slots=spell_slots,
+        remaining_slots=character.spell_slots or {},
     )
+
+
+def _roll_dice(dice_notation: str) -> int:
+    """Roll dice from notation like '3d6', '1d8+2', etc.
+
+    Args:
+        dice_notation: Dice notation string
+
+    Returns:
+        Total rolled value
+    """
+    try:
+        # Handle bonus (e.g., "1d8+2")
+        bonus = 0
+        if "+" in dice_notation:
+            parts = dice_notation.split("+")
+            dice_notation = parts[0].strip()
+            bonus = int(parts[1].strip())
+        elif "-" in dice_notation:
+            parts = dice_notation.split("-")
+            dice_notation = parts[0].strip()
+            bonus = -int(parts[1].strip())
+
+        # Parse dice (e.g., "3d6")
+        dice_parts = dice_notation.split("d")
+        if len(dice_parts) == 2:
+            num_dice = int(dice_parts[0])
+            die_size = int(dice_parts[1])
+            return sum(random.randint(1, die_size) for _ in range(num_dice)) + bonus
+
+        # If not dice notation, try to parse as integer
+        return int(dice_notation) + bonus
+    except (ValueError, IndexError):
+        return 0
 
 
 @router.post("/character/{character_id}/rest", response_model=SpellSlotsResponse)
@@ -527,6 +657,9 @@ async def long_rest(character_id: UUID, db: AsyncSession = Depends(get_db)):
         for level_key in character.spell_slots:
             character.spell_slots[level_key]["used"] = 0
 
+    # Drop concentration
+    character.active_concentration_spell = None
+
     # Also restore HP
     character.hp_current = character.hp_max
 
@@ -537,3 +670,57 @@ async def long_rest(character_id: UUID, db: AsyncSession = Depends(get_db)):
         character_name=character.name,
         spell_slots=character.spell_slots or {},
     )
+
+
+@router.post("/character/{character_id}/concentration-check")
+async def concentration_check(
+    character_id: UUID,
+    damage_taken: int = Query(..., ge=1, description="Damage taken that triggers the save"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Perform a concentration check after taking damage
+
+    DC = 10 or half the damage taken, whichever is higher
+    Character must beat DC with CON save or lose concentration
+
+    Args:
+        character_id: Character UUID
+        damage_taken: Amount of damage that triggered the check
+        db: Database session
+
+    Returns:
+        Result of the concentration check
+
+    Raises:
+        HTTPException: 404 if character not found
+    """
+    character = await CharacterService.get_character(db, character_id)
+    if not character:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    if not character.active_concentration_spell:
+        return {"success": True, "message": "Character is not concentrating on any spell"}
+
+    # Calculate DC: 10 or half damage, whichever is higher
+    dc = max(10, damage_taken // 2)
+
+    # Roll concentration save (d20 + CON modifier)
+    roll = random.randint(1, 20)
+    con_modifier = (character.constitution - 10) // 2
+    total = roll + con_modifier
+
+    success = total >= dc
+
+    if not success:
+        # Failed save - drop concentration
+        character.active_concentration_spell = None
+        await db.commit()
+
+    return {
+        "success": success,
+        "roll": roll,
+        "modifier": con_modifier,
+        "total": total,
+        "dc": dc,
+        "message": f"Concentration {'maintained' if success else 'broken'}!",
+    }
