@@ -13,6 +13,7 @@ const AbilityCheckPanel = lazy(() => import('@/components/AbilityCheckPanel').th
 const CombatTracker = lazy(() => import('@/components/CombatTracker').then(mod => ({ default: mod.CombatTracker })));
 const CompanionPanel = lazy(() => import('@/components/CompanionPanel').then(mod => ({ default: mod.CompanionPanel })));
 const EnhancedCharacterSheet = lazy(() => import('@/components/EnhancedCharacterSheet').then(mod => ({ default: mod.EnhancedCharacterSheet })));
+const ImageGalleryPanel = lazy(() => import('@/components/ImageGalleryPanel').then(mod => ({ default: mod.ImageGalleryPanel })));
 const InventoryPanel = lazy(() => import('@/components/InventoryPanel').then(mod => ({ default: mod.InventoryPanel })));
 const QuestCompleteModal = lazy(() => import('@/components/QuestCompleteModal').then(mod => ({ default: mod.QuestCompleteModal })));
 const SpellsPanel = lazy(() => import('@/components/SpellsPanel').then(mod => ({ default: mod.SpellsPanel })));
@@ -52,7 +53,7 @@ interface Character {
 	charisma: number;
 }
 
-type PanelType = 'stats' | 'inventory' | 'dice' | 'combat' | 'spells' | 'checks' | 'companion' | null;
+type PanelType = 'stats' | 'inventory' | 'dice' | 'combat' | 'spells' | 'checks' | 'companion' | 'images' | null;
 
 export default function GamePage() {
 	const params = useParams();
@@ -438,6 +439,15 @@ export default function GamePage() {
 					>
 						🤖 AI Companion
 					</button>
+
+					{/* Image Gallery Button */}
+					<button
+						onClick={() => togglePanel('images')}
+						className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
+                     hover:bg-white/20 transition-all text-white font-body text-sm"
+					>
+						🖼️ Scene Gallery
+					</button>
 				</div>
 
 				{/* Center - Messages Area */}
@@ -562,6 +572,7 @@ export default function GamePage() {
 								{openPanel === 'spells' && '✨ Spells'}
 								{openPanel === 'checks' && '🎲 Ability Checks'}
 								{openPanel === 'companion' && '🤖 AI Companion'}
+								{openPanel === 'images' && '🖼️ Scene Gallery'}
 							</h2>
 							<button
 								onClick={() => setOpenPanel(null)}
@@ -638,6 +649,23 @@ export default function GamePage() {
 								/>
 							</div>
 						)}
+
+						{/* Image Gallery Panel */}
+						{openPanel === 'images' && (
+							<div className="bg-neutral-900 rounded-lg h-full">
+								<ImageGalleryPanel
+									images={messages
+										.filter(m => m.scene_image_url)
+										.map(m => ({
+											url: m.scene_image_url!,
+											timestamp: m.timestamp,
+											caption: m.content.substring(0, 100),
+										}))
+									}
+								/>
+							</div>
+						)}
+
 						{/* Dice Panel */}
 						{openPanel === 'dice' && (
 							<div className="space-y-4">
