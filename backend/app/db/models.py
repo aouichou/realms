@@ -253,6 +253,9 @@ class Character(Base):
     bond: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     flaw: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Character motivation (Step 6 of character creation)
+    motivation: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
