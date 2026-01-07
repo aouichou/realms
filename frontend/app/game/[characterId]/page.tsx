@@ -430,14 +430,21 @@ export default function GamePage() {
 						🎲 Checks
 					</button>
 
-			{/* Companion Button */}
-			<button
-				onClick={() => togglePanel('companion')}
-				className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
+					{/* Companion Button */}
+					<button
+						onClick={() => togglePanel('companion')}
+						className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
                      hover:bg-white/20 transition-all text-white font-body text-sm"
-			>
-				🤖 AI Companion
-			</button>
+					>
+						🤖 AI Companion
+					</button>
+				</div>
+
+				{/* Center - Messages Area */}
+				<div className="flex-1 flex flex-col p-4 md:p-6 overflow-hidden">
+					{/* Character Header */}
+					{character && (
+						<div className="mb-4 pb-4 border-b border-white/10">
 							<h1 className="font-display text-xl md:text-2xl text-white">
 								{character.name}
 							</h1>
@@ -544,7 +551,7 @@ export default function GamePage() {
 
 				{/* Right Panel - Expanded Content */}
 				{openPanel && (
-					<div className={`p-6 bg-white/10 backdrop-blur-xl border-l border-white/20 overflow-y-auto ${openPanel === 'stats' || openPanel === 'inventory' || openPanel === 'combat' || openPanel === 'spells' || openPanel === 'checks' ? 'w-200' : 'w-96'
+					<div className={`p-6 bg-white/10 backdrop-blur-xl border-l border-white/20 overflow-y-auto ${openPanel === 'stats' || openPanel === 'inventory' || openPanel === 'combat' || openPanel === 'spells' || openPanel === 'checks' || openPanel === 'companion' ? 'w-200' : 'w-96'
 						}`}>
 						<div className="flex items-center justify-between mb-6">
 							<h2 className="font-display text-xl text-white">
@@ -554,6 +561,7 @@ export default function GamePage() {
 								{openPanel === 'combat' && '⚔️ Combat'}
 								{openPanel === 'spells' && '✨ Spells'}
 								{openPanel === 'checks' && '🎲 Ability Checks'}
+								{openPanel === 'companion' && '🤖 AI Companion'}
 							</h2>
 							<button
 								onClick={() => setOpenPanel(null)}
@@ -612,10 +620,9 @@ export default function GamePage() {
 								/>
 							</div>
 						)}
-
 						{/* Companion Panel */}
 						{openPanel === 'companion' && character && (
-						<div className="bg-neutral-900 rounded-lg h-150">
+							<div className="bg-neutral-900 rounded-lg h-150">
 								<CompanionPanel
 									characterId={characterId}
 									gameContext={{
@@ -631,7 +638,6 @@ export default function GamePage() {
 								/>
 							</div>
 						)}
-
 						{/* Dice Panel */}
 						{openPanel === 'dice' && (
 							<div className="space-y-4">
