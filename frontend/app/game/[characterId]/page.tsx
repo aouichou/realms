@@ -11,6 +11,7 @@ import { lazy, useEffect, useRef, useState } from 'react';
 // Lazy load heavy components for better initial load
 const AbilityCheckPanel = lazy(() => import('@/components/AbilityCheckPanel').then(mod => ({ default: mod.AbilityCheckPanel })));
 const CombatTracker = lazy(() => import('@/components/CombatTracker').then(mod => ({ default: mod.CombatTracker })));
+const CompanionPanel = lazy(() => import('@/components/CompanionPanel').then(mod => ({ default: mod.CompanionPanel })));
 const EnhancedCharacterSheet = lazy(() => import('@/components/EnhancedCharacterSheet').then(mod => ({ default: mod.EnhancedCharacterSheet })));
 const InventoryPanel = lazy(() => import('@/components/InventoryPanel').then(mod => ({ default: mod.InventoryPanel })));
 const QuestCompleteModal = lazy(() => import('@/components/QuestCompleteModal').then(mod => ({ default: mod.QuestCompleteModal })));
@@ -51,7 +52,7 @@ interface Character {
 	charisma: number;
 }
 
-type PanelType = 'stats' | 'inventory' | 'dice' | 'combat' | 'spells' | 'checks' | null;
+type PanelType = 'stats' | 'inventory' | 'dice' | 'combat' | 'spells' | 'checks' | 'companion' | null;
 
 export default function GamePage() {
 	const params = useParams();
@@ -428,13 +429,15 @@ export default function GamePage() {
 					>
 						🎲 Checks
 					</button>
-				</div>
 
-				{/* Center - Messages Area */}
-				<div className="flex-1 flex flex-col p-3 md:p-6">
-					{/* Character Header */}
-					{character && (
-						<div className="mb-3 md:mb-4 p-3 md:p-4 bg-white/10 backdrop-blur-md rounded-lg border border-white/20">
+			{/* Companion Button */}
+			<button
+				onClick={() => togglePanel('companion')}
+				className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
+                     hover:bg-white/20 transition-all text-white font-body text-sm"
+			>
+				🤖 AI Companion
+			</button>
 							<h1 className="font-display text-xl md:text-2xl text-white">
 								{character.name}
 							</h1>
@@ -606,6 +609,25 @@ export default function GamePage() {
 								<AbilityCheckPanel
 									characterId={characterId}
 									onRollComplete={handleRollComplete}
+								/>
+							</div>
+						)}
+
+						{/* Companion Panel */}
+						{openPanel === 'companion' && character && (
+						<div className="bg-neutral-900 rounded-lg h-150">
+								<CompanionPanel
+									characterId={characterId}
+									gameContext={{
+										player_hp: character.hp_current,
+										player_max_hp: character.hp_max,
+										in_combat: false,
+										location: sessionId ? 'Adventure' : 'Village',
+										situation: messages.length > 0 ? messages[messages.length - 1].content : 'Ready for adventure',
+									}}
+									onSpeechGenerated={(speech) => {
+										console.log('Companion says:', speech);
+									}}
 								/>
 							</div>
 						)}
