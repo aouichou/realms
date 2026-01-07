@@ -265,6 +265,44 @@ async def update_personality(
     return updated_character
 
 
+@router.post("/{character_id}/motivation", response_model=CharacterResponse)
+async def update_motivation(
+    character_id: UUID,
+    motivation: str = Query(...),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update character's primary motivation.
+
+    Args:
+        character_id: Character UUID
+        motivation: Character's primary motivation
+        current_user: Currently authenticated user
+        db: Database session
+
+    Returns:
+        Updated character data
+
+    Raises:
+        HTTPException: 404 if character not found or doesn't belong to user
+    """
+    from app.schemas.character import CharacterUpdate
+
+    # Verify character exists and belongs to user
+    character = await CharacterService.get_character(db, character_id)
+    if not character or character.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    # Update motivation
+    update_data = CharacterUpdate(motivation=motivation)
+    updated_character = await CharacterService.update_character(db, character_id, update_data)
+
+    if not updated_character:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    return updated_character
+
+
 @router.get("/{character_id}/stats", response_model=CharacterStatsResponse)
 async def get_character_stats(character_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get full character statistics including equipment bonuses.

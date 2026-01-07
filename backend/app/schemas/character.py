@@ -144,6 +144,8 @@ class CharacterUpdate(BaseModel):
     ideal: Optional[str] = Field(default=None)
     bond: Optional[str] = Field(default=None)
     flaw: Optional[str] = Field(default=None)
+    # Character motivation
+    motivation: Optional[str] = Field(default=None, max_length=100)
 
 
 class CharacterResponse(CharacterBase):
@@ -170,6 +172,8 @@ class CharacterResponse(CharacterBase):
     ideal: Optional[str] = None
     bond: Optional[str] = None
     flaw: Optional[str] = None
+    # Character motivation
+    motivation: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

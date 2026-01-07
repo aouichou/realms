@@ -1,6 +1,7 @@
 'use client';
 
 import { BackgroundSelection } from '@/components/character/BackgroundSelection';
+import { MotivationSelection } from '@/components/character/MotivationSelection';
 import PersonalitySelection from '@/components/character/PersonalitySelection';
 import SkillProficiencySelection from '@/components/character/SkillProficiencySelection';
 import { SpellSelectionStep } from '@/components/SpellSelectionStep';
@@ -86,6 +87,7 @@ export default function CharacterCreation() {
 	const [ideal, setIdeal] = useState('');
 	const [bond, setBond] = useState('');
 	const [flaw, setFlaw] = useState('');
+	const [motivation, setMotivation] = useState('');
 	const [selectedSpells, setSelectedSpells] = useState<Set<string>>(new Set());
 	const [characterId, setCharacterId] = useState<string | null>(null);
 
@@ -271,13 +273,8 @@ export default function CharacterCreation() {
 				setBond(personality.bond);
 				setFlaw(personality.flaw);
 				showToast('Personality saved successfully!', 'success');
-				// Move to spell selection if spellcaster, otherwise finish
-				if (['bard', 'cleric', 'druid', 'sorcerer', 'warlock', 'wizard'].includes(selectedClass)) {
-					setCurrentStep(5);
-				} else {
-					// Navigate to game
-					setTimeout(() => router.push(`/game/${characterId}`), 1000);
-				}
+			// Move to motivation selection (step 6)
+			setCurrentStep(6);
 			} else {
 				showToast('Failed to save personality', 'error');
 			}
@@ -286,6 +283,35 @@ export default function CharacterCreation() {
 			showToast('Error saving personality', 'error');
 		}
 	};
+
+	const handleMotivationComplete = async (selectedMotivation: string) => {
+		if (!characterId) return;
+
+		try {
+			const params = new URLSearchParams();
+			params.append('motivation', selectedMotivation);
+
+			const response = await apiClient.post(`/api/characters/${characterId}/motivation?${params.toString()}`);
+
+			if (response.ok) {
+				setMotivation(selectedMotivation);
+				showToast('Motivation saved successfully!', 'success');
+				// Move to spell selection if spellcaster, otherwise finish
+				if (['bard', 'cleric', 'druid', 'sorcerer', 'warlock', 'wizard'].includes(selectedClass)) {
+					setCurrentStep(5);
+				} else {
+					// Navigate to game
+					setTimeout(() => router.push(`/game/${characterId}`), 1000);
+				}
+			} else {
+				showToast('Failed to save motivation', 'error');
+			}
+		} catch (error) {
+			console.error('Error saving motivation:', error);
+			showToast('Error saving motivation', 'error');
+		}
+	};
+
 	const handleSpellsComplete = async () => {
 		if (!characterId) return;
 
@@ -355,13 +381,22 @@ export default function CharacterCreation() {
 						<div className={`flex items-center gap-2 ${currentStep === 4 ? 'text-primary-600 font-bold' : 'text-muted-foreground'}`}>
 							<div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 4 ? 'bg-primary-600 text-white' : 'bg-muted'}`}>
 								4
-							</div>						<span>Personality</span>
+							</div>
+							<span>Personality</span>
+						</div>
+						<div className="w-12 h-0.5 bg-muted" />
+						<div className={`flex items-center gap-2 ${currentStep === 6 ? 'text-primary-600 font-bold' : 'text-muted-foreground'}`}>
+							<div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 6 ? 'bg-primary-600 text-white' : 'bg-muted'}`}>
+								5
+							</div>
+							<span>Motivation</span>
 						</div>
 						<div className="w-12 h-0.5 bg-muted" />
 						<div className={`flex items-center gap-2 ${currentStep === 5 ? 'text-primary-600 font-bold' : 'text-muted-foreground'}`}>
 							<div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 5 ? 'bg-primary-600 text-white' : 'bg-muted'}`}>
-								5
-							</div>							<span>Spells</span>
+								6
+							</div>
+							<span>Spells</span>
 						</div>
 					</div>
 				</div>
@@ -548,6 +583,14 @@ export default function CharacterCreation() {
 					/>
 				)}
 
+				{/* Step 6: Motivation Selection */}
+				{currentStep === 6 && (
+					<MotivationSelection
+						onComplete={handleMotivationComplete}
+						onBack={() => setCurrentStep(4)}
+					/>
+				)}
+
 				{/* Step 5: Spell Selection (for spellcasting classes) */}
 				{currentStep === 5 && selectedClass && (
 					<div>
@@ -563,7 +606,7 @@ export default function CharacterCreation() {
 							onSpellsChange={setSelectedSpells}
 						/>
 						<div className="flex justify-between mt-6">
-							<Button onClick={() => setCurrentStep(4)} variant="outline">
+							<Button onClick={() => setCurrentStep(6)} variant="outline">
 								Back
 							</Button>
 							<Button onClick={handleSpellsComplete}>
