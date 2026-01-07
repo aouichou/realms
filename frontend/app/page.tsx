@@ -64,11 +64,11 @@ export default function Home() {
 						href="/auth/login"
 						className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-accent-600 px-6 md:px-8 py-2 md:py-3 text-sm md:text-base font-body font-semibold text-accent-600 transition-all hover:bg-accent-600 hover:text-white hover:scale-105 hover:shadow-2xl shadow-lg active:scale-95"
 					>
-						🎮 Play as Guest
+						Login
 					</Link>
 
 					<p className="text-xs text-neutral-400 font-body max-w-md text-center mt-2">
-						Guest mode: No email required. You can claim your account later to save progress.
+						No email required for demo • All progress auto-saved • Claim account anytime
 					</p>
 				</div>
 

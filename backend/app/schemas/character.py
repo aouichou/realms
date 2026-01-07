@@ -37,7 +37,7 @@ class CharacterBase(BaseModel):
         # Case-insensitive validation with capitalization
         v_capitalized = v.capitalize()
         if v_capitalized not in valid_classes:
-            raise ValueError(f'Invalid class. Must be one of: {", ".join(valid_classes)}')
+            raise ValueError(f"Invalid class. Must be one of: {', '.join(valid_classes)}")
         return v_capitalized
 
     @field_validator("race")
@@ -59,7 +59,7 @@ class CharacterBase(BaseModel):
         for race in valid_races:
             if v.lower() == race.lower():
                 return race
-        raise ValueError(f'Invalid race. Must be one of: {", ".join(valid_races)}')
+        raise ValueError(f"Invalid race. Must be one of: {', '.join(valid_races)}")
         return v
 
 

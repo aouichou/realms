@@ -1,6 +1,7 @@
-"""API endpoints for preset adventures"""
+"""API endpoints for preset and custom adventures"""
 
-from typing import List
+from datetime import datetime
+from typing import Any, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -96,3 +97,96 @@ async def get_adventure_details(
         "quest_objectives": adventure.quest_data["objectives"],
         "rewards": adventure.quest_data["rewards"],
     }
+
+
+# Custom Adventure Generation Endpoints
+
+
+class CustomAdventureRequest(BaseModel):
+    """Request to generate a custom adventure"""
+
+    character_id: UUID
+    setting: str
+    goal: str
+    tone: str
+
+
+class CustomAdventureResponse(BaseModel):
+    """Response with generated custom adventure"""
+
+    id: UUID
+    character_id: UUID
+    setting: str
+    goal: str
+    tone: str
+    title: str
+    description: str
+    scenes: Any  # JSONB field from database
+    is_completed: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+@router.post("/generate", response_model=CustomAdventureResponse)
+async def generate_custom_adventure(
+    request: CustomAdventureRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Generate a custom adventure using AI based on player choices.
+    Uses a 3-question questionnaire (setting, goal, tone) to create unique adventures.
+    """
+    service = AdventureService(db)
+
+    try:
+        adventure = await service.generate_custom_adventure(
+            character_id=request.character_id,
+            setting=request.setting,
+            goal=request.goal,
+            tone=request.tone,
+        )
+
+        return CustomAdventureResponse(
+            id=adventure.id,
+            character_id=adventure.character_id,
+            setting=adventure.setting,
+            goal=adventure.goal,
+            tone=adventure.tone,
+            title=adventure.title,
+            description=adventure.description,
+            scenes=adventure.scenes,
+            is_completed=adventure.is_completed,
+            created_at=adventure.created_at,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate adventure: {str(e)}")
+
+
+@router.get("/custom/{adventure_id}", response_model=CustomAdventureResponse)
+async def get_custom_adventure(
+    adventure_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a generated custom adventure by ID"""
+    service = AdventureService(db)
+    adventure = await service.get_adventure(adventure_id)
+
+    if not adventure:
+        raise HTTPException(status_code=404, detail=f"Adventure {adventure_id} not found")
+
+    return CustomAdventureResponse(
+        id=adventure.id,
+        character_id=adventure.character_id,
+        setting=adventure.setting,
+        goal=adventure.goal,
+        tone=adventure.tone,
+        title=adventure.title,
+        description=adventure.description,
+        scenes=adventure.scenes,
+        is_completed=adventure.is_completed,
+        created_at=adventure.created_at,
+    )

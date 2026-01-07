@@ -273,8 +273,8 @@ export default function CharacterCreation() {
 				setBond(personality.bond);
 				setFlaw(personality.flaw);
 				showToast('Personality saved successfully!', 'success');
-			// Move to motivation selection (step 6)
-			setCurrentStep(6);
+				// Move to motivation selection (step 6)
+				setCurrentStep(6);
 			} else {
 				showToast('Failed to save personality', 'error');
 			}
@@ -340,8 +340,9 @@ export default function CharacterCreation() {
 			}
 		}
 
-		// Navigate to game with the new character
-		setTimeout(() => router.push(`/game/${characterId}`), 1000);
+		// Navigate to adventure selection page
+		showToast('Character created! Now choose your adventure.', 'success');
+		setTimeout(() => router.push(`/adventure/select/${characterId}`), 1000);
 	};
 
 	return (
