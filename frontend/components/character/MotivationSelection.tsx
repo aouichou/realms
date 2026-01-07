@@ -2,8 +2,8 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { useState } from 'react';
 
 interface MotivationSelectionProps {
 	onComplete: (motivation: string) => void;
@@ -98,11 +98,10 @@ export function MotivationSelection({ onComplete, onBack }: MotivationSelectionP
 					{MOTIVATIONS.map((motivation) => (
 						<div
 							key={motivation.id}
-							className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:bg-muted/50 ${
-								selectedMotivation === motivation.id
+							className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:bg-muted/50 ${selectedMotivation === motivation.id
 									? 'border-primary-600 bg-primary-50'
 									: 'border-muted hover:border-primary-300'
-							}`}
+								}`}
 							onClick={() => setSelectedMotivation(motivation.id)}
 						>
 							<div className="flex items-start gap-3">

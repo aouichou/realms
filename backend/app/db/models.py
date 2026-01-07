@@ -686,3 +686,43 @@ class CharacterQuest(Base):
 
     def __repr__(self) -> str:
         return f"<CharacterQuest(character_id={self.character_id}, quest_id={self.quest_id})>"
+
+
+class Adventure(Base):
+    """Custom generated adventure model"""
+
+    __tablename__ = "adventures"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    character_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("characters.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Questionnaire responses
+    setting: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g., "haunted_castle"
+    goal: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g., "rescue_mission"
+    tone: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g., "epic_heroic"
+
+    # Generated content
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Adventure structure
+    # Format: [{"scene_number": 1, "title": "...", "description": "...", "encounters": [...], "npcs": [...], "loot": [...]}, ...]
+    scenes: Mapped[dict] = mapped_column(JSONB, nullable=False, default=list)
+
+    # Metadata
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    # Relationships
+    character = relationship("Character")
+
+    def __repr__(self) -> str:
+        return f"<Adventure(id={self.id}, title='{self.title}', character_id={self.character_id})>"
