@@ -214,6 +214,11 @@ class Character(Base):
     # Format: {"1": {"total": 2, "used": 0}, "2": {"total": 0, "used": 0}, ...}
     spell_slots: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True, default=dict)
 
+    # Active concentration tracking (UUID of spell being concentrated on)
+    active_concentration_spell: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+
     # Skill proficiencies (list of skill names)
     skill_proficiencies: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True, default=list)
 
@@ -467,6 +472,19 @@ class Spell(Base):
     damage_type: Mapped[Optional[str]] = mapped_column(
         String(20), nullable=True
     )  # e.g., "fire", "cold"
+
+    # Upcasting formula for damage scaling (e.g., "+1d6" means add 1d6 per level above base)
+    upcast_damage_dice: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True
+    )  # e.g., "+1d6", "+1d8", "+1"
+
+    # Material component cost tracking
+    material_cost: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )  # Cost in gold pieces
+    material_consumed: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )  # Whether material is consumed on casting
 
     # Saving throw if applicable
     save_ability: Mapped[Optional[str]] = mapped_column(
