@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api-client';
 import Image from 'next/image';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { lazy, useEffect, useRef, useState } from 'react';
 
 // Lazy load heavy components for better initial load
@@ -17,7 +17,6 @@ const ImageGalleryPanel = lazy(() => import('@/components/ImageGalleryPanel').th
 const InventoryPanel = lazy(() => import('@/components/InventoryPanel').then(mod => ({ default: mod.InventoryPanel })));
 const QuestCompleteModal = lazy(() => import('@/components/QuestCompleteModal').then(mod => ({ default: mod.QuestCompleteModal })));
 const SpellsPanel = lazy(() => import('@/components/SpellsPanel').then(mod => ({ default: mod.SpellsPanel })));
-const StartAdventureModal = lazy(() => import('@/components/StartAdventureModal').then(mod => ({ default: mod.StartAdventureModal })));
 
 interface Message {
 	id: number;
@@ -57,7 +56,9 @@ type PanelType = 'stats' | 'inventory' | 'dice' | 'combat' | 'spells' | 'checks'
 
 export default function GamePage() {
 	const params = useParams();
+	const searchParams = useSearchParams();
 	const characterId = params.characterId as string;
+	const sessionIdFromUrl = searchParams.get('session');
 
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [character, setCharacter] = useState<Character | null>(null);
@@ -70,6 +71,7 @@ export default function GamePage() {
 	const [pendingRollRequest, setPendingRollRequest] = useState<Message['roll_request'] | null>(null);
 	const [questCompleteData, setQuestCompleteData] = useState<{ questId: string; title: string; rewards: any } | null>(null);
 	const [showQuestCompleteModal, setShowQuestCompleteModal] = useState(false);
+	const [isStartingSession, setIsStartingSession] = useState(false);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -78,10 +80,14 @@ export default function GamePage() {
 	}, [characterId]);
 
 	useEffect(() => {
-		if (character && !sessionId) {
+		// If session ID is provided in URL, use it directly
+		if (sessionIdFromUrl) {
+			setSessionId(sessionIdFromUrl);
+		} else if (character && !sessionId) {
+			// Otherwise create a new session
 			getOrCreateSession();
 		}
-	}, [character]);
+	}, [character, sessionIdFromUrl]);
 
 	useEffect(() => {
 		if (sessionId) {
@@ -163,7 +169,7 @@ export default function GamePage() {
 
 		try {
 			const response = await apiClient.post('/api/conversations/action', {
-				character_id: parseInt(characterId),
+				character_id: characterId,
 				session_id: sessionId,
 				action: userMessage,
 				roll_result: rollResult || null,
@@ -236,7 +242,7 @@ export default function GamePage() {
 
 		try {
 			const response = await apiClient.post('/api/conversations/action', {
-				character_id: parseInt(characterId),
+				character_id: characterId,
 				session_id: sessionId,
 				action: rollMessage,
 				roll_result: rollResult,
@@ -322,6 +328,54 @@ export default function GamePage() {
 		loadConversationHistory();
 	};
 
+	const startSession = async () => {
+		if (!sessionId || isStartingSession) return;
+
+		setIsStartingSession(true);
+		try {
+			// Check if this is a new session (no messages yet)
+			if (messages.length === 0) {
+				// This is the first time - trigger the initial DM message
+				const response = await apiClient.post('/api/conversations/start', {
+					session_id: sessionId,
+				});
+
+				if (response.ok) {
+					const data = await response.json();
+					const dmMessage: Message = {
+						id: Date.now(),
+						role: 'assistant',
+						content: data.opening_narration || data.response,
+						timestamp: new Date().toISOString(),
+					};
+					setMessages([dmMessage]);
+				}
+			} else {
+				// Continuing an existing session - ask DM for summary
+				const response = await apiClient.post('/api/conversations/action', {
+					character_id: characterId,
+					session_id: sessionId,
+					action: 'Please give me a brief summary of what happened so far and ask if I want to continue.',
+				});
+
+				if (response.ok) {
+					const data = await response.json();
+					const dmMessage: Message = {
+						id: Date.now(),
+						role: 'assistant',
+						content: data.response,
+						timestamp: new Date().toISOString(),
+					};
+					setMessages(prev => [...prev, dmMessage]);
+				}
+			}
+		} catch (error) {
+			console.error('Error starting session:', error);
+		} finally {
+			setIsStartingSession(false);
+		}
+	};
+
 	const calculateModifier = (score: number): number => {
 		return Math.floor((score - 10) / 2);
 	};
@@ -376,17 +430,6 @@ export default function GamePage() {
 					>
 						⚔️ Character Stats
 					</button>
-
-					{/* Start Adventure Button */}
-					{character && (
-						<div className="w-full">
-							<StartAdventureModal
-								characterId={characterId}
-								characterLevel={character.level}
-								onAdventureStarted={handleAdventureStarted}
-							/>
-						</div>
-					)}
 
 					{/* Inventory Button */}
 					<button
@@ -466,6 +509,27 @@ export default function GamePage() {
 
 					{/* Messages */}
 					<div className="flex-1 overflow-y-auto space-y-3 md:space-y-4 mb-3 md:mb-4">
+						{messages.length === 0 && sessionId && (
+							<div className="flex items-center justify-center h-full">
+								<div className="text-center space-y-4">
+									<div className="text-6xl mb-4">🎲</div>
+									<h2 className="text-2xl font-display text-white mb-2">
+										Ready to Begin?
+									</h2>
+									<p className="text-white/70 font-body mb-6 max-w-md">
+										Your adventure awaits! Click the button below to start your journey with the AI Dungeon Master.
+									</p>
+									<Button
+										onClick={startSession}
+										disabled={isStartingSession}
+										size="lg"
+										className="bg-accent-400 hover:bg-accent-500 text-primary-900 font-display text-lg px-8 py-6"
+									>
+										{isStartingSession ? 'Starting...' : 'Start Session'}
+									</Button>
+								</div>
+							</div>
+						)}
 						{messages.map((message) => (
 							<div
 								key={message.id}

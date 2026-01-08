@@ -128,6 +128,7 @@ You will be told the quest_id in the character context. After completing a quest
         conversation_history: Optional[List[Dict[str, str]]] = None,
         character_context: Optional[Dict] = None,
         game_state: Optional[Dict] = None,
+        memory_context: Optional[str] = None,
     ) -> List[Dict[str, str]]:
         """
         Build message list for Mistral API with context
@@ -137,6 +138,7 @@ You will be told the quest_id in the character context. After completing a quest
             conversation_history: Previous messages
             character_context: Character information
             game_state: Current game state (location, inventory, etc.)
+            memory_context: Relevant past memories from vector search
 
         Returns:
             List of formatted messages
@@ -152,6 +154,11 @@ You will be told the quest_id in the character context. After completing a quest
         if game_state:
             state_msg = self._format_game_state(game_state)
             messages.append({"role": "system", "content": state_msg})
+
+        # Add memory context if available (RAG pattern)
+        if memory_context:
+            memory_msg = f"RELEVANT PAST EVENTS:\n{memory_context}"
+            messages.append({"role": "system", "content": memory_msg})
 
         # Add conversation history
         if conversation_history:
@@ -202,6 +209,7 @@ You will be told the quest_id in the character context. After completing a quest
         conversation_history: Optional[List[Dict[str, str]]] = None,
         character_context: Optional[Dict] = None,
         game_state: Optional[Dict] = None,
+        memory_context: Optional[str] = None,
     ) -> Dict:
         """
         Generate DM narration in response to player action
@@ -211,6 +219,7 @@ You will be told the quest_id in the character context. After completing a quest
             conversation_history: Previous conversation
             character_context: Character information
             game_state: Current game state
+            memory_context: Relevant past memories from vector search
 
         Returns:
             Dictionary with response and metadata
@@ -220,7 +229,7 @@ You will be told the quest_id in the character context. After completing a quest
         """
         try:
             messages = self._build_messages(
-                user_action, conversation_history, character_context, game_state
+                user_action, conversation_history, character_context, game_state, memory_context
             )
 
             logger.debug(f"Generating narration for action: {user_action[:50]}...")
@@ -262,6 +271,7 @@ You will be told the quest_id in the character context. After completing a quest
         conversation_history: Optional[List[Dict[str, str]]] = None,
         character_context: Optional[Dict] = None,
         game_state: Optional[Dict] = None,
+        memory_context: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         """
         Stream DM narration in real-time
@@ -271,6 +281,7 @@ You will be told the quest_id in the character context. After completing a quest
             conversation_history: Previous conversation
             character_context: Character information
             game_state: Current game state
+            memory_context: Relevant past memories from vector search
 
         Yields:
             Narration text chunks
@@ -280,7 +291,7 @@ You will be told the quest_id in the character context. After completing a quest
         """
         try:
             messages = self._build_messages(
-                user_action, conversation_history, character_context, game_state
+                user_action, conversation_history, character_context, game_state, memory_context
             )
 
             logger.debug(f"Streaming narration for action: {user_action[:50]}...")

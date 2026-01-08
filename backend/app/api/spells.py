@@ -388,9 +388,11 @@ async def get_spell_slots(character_id: UUID, db: AsyncSession = Depends(get_db)
     )
 
 
-def _check_spell_preparation(character: "Character", character_spell: CharacterSpell, spell: Spell) -> None:
+def _check_spell_preparation(
+    character: "Character", character_spell: CharacterSpell, spell: Spell
+) -> None:
     """Check if spell needs to be prepared for prepared casters
-    
+
     Raises:
         HTTPException: If spell is not prepared
     """
@@ -400,7 +402,7 @@ def _check_spell_preparation(character: "Character", character_spell: CharacterS
         CharacterClass.DRUID,
         CharacterClass.PALADIN,
     ]
-    
+
     if character.character_class in prepared_caster_classes:
         if not character_spell.is_prepared and spell.level > 0:  # Cantrips don't need preparation
             raise HTTPException(status_code=400, detail="Spell not prepared")
@@ -408,7 +410,7 @@ def _check_spell_preparation(character: "Character", character_spell: CharacterS
 
 def _validate_ritual_cast(request: CastSpellRequest, spell: Spell) -> None:
     """Validate ritual casting request
-    
+
     Raises:
         HTTPException: If spell cannot be cast as ritual
     """
@@ -418,27 +420,27 @@ def _validate_ritual_cast(request: CastSpellRequest, spell: Spell) -> None:
 
 def _validate_slot_level(request: CastSpellRequest, spell: Spell) -> int:
     """Validate and determine the slot level to use
-    
+
     Returns:
         The slot level to use for casting
-        
+
     Raises:
         HTTPException: If slot level is invalid
     """
     slot_level = request.slot_level if request.slot_level is not None else spell.level
-    
+
     if slot_level < spell.level:
         raise HTTPException(
             status_code=400,
             detail=f"Cannot cast level {spell.level} spell using level {slot_level} slot",
         )
-    
+
     return slot_level
 
 
 def _handle_concentration(character: "Character", spell: Spell) -> None:
     """Handle concentration tracking for spells
-    
+
     Updates character's active concentration spell
     """
     if spell.is_concentration:
@@ -448,7 +450,7 @@ def _handle_concentration(character: "Character", spell: Spell) -> None:
 
 def _consume_spell_slot(character: "Character", slot_level: int, is_ritual: bool) -> None:
     """Consume a spell slot if not ritual casting
-    
+
     Raises:
         HTTPException: If no spell slots available
     """
@@ -472,13 +474,13 @@ def _consume_spell_slot(character: "Character", slot_level: int, is_ritual: bool
 
 def _calculate_spell_damage(spell: Spell, slot_level: int) -> tuple[Optional[str], Optional[int]]:
     """Calculate damage with upcasting support
-    
+
     Returns:
         Tuple of (damage_roll_string, total_damage)
     """
     if not spell.damage_dice:
         return None, None
-    
+
     # Calculate upcast levels
     upcast_levels = slot_level - spell.level
 
@@ -500,7 +502,7 @@ def _calculate_spell_damage(spell: Spell, slot_level: int) -> tuple[Optional[str
             # Direct formula (rare)
             total_damage += _roll_dice(upcast_roll) * upcast_levels
             damage_roll = f"{damage_roll} + {upcast_roll}x{upcast_levels}"
-    
+
     return damage_roll, total_damage
 
 
@@ -563,8 +565,10 @@ async def cast_spell(
 
     # Cantrips don't consume spell slots
     if spell.level == 0:
-        damage_roll, total_damage = _calculate_spell_damage(spell, 0) if spell.damage_dice else (None, None)
-        
+        damage_roll, total_damage = (
+            _calculate_spell_damage(spell, 0) if spell.damage_dice else (None, None)
+        )
+
         await db.commit()
 
         return CastSpellResponse(

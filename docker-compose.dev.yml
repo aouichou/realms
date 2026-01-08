@@ -1,7 +1,7 @@
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database with pgvector
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: realms-postgres-dev
     ports:
       - "5432:5432"

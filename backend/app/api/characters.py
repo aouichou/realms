@@ -90,7 +90,12 @@ async def list_characters(
         db, current_user.id, skip=skip, limit=page_size
     )
 
-    return CharacterListResponse(characters=characters, total=total, page=page, page_size=page_size)
+    # Convert to response schemas
+    character_responses = [CharacterResponse.model_validate(char) for char in characters]
+
+    return CharacterListResponse(
+        characters=character_responses, total=total, page=page, page_size=page_size
+    )
 
 
 @router.patch("/{character_id}", response_model=CharacterResponse)
