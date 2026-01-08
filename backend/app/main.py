@@ -23,6 +23,7 @@ from app.api import (
     images,
     inventory,
     loot,
+    memories,
     npcs,
     progression,
     quests,
@@ -162,6 +163,7 @@ app.include_router(conditions.router)
 app.include_router(npcs.router)
 app.include_router(quests.router)
 app.include_router(adventures.router)  # Preset adventures
+app.include_router(memories.router)  # Vector memory system
 app.include_router(rules.router)  # D&D 5e rules helpers
 
 

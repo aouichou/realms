@@ -114,6 +114,20 @@ class QuestState(str, PyEnum):
     FAILED = "failed"
 
 
+class EventType(str, PyEnum):
+    """Adventure memory event types"""
+
+    COMBAT = "combat"
+    DIALOGUE = "dialogue"
+    DISCOVERY = "discovery"
+    DECISION = "decision"
+    QUEST = "quest"
+    NPC_INTERACTION = "npc_interaction"
+    LOOT = "loot"
+    LOCATION = "location"
+    OTHER = "other"
+
+
 class MessageRole(str, PyEnum):
     """Conversation message roles"""
 
@@ -338,6 +352,9 @@ class GameSession(Base):
     )
     combat_encounters = relationship(
         "CombatEncounter", back_populates="session", cascade="all, delete-orphan"
+    )
+    memories = relationship(
+        "AdventureMemory", back_populates="session", cascade="all, delete-orphan"
     )
 
     # Indexes
@@ -744,3 +761,59 @@ class Adventure(Base):
 
     def __repr__(self) -> str:
         return f"<Adventure(id={self.id}, title='{self.title}', character_id={self.character_id})>"
+
+
+class AdventureMemory(Base):
+    """Memory storage for AI DM with semantic search via pgvector"""
+
+    __tablename__ = "adventure_memories"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("game_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Event classification
+    event_type: Mapped[EventType] = mapped_column(
+        Enum(EventType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        index=True,
+    )
+
+    # Content and embedding
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    # Embedding stored as float array (will use pgvector in queries)
+    embedding: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+
+    # Importance scoring (1-10 scale)
+    importance: Mapped[int] = mapped_column(Integer, default=5, nullable=False, index=True)
+
+    # Timestamp
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False, index=True
+    )
+
+    # Tags and relationships
+    tags: Mapped[Optional[list]] = mapped_column(
+        JSONB, nullable=True, default=list
+    )  # ["combat", "boss_fight"]
+    npcs_involved: Mapped[Optional[list]] = mapped_column(
+        JSONB, nullable=True, default=list
+    )  # [npc_id, ...]
+    locations: Mapped[Optional[list]] = mapped_column(
+        JSONB, nullable=True, default=list
+    )  # ["Goblin Cave", "Forest"]
+    items_involved: Mapped[Optional[list]] = mapped_column(
+        JSONB, nullable=True, default=list
+    )  # ["Magic Sword", "Key"]
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    session = relationship("GameSession", back_populates="memories")
+
+    def __repr__(self) -> str:
+        return f"<AdventureMemory(id={self.id}, event_type={self.event_type}, importance={self.importance})>"

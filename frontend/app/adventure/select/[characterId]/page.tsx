@@ -1,7 +1,7 @@
 "use client";
 
 import AdventurePreview from "@/components/adventure/AdventurePreview";
-import CustomAdventureWizard from "@/components/adventure/CustomAdventureWizard";
+import { CustomAdventureWizard } from "@/components/adventure/CustomAdventureWizard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,11 +54,13 @@ export default function AdventureSelectionPage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [showCustomWizard, setShowCustomWizard] = useState(false);
 	const [generatedAdventure, setGeneratedAdventure] = useState<CustomAdventure | null>(null);
+	const [customAdventures, setCustomAdventures] = useState<CustomAdventure[]>([]);
 	const [activeTab, setActiveTab] = useState<"preset" | "custom">("preset");
 
 	useEffect(() => {
 		loadCharacter();
 		loadPresetAdventures();
+		loadCustomAdventures();
 	}, [characterId]);
 
 	const loadCharacter = async () => {
@@ -83,6 +85,18 @@ export default function AdventureSelectionPage() {
 			}
 		} catch (error) {
 			console.error("Error loading adventures:", error);
+		}
+	};
+
+	const loadCustomAdventures = async () => {
+		try {
+			const response = await apiClient.get(`/api/adventures/custom/character/${characterId}`);
+			if (response.ok) {
+				const data = await response.json();
+				setCustomAdventures(data);
+			}
+		} catch (error) {
+			console.error("Error loading custom adventures:", error);
 		}
 	};
 
@@ -116,10 +130,27 @@ export default function AdventureSelectionPage() {
 	};
 
 	const handleStartCustomAdventure = async (adventureId: string) => {
-		// TODO: Create game session with custom adventure
-		// For now, just redirect to game page
-		showToast("Custom adventure starting!", "success");
-		router.push(`/game/${characterId}?adventure=${adventureId}`);
+		setIsLoading(true);
+		try {
+			const response = await apiClient.post("/api/adventures/start-custom", {
+				character_id: characterId,
+				adventure_id: adventureId,
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				showToast("Custom adventure starting!", "success");
+				// Redirect to game page with session data
+				router.push(`/game/${characterId}?session=${data.session_id}`);
+			} else {
+				showToast("Failed to start adventure", "error");
+			}
+		} catch (error) {
+			console.error("Error starting custom adventure:", error);
+			showToast("Failed to start adventure", "error");
+		} finally {
+			setIsLoading(false);
+		}
 	};
 
 	if (!character) {
@@ -251,7 +282,37 @@ export default function AdventureSelectionPage() {
 					</TabsContent>
 
 					{/* Custom Adventure Tab */}
-					<TabsContent value="custom">
+					<TabsContent value="custom">					{customAdventures.length > 0 && (
+						<div className="mb-8">
+							<h2 className="text-2xl font-display text-primary-900 mb-4">Your Custom Adventures</h2>
+							<div className="grid gap-4 md:grid-cols-2">
+								{customAdventures.map((adventure) => (
+									<Card
+										key={adventure.id}
+										className="cursor-pointer transition-all hover:border-primary hover:shadow-lg"
+										onClick={() => setGeneratedAdventure(adventure)}
+									>
+										<CardHeader>
+											<CardTitle className="text-xl">{adventure.title}</CardTitle>
+											<CardDescription className="text-xs">
+												Created {new Date(adventure.created_at).toLocaleDateString()}
+											</CardDescription>
+										</CardHeader>
+										<CardContent>
+											<p className="text-sm text-muted-foreground line-clamp-3">
+												{adventure.description}
+											</p>
+											<div className="flex gap-2 mt-3">
+												<Badge variant="secondary">{adventure.setting}</Badge>
+												<Badge variant="secondary">{adventure.goal}</Badge>
+												<Badge variant="secondary">{adventure.tone}</Badge>
+											</div>
+										</CardContent>
+									</Card>
+								))}
+							</div>
+						</div>
+					)}
 						<Card className="max-w-2xl mx-auto">
 							<CardHeader>
 								<CardTitle className="flex items-center gap-2 text-2xl">

@@ -1,0 +1,167 @@
+'use client';
+
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+interface Character {
+	id: string;
+	name: string;
+	character_class: string;
+	race: string;
+	level: number;
+	hp_current: number;
+	hp_max: number;
+}
+
+export default function CharacterSelectPage() {
+	const router = useRouter();
+	const [characters, setCharacters] = useState<Character[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		fetchCharacters();
+	}, []);
+
+	const fetchCharacters = async () => {
+		try {
+			const token = localStorage.getItem('access_token');
+			if (!token) {
+				router.push('/auth/login');
+				return;
+			}
+
+			const response = await fetch('http://localhost:8000/api/characters', {
+				headers: {
+					'Authorization': `Bearer ${token}`,
+				},
+			});
+
+			if (response.status === 401) {
+				router.push('/auth/login');
+				return;
+			}
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch characters');
+			}
+
+			const data = await response.json();
+			setCharacters(data.characters || []);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'An error occurred');
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const selectCharacter = (characterId: string) => {
+		localStorage.setItem('selected_character_id', characterId);
+		router.push('/adventure');
+	};
+
+	if (loading) {
+		return (
+			<div className="flex min-h-screen items-center justify-center">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-900 mx-auto mb-4"></div>
+					<p className="text-neutral-500">Loading characters...</p>
+				</div>
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="flex min-h-screen items-center justify-center">
+				<div className="text-center max-w-md">
+					<p className="text-red-500 mb-4">{error}</p>
+					<button
+						onClick={() => fetchCharacters()}
+						className="px-6 py-2 bg-primary-900 text-white rounded-lg hover:bg-accent-600"
+					>
+						Retry
+					</button>
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="min-h-screen bg-background p-4 md:p-8">
+			<div className="max-w-6xl mx-auto">
+				<div className="mb-8">
+					<h1 className="text-4xl font-display text-primary-900 mb-2">Select Your Character</h1>
+					<p className="text-neutral-500 font-body">Choose a character to begin your adventure</p>
+				</div>
+
+				{characters.length === 0 ? (
+					<div className="text-center py-16">
+						<p className="text-neutral-500 mb-6 font-body">You don't have any characters yet.</p>
+						<Link
+							href="/character/create"
+							className="inline-flex items-center gap-2 px-8 py-4 bg-primary-900 text-white rounded-lg hover:bg-accent-600 transition-all hover:scale-105 font-body font-semibold"
+						>
+							<span>Create Your First Character</span>
+							<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+							</svg>
+						</Link>
+					</div>
+				) : (
+					<>
+						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+							{characters.map((character) => (
+								<div
+									key={character.id}
+									onClick={() => selectCharacter(character.id)}
+									className="bg-white border-2 border-neutral-200 rounded-lg p-6 cursor-pointer transition-all hover:border-accent-600 hover:shadow-lg hover:scale-105"
+								>
+									<div className="flex items-center justify-between mb-4">
+										<h3 className="text-2xl font-display text-primary-900">{character.name}</h3>
+										<span className="text-sm font-body text-neutral-500 bg-neutral-100 px-3 py-1 rounded-full">
+											Lvl {character.level}
+										</span>
+									</div>
+									<div className="space-y-2 font-body text-sm">
+										<p className="text-neutral-700">
+											<span className="font-semibold">Race:</span> {character.race}
+										</p>
+										<p className="text-neutral-700">
+											<span className="font-semibold">Class:</span> {character.character_class}
+										</p>
+										<div className="flex items-center gap-2 text-neutral-700">
+											<span className="font-semibold">HP:</span>
+											<div className="flex-1 bg-neutral-200 rounded-full h-2">
+												<div
+													className="bg-red-500 h-2 rounded-full transition-all"
+													style={{ width: `${(character.hp_current / character.hp_max) * 100}%` }}
+												/>
+											</div>
+											<span className="text-xs">
+												{character.hp_current}/{character.hp_max}
+											</span>
+										</div>
+									</div>
+								</div>
+							))}
+						</div>
+
+						<div className="text-center">
+							<Link
+								href="/character/create"
+								className="inline-flex items-center gap-2 px-6 py-3 border-2 border-primary-900 text-primary-900 rounded-lg hover:bg-primary-900 hover:text-white transition-all font-body font-semibold"
+							>
+								<span>Create New Character</span>
+								<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+								</svg>
+							</Link>
+						</div>
+					</>
+				)}
+			</div>
+		</div>
+	);
+}

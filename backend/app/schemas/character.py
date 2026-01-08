@@ -151,6 +151,8 @@ class CharacterUpdate(BaseModel):
 class CharacterResponse(CharacterBase):
     """Schema for character API responses."""
 
+    model_config = {"from_attributes": True}
+
     id: UUID
     user_id: Optional[UUID] = None
     character_type: str

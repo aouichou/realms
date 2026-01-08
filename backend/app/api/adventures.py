@@ -1,7 +1,7 @@
 """API endpoints for preset and custom adventures"""
 
 from datetime import datetime
-from typing import Any, List
+from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,6 +21,13 @@ class StartPresetAdventureRequest(BaseModel):
     adventure_id: str
 
 
+class StartCustomAdventureRequest(BaseModel):
+    """Request to start a custom adventure"""
+
+    character_id: UUID
+    adventure_id: UUID
+
+
 class AdventureInfo(BaseModel):
     """Information about a preset adventure"""
 
@@ -35,7 +42,7 @@ class StartedAdventureResponse(BaseModel):
     """Response after starting an adventure"""
 
     session_id: str
-    quest_id: str
+    quest_id: Optional[str] = None
     adventure_id: str
     title: str
     opening_narration: str
@@ -72,6 +79,29 @@ async def start_preset_adventure(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to start adventure: {str(e)}")
+
+
+@router.post("/start-custom", response_model=StartedAdventureResponse)
+async def start_custom_adventure(
+    request: StartCustomAdventureRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Start a custom AI-generated adventure for a character.
+    Creates a game session and returns opening narration based on the adventure's first scene.
+    """
+    service = AdventureService(db)
+
+    try:
+        result = await service.start_custom_adventure(
+            character_id=request.character_id,
+            adventure_id=request.adventure_id,
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start custom adventure: {str(e)}")
 
 
 @router.get("/{adventure_id}")
@@ -164,6 +194,40 @@ async def generate_custom_adventure(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate adventure: {str(e)}")
+
+
+@router.get("/custom/character/{character_id}", response_model=List[CustomAdventureResponse])
+async def list_character_adventures(
+    character_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all custom adventures for a character"""
+    from sqlalchemy import select
+
+    from app.db.models import Adventure
+
+    result = await db.execute(
+        select(Adventure)
+        .where(Adventure.character_id == character_id)
+        .order_by(Adventure.created_at.desc())
+    )
+    adventures = result.scalars().all()
+
+    return [
+        CustomAdventureResponse(
+            id=adv.id,
+            character_id=adv.character_id,
+            setting=adv.setting,
+            goal=adv.goal,
+            tone=adv.tone,
+            title=adv.title,
+            description=adv.description,
+            scenes=adv.scenes,
+            is_completed=adv.is_completed,
+            created_at=adv.created_at,
+        )
+        for adv in adventures
+    ]
 
 
 @router.get("/custom/{adventure_id}", response_model=CustomAdventureResponse)

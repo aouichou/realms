@@ -10,7 +10,7 @@ import { useState } from 'react';
 
 interface CustomAdventureWizardProps {
 	characterId: string;
-	onComplete: (adventureId: string) => void;
+	onComplete: (adventureId: string, adventure: any) => void;
 	onCancel: () => void;
 }
 
@@ -88,7 +88,7 @@ export function CustomAdventureWizard({ characterId, onComplete, onCancel }: Cus
 			if (response.ok) {
 				const data = await response.json();
 				showToast('Adventure generated successfully!', 'success');
-				onComplete(data.id);
+				onComplete(data.id, data);
 			} else {
 				const error = await response.json();
 				showToast(error.detail || 'Failed to generate adventure', 'error');
@@ -158,8 +158,8 @@ export function CustomAdventureWizard({ characterId, onComplete, onCancel }: Cus
 									<div
 										key={setting.id}
 										className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:bg-muted/50 ${selectedSetting === setting.id
-												? 'border-primary-600 bg-primary-50'
-												: 'border-muted hover:border-primary-300'
+											? 'border-primary-600 bg-primary-50'
+											: 'border-muted hover:border-primary-300'
 											}`}
 										onClick={() => setSelectedSetting(setting.id)}
 									>
@@ -184,8 +184,8 @@ export function CustomAdventureWizard({ characterId, onComplete, onCancel }: Cus
 									<div
 										key={goal.id}
 										className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:bg-muted/50 ${selectedGoal === goal.id
-												? 'border-primary-600 bg-primary-50'
-												: 'border-muted hover:border-primary-300'
+											? 'border-primary-600 bg-primary-50'
+											: 'border-muted hover:border-primary-300'
 											}`}
 										onClick={() => setSelectedGoal(goal.id)}
 									>
@@ -210,8 +210,8 @@ export function CustomAdventureWizard({ characterId, onComplete, onCancel }: Cus
 									<div
 										key={tone.id}
 										className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:bg-muted/50 ${selectedTone === tone.id
-												? 'border-primary-600 bg-primary-50'
-												: 'border-muted hover:border-primary-300'
+											? 'border-primary-600 bg-primary-50'
+											: 'border-muted hover:border-primary-300'
 											}`}
 										onClick={() => setSelectedTone(tone.id)}
 									>

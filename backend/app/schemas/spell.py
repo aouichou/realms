@@ -119,7 +119,7 @@ class CastSpellResponse(BaseModel):
     damage_roll: Optional[str] = None
     total_damage: Optional[int] = None
     description: str
-    remaining_slots: Dict[str, int]
+    remaining_slots: Dict[str, Dict[str, int]]  # {"1": {"used": 1, "total": 2}, ...}
 
 
 class SpellSlotsResponse(BaseModel):

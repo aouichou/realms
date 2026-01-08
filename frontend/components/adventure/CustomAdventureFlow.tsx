@@ -1,7 +1,7 @@
 "use client";
 
 import AdventurePreview from "@/components/adventure/AdventurePreview";
-import CustomAdventureWizard from "@/components/adventure/CustomAdventureWizard";
+import { CustomAdventureWizard } from "@/components/adventure/CustomAdventureWizard";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -42,9 +42,8 @@ export default function CustomAdventureFlow({
 	};
 
 	const handleStartAdventure = async (adventureId: string) => {
-		// TODO: Create game session with this adventure
-		// For now, redirect to game page
-		router.push(`/game/${adventureId}`);
+		// Redirect to game page with the character ID (game session will be created automatically)
+		router.push(`/game/${characterId}`);
 		onComplete?.();
 	};
 

@@ -1,18 +1,10 @@
 "use client";
 
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
-	ChevronRight,
 	Gem,
 	MapPin,
 	Palette,
@@ -21,7 +13,7 @@ import {
 	Swords,
 	Target,
 	Users,
-	X,
+	X
 } from "lucide-react";
 import { useState } from "react";
 
@@ -150,111 +142,66 @@ export default function AdventurePreview({
 
 			<Separator className="my-6" />
 
-			{/* Scenes */}
+			{/* Adventure Overview - No Spoilers */}
 			<div className="mb-6">
-				<h2 className="text-2xl font-bold mb-4">Adventure Scenes</h2>
-				<ScrollArea className="h-[500px] pr-4">
-					<Accordion type="single" collapsible className="space-y-4">
-						{adventure.scenes.map((scene, index) => (
-							<AccordionItem
-								key={scene.scene_number}
-								value={`scene-${scene.scene_number}`}
-								className="border rounded-lg"
-							>
-								<AccordionTrigger className="px-4 hover:no-underline">
-									<div className="flex items-center gap-3 text-left">
-										<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold">
-											{scene.scene_number}
-										</div>
-										<span className="font-semibold">{scene.title}</span>
+				<Card>
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">
+							<Sparkles className="h-5 w-5 text-amber-500" />
+							What Awaits You
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<p className="text-muted-foreground">
+							Your journey will unfold across <strong>{adventure.scenes.length} major scenes</strong>,
+							filled with challenges, mysteries, and rewards.
+						</p>
+						<div className="grid gap-3 md:grid-cols-2">
+							<div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
+								<Users className="h-5 w-5 text-primary mt-0.5" />
+								<div>
+									<div className="font-semibold text-sm">Characters & NPCs</div>
+									<div className="text-xs text-muted-foreground">
+										Meet allies and adversaries along your path
 									</div>
-								</AccordionTrigger>
-								<AccordionContent className="px-4 pb-4">
-									<p className="text-muted-foreground mb-4">{scene.description}</p>
-
-									{/* Encounters */}
-									{scene.encounters && scene.encounters.length > 0 && (
-										<Card className="mb-4">
-											<CardHeader className="pb-3">
-												<CardTitle className="flex items-center gap-2 text-lg">
-													<Swords className="h-5 w-5 text-red-500" />
-													Encounters
-												</CardTitle>
-											</CardHeader>
-											<CardContent>
-												<ul className="space-y-2">
-													{scene.encounters.map((encounter, idx) => (
-														<li key={idx} className="flex items-start gap-2">
-															<ChevronRight className="h-4 w-4 mt-0.5 text-muted-foreground" />
-															<span>{encounter}</span>
-														</li>
-													))}
-												</ul>
-											</CardContent>
-										</Card>
-									)}
-
-									{/* NPCs */}
-									{scene.npcs && scene.npcs.length > 0 && (
-										<Card className="mb-4">
-											<CardHeader className="pb-3">
-												<CardTitle className="flex items-center gap-2 text-lg">
-													<Users className="h-5 w-5 text-blue-500" />
-													NPCs
-												</CardTitle>
-											</CardHeader>
-											<CardContent>
-												<div className="space-y-3">
-													{scene.npcs.map((npc, idx) => (
-														<div key={idx} className="border-l-2 border-blue-500 pl-3">
-															<div className="font-semibold">{npc.name}</div>
-															<div className="text-sm text-muted-foreground">
-																{npc.race} • {npc.role}
-															</div>
-															<div className="text-sm italic mt-1">{npc.personality}</div>
-														</div>
-													))}
-												</div>
-											</CardContent>
-										</Card>
-									)}
-
-									{/* Loot */}
-									{scene.loot && scene.loot.length > 0 && (
-										<Card>
-											<CardHeader className="pb-3">
-												<CardTitle className="flex items-center gap-2 text-lg">
-													<Gem className="h-5 w-5 text-amber-500" />
-													Loot & Rewards
-												</CardTitle>
-											</CardHeader>
-											<CardContent>
-												<div className="space-y-2">
-													{scene.loot.map((item, idx) => (
-														<div
-															key={idx}
-															className="flex items-start justify-between gap-2 p-2 rounded bg-muted/50"
-														>
-															<div className="flex-1">
-																<div className="font-semibold">{item.item}</div>
-																<div className="text-sm text-muted-foreground">
-																	{item.description}
-																</div>
-															</div>
-															<div className="text-amber-600 font-bold whitespace-nowrap">
-																{item.value} gp
-															</div>
-														</div>
-													))}
-												</div>
-											</CardContent>
-										</Card>
-									)}
-								</AccordionContent>
-							</AccordionItem>
-						))}
-					</Accordion>
-				</ScrollArea>
+								</div>
+							</div>
+							<div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
+								<Swords className="h-5 w-5 text-red-500 mt-0.5" />
+								<div>
+									<div className="font-semibold text-sm">Encounters & Challenges</div>
+									<div className="text-xs text-muted-foreground">
+										Face dangers and test your abilities
+									</div>
+								</div>
+							</div>
+							<div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
+								<Target className="h-5 w-5 text-blue-500 mt-0.5" />
+								<div>
+									<div className="font-semibold text-sm">Your Goal</div>
+									<div className="text-xs text-muted-foreground">
+										{GOAL_NAMES[adventure.goal] || adventure.goal}
+									</div>
+								</div>
+							</div>
+							<div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
+								<Gem className="h-5 w-5 text-purple-500 mt-0.5" />
+								<div>
+									<div className="font-semibold text-sm">Treasures</div>
+									<div className="text-xs text-muted-foreground">
+										Discover valuable loot and artifacts
+									</div>
+								</div>
+							</div>
+						</div>
+						<div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+							<p className="text-sm text-amber-900 dark:text-amber-100">
+								<strong>Note:</strong> The details of your adventure will unfold as you play.
+								The AI Dungeon Master will reveal scenes, encounters, and secrets at the right moments!
+							</p>
+						</div>
+					</CardContent>
+				</Card>
 			</div>
 
 			{/* Action Buttons */}

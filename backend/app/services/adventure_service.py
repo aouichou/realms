@@ -422,3 +422,65 @@ Make encounters appropriate for level {level} characters. Include specific D&D 5
         """Get a custom adventure by ID"""
         result = await self.db.execute(select(Adventure).where(Adventure.id == adventure_id))
         return result.scalar_one_or_none()
+
+    async def start_custom_adventure(
+        self, character_id: UUID, adventure_id: UUID
+    ) -> Dict[str, Any]:
+        """
+        Start a custom AI-generated adventure for a character.
+        Creates a game session and returns opening narration based on the first scene.
+        """
+        # Get the custom adventure
+        adventure = await self.get_adventure(adventure_id)
+        if not adventure:
+            raise ValueError(f"Adventure {adventure_id} not found")
+
+        # Verify adventure belongs to this character
+        if adventure.character_id != character_id:
+            raise ValueError("Adventure does not belong to this character")
+
+        # Get the character
+        result = await self.db.execute(select(Character).where(Character.id == character_id))
+        character = result.scalar_one_or_none()
+        if not character:
+            raise ValueError(f"Character {character_id} not found")
+
+        # Get the first scene for opening narration
+        scenes = adventure.scenes
+        first_scene = scenes[0] if scenes and len(scenes) > 0 else None
+
+        # Create opening narration from first scene or use default
+        if first_scene:
+            opening_narration = (
+                f"**{adventure.title}**\n\n"
+                f"{adventure.description}\n\n"
+                f"**Scene 1: {first_scene.get('title', 'The Beginning')}**\n\n"
+                f"{first_scene.get('description', 'Your adventure begins...')}"
+            )
+            initial_location = first_scene.get("title", "Starting Location")
+        else:
+            opening_narration = (
+                f"**{adventure.title}**\n\n{adventure.description}\n\nYour adventure begins!"
+            )
+            initial_location = "Starting Location"
+
+        # Create a new game session
+        session = GameSession(
+            character_id=character_id,
+            current_location=initial_location,
+            is_active=True,
+        )
+        self.db.add(session)
+        await self.db.commit()
+        await self.db.refresh(session)
+
+        # Return adventure info with opening narration
+        return {
+            "session_id": str(session.id),
+            "quest_id": None,  # Custom adventures don't have preset quests
+            "adventure_id": str(adventure.id),
+            "title": adventure.title,
+            "opening_narration": opening_narration,
+            "setting": adventure.setting,
+            "initial_location": initial_location,
+        }

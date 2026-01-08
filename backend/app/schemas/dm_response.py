@@ -1,6 +1,7 @@
 """Schema for DM responses with roll requests"""
 
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -20,7 +21,7 @@ class RollRequest(BaseModel):
 class PlayerActionRequest(BaseModel):
     """Request for player action with DM response"""
 
-    character_id: int
+    character_id: UUID
     session_id: Optional[str] = None
     action: str
     roll_result: Optional[dict] = None  # If responding to a roll request

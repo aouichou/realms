@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
-from app.db.models import Character, GameSession
+from app.db.models import Character, CharacterQuest, Quest, QuestState
 from app.schemas.dm_response import DMResponse, PlayerActionRequest, RollRequest
 from app.schemas.message import (
     ConversationHistoryResponse,
@@ -18,6 +18,7 @@ from app.schemas.message import (
 from app.services.conversation_service import ConversationService
 from app.services.dm_engine import DMEngine
 from app.services.redis_service import session_service
+from app.utils.logger import logger
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
@@ -53,6 +54,76 @@ async def create_message(
     return message
 
 
+@router.post("/start", response_model=DMResponse)
+async def start_conversation(
+    request: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """Start a new conversation session with opening narration.
+
+    Args:
+        request: Dict with session_id
+        db: Database session
+
+    Returns:
+        DM response with opening narration
+    """
+    session_id = UUID(request.get("session_id"))
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id is required")
+
+    # Check if there are existing messages - if yes, this isn't a new session
+    existing_messages = await ConversationService.get_recent_messages(db, session_id, count=1)
+    if existing_messages:
+        raise HTTPException(
+            status_code=400,
+            detail="Session already has messages. Use /action endpoint for continued conversation.",
+        )
+
+    # Get the session to find the adventure
+    from app.db.models import GameSession
+
+    result = await db.execute(select(GameSession).where(GameSession.id == session_id))
+    session = result.scalar_one_or_none()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Get character for context
+    result = await db.execute(select(Character).where(Character.id == session.character_id))
+    character = result.scalar_one_or_none()
+    if not character:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    # Check if this session was created from a custom adventure
+    # by checking the adventure_select page which passes the adventure in the redirect
+    # For now, we'll create a generic opening based on location
+    opening_narration = (
+        f"Welcome, {character.name}!\n\n"
+        f"You find yourself at {session.current_location or 'the beginning of your journey'}. "
+        f"As a level {character.level} {character.race.value} {character.character_class.value}, "
+        f"you are ready for whatever challenges lie ahead.\n\n"
+        f"What would you like to do?"
+    )
+
+    # Save the opening message
+    dm_msg = MessageCreate(
+        session_id=session_id,
+        role="assistant",
+        content=opening_narration,
+        tokens_used=0,
+    )
+    await ConversationService.create_message(db, dm_msg)
+
+    return DMResponse(
+        response=opening_narration,
+        roll_request=None,
+        quest_complete_id=None,
+        scene_image_url=None,
+        tokens_used=0,
+    )
+
+
 @router.post("/action", response_model=DMResponse)
 async def send_player_action(
     request: PlayerActionRequest,
@@ -79,7 +150,7 @@ async def send_player_action(
     if session_id:
         recent_messages = await ConversationService.get_recent_messages(db, session_id, count=10)
         conversation_history = [
-            {"role": msg.role, "content": msg.content} for msg in recent_messages
+            {"role": msg.role.value, "content": msg.content} for msg in recent_messages
         ]
 
     # Build character context
@@ -117,12 +188,26 @@ async def send_player_action(
         else:
             action_text += "]"
 
+    # Fetch relevant memories for context (RAG pattern)
+    memory_context = None
+    if session_id:
+        try:
+            from app.services.memory_service import MemoryService
+
+            memory_context = await MemoryService.get_context_for_ai(
+                db=db, session_id=session_id, current_situation=action_text, max_memories=5
+            )
+        except Exception as e:
+            # Memory system is optional, don't fail if it errors
+            logger.warning(f"Failed to fetch memory context: {e}")
+
     # Get DM response
     dm_engine = DMEngine()
     result = await dm_engine.narrate(
         user_action=action_text,
         conversation_history=conversation_history,
         character_context=character_context,
+        memory_context=memory_context,
     )
 
     # Save to conversation history if session provided
