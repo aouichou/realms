@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
-from app.models.character import Character
+from app.db.models import Character
 from app.services.roll_parser import Ability, RollType
 
 
@@ -60,8 +60,6 @@ class DiceRollResult:
 
     @property
     def is_critical_fail(self) -> bool:
-        """Check if this is a critical failure (natural 1 on d20)"""
-        return self.notation.startswith("d20") and len(self.rolls) > 0 and min(self.rolls) == 1
         """Check if this is a critical failure (natural 1 on d20)"""
         return self.notation.startswith("d20") and len(self.rolls) > 0 and min(self.rolls) == 1
 

@@ -111,5 +111,4 @@ async def readiness_check():
         "timestamp": datetime.now().isoformat(),
     }
 
-
     return response

@@ -38,9 +38,9 @@ class ContextWindowManager:
         """Initialize context window manager"""
         try:
             self.encoder = tiktoken.get_encoding(self.ENCODING_NAME)
-            logger.info(f"Initialized context window manager with {self.ENCODING_NAME} encoding")
+            logger.info("Initialized context window manager with %s encoding", self.ENCODING_NAME)
         except Exception as e:
-            logger.warning(f"Failed to load tiktoken encoder: {e}. Using fallback counting.")
+            logger.warning("Failed to load tiktoken encoder: %s. Using fallback counting.", e)
             self.encoder = None
 
     def count_tokens(self, text: str) -> int:
@@ -60,7 +60,7 @@ class ContextWindowManager:
             try:
                 return len(self.encoder.encode(text))
             except Exception as e:
-                logger.warning(f"Token counting failed: {e}. Using fallback.")
+                logger.warning("Token counting failed: %s. Using fallback.", e)
 
         # Fallback: rough estimate (1 token ≈ 4 characters)
         return len(text) // 4
@@ -116,10 +116,10 @@ class ContextWindowManager:
         current_tokens = self.count_messages_tokens(messages)
 
         if current_tokens <= max_tokens:
-            logger.debug(f"Context within limits: {current_tokens}/{max_tokens} tokens")
+            logger.debug("Context within limits: %d/%d tokens", current_tokens, max_tokens)
             return messages, 0
 
-        logger.info(f"Context exceeds limit: {current_tokens}/{max_tokens} tokens. Pruning...")
+        logger.info("Context exceeds limit: %d/%d tokens. Pruning...", current_tokens, max_tokens)
 
         # Identify system messages (usually first 1-3 messages)
         system_count = 0
@@ -145,7 +145,9 @@ class ContextWindowManager:
 
         if reserved_tokens >= max_tokens:
             logger.warning(
-                f"System + recent messages exceed limit! ({reserved_tokens}/{max_tokens} tokens)"
+                "System + recent messages exceed limit! (%d/%d tokens)",
+                reserved_tokens,
+                max_tokens,
             )
             # Emergency: keep only system and most recent message
             return system_messages + [messages[-1]], current_tokens - self.count_messages_tokens(
@@ -174,9 +176,11 @@ class ContextWindowManager:
         tokens_removed = current_tokens - pruned_tokens
 
         logger.info(
-            f"Pruned {len(messages) - len(pruned_messages)} messages "
-            f"({tokens_removed} tokens removed). "
-            f"New total: {pruned_tokens}/{max_tokens} tokens"
+            "Pruned %d messages (%d tokens removed). New total: %d/%d tokens",
+            len(messages) - len(pruned_messages),
+            tokens_removed,
+            pruned_tokens,
+            max_tokens,
         )
 
         return pruned_messages, tokens_removed

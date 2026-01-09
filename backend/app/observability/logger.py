@@ -77,12 +77,12 @@ def get_logger(name: str) -> logging.Logger:
     return logger
 
 
-class log_context:
+class LogContext:
     """
     Context manager for setting log context variables
 
     Usage:
-        with log_context(request_id="abc123", user_id=42):
+        with LogContext(request_id="abc123", user_id=42):
             logger.info("User action")
     """
 
@@ -114,6 +114,10 @@ class log_context:
         """Reset context variables"""
         for token in self.tokens:
             token.var.reset(token)
+
+
+# Backward compatibility alias
+log_context = LogContext
 
 
 # Default logger for the application

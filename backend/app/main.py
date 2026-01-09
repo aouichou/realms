@@ -56,9 +56,9 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown events
     """
     # Startup
-    logger.info(f"Starting {settings.app_name} v{settings.app_version}")
-    logger.info(f"Environment: {settings.environment}")
-    logger.info(f"Debug mode: {settings.debug}")
+    logger.info("Starting %s v%s", settings.app_name, settings.app_version)
+    logger.info("Environment: %s", settings.environment)
+    logger.info("Debug mode: %s", settings.debug)
 
     # Initialize OpenTelemetry tracing
     if settings.tracing_enabled:
@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI):
             otlp_endpoint=settings.otlp_endpoint,
             enabled=True,
         )
-        logger.info(f"Tracing enabled: exporting to {settings.otlp_endpoint}")
+        logger.info("Tracing enabled: exporting to %s", settings.otlp_endpoint)
 
     # Initialize database
     try:
@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
         # await init_db()  # Only use in development without Alembic
         logger.info("Database connection established")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error("Failed to initialize database: %s", e)
         raise
 
     # Initialize Redis connection
@@ -86,7 +86,7 @@ async def lifespan(app: FastAPI):
         await session_service.connect()
         logger.info("Redis connection established")
     except Exception as e:
-        logger.error(f"Failed to initialize Redis: {e}")
+        logger.error("Failed to initialize Redis: %s", e)
         raise
 
     # Setup query performance monitoring
@@ -149,7 +149,7 @@ if settings.tracing_enabled:
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors with custom response"""
     errors = exc.errors()
-    logger.error(f"Validation error: {errors}")
+    logger.error("Validation error: %s", errors)
 
     # Clean up error details to make them JSON serializable
     cleaned_errors = []
@@ -175,7 +175,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     """Handle unexpected errors"""
-    logger.error(f"Unexpected error: {str(exc)}", exc_info=True)
+    logger.error("Unexpected error: %s", str(exc), exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={

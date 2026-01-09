@@ -290,9 +290,7 @@ class EffectsService:
             Number of effects cleaned up
         """
         result = await db.execute(
-            select(ActiveEffect).where(
-                ActiveEffect.is_active, ActiveEffect.expires_at.isnot(None)
-            )
+            select(ActiveEffect).where(ActiveEffect.is_active, ActiveEffect.expires_at.isnot(None))
         )
         effects = result.scalars().all()
 
