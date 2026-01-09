@@ -89,7 +89,7 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 		if (effect.duration_type === 'until_long_rest') return 'Until Long Rest';
 		if (effect.duration_type === 'until_short_rest') return 'Until Short Rest';
 		if (effect.duration_type === 'concentration') return 'Concentration';
-		
+
 		if (effect.rounds_remaining !== undefined && effect.rounds_remaining !== null) {
 			const rounds = effect.rounds_remaining;
 			return rounds === 1 ? '1 round' : `${rounds} rounds`;
@@ -100,11 +100,11 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 			const expiresAt = new Date(effect.expires_at);
 			const diffMs = expiresAt.getTime() - now.getTime();
 			const diffMins = Math.ceil(diffMs / 60000);
-			
+
 			if (diffMins < 1) return 'Expiring soon';
 			if (diffMins === 1) return '1 minute';
 			if (diffMins < 60) return `${diffMins} minutes`;
-			
+
 			const diffHours = Math.ceil(diffMins / 60);
 			return diffHours === 1 ? '1 hour' : `${diffHours} hours`;
 		}
