@@ -26,7 +26,7 @@ async def narrate_action(request: NarrateRequest):
         return NarrateResponse(narration=result["narration"], tokens_used=result["tokens_used"])
 
     except Exception as e:
-        logger.error(f"Error in narrate_action: {e}")
+        logger.error("Error in narrate_action: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -48,7 +48,7 @@ async def narrate_action_stream(request: NarrateRequest):
                     yield f"data: {chunk}\n\n"
                 yield "data: [DONE]\n\n"
             except Exception as e:
-                logger.error(f"Error in stream: {e}")
+                logger.error("Error in stream: %s", e)
                 yield f"data: [ERROR] {str(e)}\n\n"
 
         return StreamingResponse(
@@ -62,7 +62,7 @@ async def narrate_action_stream(request: NarrateRequest):
         )
 
     except Exception as e:
-        logger.error(f"Error in narrate_action_stream: {e}")
+        logger.error("Error in narrate_action_stream: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -79,7 +79,7 @@ async def start_adventure():
         return NarrateResponse(narration=result["narration"], tokens_used=result["tokens_used"])
 
     except Exception as e:
-        logger.error(f"Error in start_adventure: {e}")
+        logger.error("Error in start_adventure: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -97,7 +97,7 @@ async def start_adventure_stream():
                     yield f"data: {chunk}\n\n"
                 yield "data: [DONE]\n\n"
             except Exception as e:
-                logger.error(f"Error in stream: {e}")
+                logger.error("Error in stream: %s", e)
                 yield f"data: [ERROR] {str(e)}\n\n"
 
         return StreamingResponse(
@@ -111,5 +111,5 @@ async def start_adventure_stream():
         )
 
     except Exception as e:
-        logger.error(f"Error in start_adventure_stream: {e}")
+        logger.error("Error in start_adventure_stream: %s", e)
         raise HTTPException(status_code=500, detail=str(e))

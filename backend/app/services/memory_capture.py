@@ -56,10 +56,10 @@ class MemoryCaptureService:
                 npcs_involved=combatant_names,
             )
 
-            logger.info(f"Captured combat memory for session {session_id}")
+            logger.info("Captured combat memory for session %s", session_id)
 
         except Exception as e:
-            logger.error(f"Failed to capture combat memory: {e}")
+            logger.error("Failed to capture combat memory: %s", e)
 
     @staticmethod
     async def capture_dialogue(
@@ -100,10 +100,10 @@ class MemoryCaptureService:
                 npcs_involved=[npc_name],
             )
 
-            logger.debug(f"Captured dialogue memory for session {session_id}")
+            logger.debug("Captured dialogue memory for session %s", session_id)
 
         except Exception as e:
-            logger.error(f"Failed to capture dialogue memory: {e}")
+            logger.error("Failed to capture dialogue memory: %s", e)
 
     @staticmethod
     async def capture_discovery(
@@ -148,10 +148,10 @@ class MemoryCaptureService:
                 items_involved=items,
             )
 
-            logger.info(f"Captured discovery memory for session {session_id}")
+            logger.info("Captured discovery memory for session %s", session_id)
 
         except Exception as e:
-            logger.error(f"Failed to capture discovery memory: {e}")
+            logger.error("Failed to capture discovery memory: %s", e)
 
     @staticmethod
     async def capture_quest_milestone(
@@ -184,10 +184,10 @@ class MemoryCaptureService:
                 tags=[quest_title, milestone],
             )
 
-            logger.info(f"Captured quest memory for session {session_id}")
+            logger.info("Captured quest memory for session %s", session_id)
 
         except Exception as e:
-            logger.error(f"Failed to capture quest memory: {e}")
+            logger.error("Failed to capture quest memory: %s", e)
 
     @staticmethod
     async def capture_decision(
@@ -219,10 +219,10 @@ class MemoryCaptureService:
                 importance=importance,
             )
 
-            logger.info(f"Captured decision memory for session {session_id}")
+            logger.info("Captured decision memory for session %s", session_id)
 
         except Exception as e:
-            logger.error(f"Failed to capture decision memory: {e}")
+            logger.error("Failed to capture decision memory: %s", e)
 
     @staticmethod
     async def capture_npc_interaction(
@@ -264,10 +264,10 @@ class MemoryCaptureService:
                 npcs_involved=[npc_name],
             )
 
-            logger.info(f"Captured NPC interaction memory for session {session_id}")
+            logger.info("Captured NPC interaction memory for session %s", session_id)
 
         except Exception as e:
-            logger.error(f"Failed to capture NPC interaction memory: {e}")
+            logger.error("Failed to capture NPC interaction memory: %s", e)
 
     @staticmethod
     async def capture_location_visit(
@@ -298,10 +298,10 @@ class MemoryCaptureService:
                 locations=[location_name],
             )
 
-            logger.debug(f"Captured location memory for session {session_id}")
+            logger.debug("Captured location memory for session %s", session_id)
 
         except Exception as e:
-            logger.error(f"Failed to capture location memory: {e}")
+            logger.error("Failed to capture location memory: %s", e)
 
     @staticmethod
     async def capture_loot(
@@ -339,7 +339,59 @@ class MemoryCaptureService:
                 items_involved=items,
             )
 
-            logger.debug(f"Captured loot memory for session {session_id}")
+            logger.debug("Captured loot memory for session %s", session_id)
 
         except Exception as e:
-            logger.error(f"Failed to capture loot memory: {e}")
+            logger.error("Failed to capture loot memory: %s", e)
+
+    @staticmethod
+    async def capture_spell_cast(
+        db: AsyncSession,
+        session_id: UUID,
+        spell_name: str,
+        spell_level: int,
+        target: Optional[str] = None,
+        outcome: Optional[str] = None,
+        importance: Optional[int] = None,
+    ):
+        """Capture spell casting event
+
+        Args:
+            db: Database session
+            session_id: Game session ID
+            spell_name: Name of spell cast
+            spell_level: Level of spell
+            target: Optional target name
+            outcome: Optional outcome description
+            importance: Optional importance override
+        """
+        try:
+            content = f"Cast {spell_name} (level {spell_level})"
+            if target:
+                content += f" on {target}"
+            if outcome:
+                content += f": {outcome}"
+
+            if importance is None:
+                # Higher level spells are more important
+                if spell_level >= 7:
+                    importance = 8
+                elif spell_level >= 5:
+                    importance = 7
+                elif spell_level >= 3:
+                    importance = 6
+                else:
+                    importance = 5
+
+            await MemoryService.store_memory(
+                db=db,
+                session_id=session_id,
+                event_type=EventType.OTHER,
+                content=content,
+                importance=importance,
+            )
+
+            logger.debug("Captured spell cast memory for session %s", session_id)
+
+        except Exception as e:
+            logger.error("Failed to capture spell cast memory: %s", e)

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.base import get_db
-from app.db.models import CharacterClass, CharacterSpell, Spell
+from app.db.models import Character, CharacterClass, CharacterSpell, Spell
 from app.observability.logger import get_logger
 from app.schemas.spell import (
     CastSpellRequest,
@@ -621,7 +621,7 @@ async def cast_spell(
                 session_id=session.id,
                 spell_name=spell.name,
                 spell_level=spell.level,
-                target=request.target_name if hasattr(request, "target_name") else None,
+                target=None,  # CastSpellRequest doesn't have target_name field
                 outcome=details,
             )
     except Exception as e:

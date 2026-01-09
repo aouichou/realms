@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db.base import get_db
-from app.db.models import Character, CharacterQuest, Quest, QuestObjective, QuestState
+from app.db.models import Character, CharacterQuest, ItemType, Quest, QuestObjective, QuestState
 
 router = APIRouter(prefix="/api/quests", tags=["quests"])
 

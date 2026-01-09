@@ -47,7 +47,7 @@ class MistralClient:
         self.last_request_time = 0.0
         self.request_lock = asyncio.Lock()
 
-        logger.info(f"Initialized Mistral client with model: {self.model}")
+        logger.info("Initialized Mistral client with model: %s", self.model)
 
     async def _wait_for_rate_limit(self):
         """
@@ -61,7 +61,7 @@ class MistralClient:
 
             if time_since_last_request < min_interval:
                 wait_time = min_interval - time_since_last_request
-                logger.debug(f"Rate limiting: waiting {wait_time:.2f}s")
+                logger.debug("Rate limiting: waiting %.2fs", wait_time)
                 await asyncio.sleep(wait_time)
 
             self.last_request_time = time.time()
@@ -195,7 +195,7 @@ class MistralClient:
         await self._wait_for_rate_limit()
 
         try:
-            logger.debug(f"Starting streaming chat completion: {len(messages)} messages")
+            logger.debug("Starting streaming chat completion: %d messages", len(messages))
 
             # Get streaming response
             stream = await asyncio.to_thread(
@@ -220,16 +220,16 @@ class MistralClient:
                         else:
                             yield str(content)
 
-            logger.debug(f"Streaming completed: ~{token_count} tokens")
+            logger.debug("Streaming completed: ~%d tokens", token_count)
 
         except Exception as e:
             error_msg = str(e).lower()
 
             if "rate limit" in error_msg or "429" in error_msg:
-                logger.error(f"Rate limit exceeded during streaming: {e}")
+                logger.error("Rate limit exceeded during streaming: %s", e)
                 raise RateLimitError("Rate limit exceeded. Please try again later.") from e
 
-            logger.error(f"Mistral API streaming error: {e}")
+            logger.error("Mistral API streaming error: %s", e)
             raise MistralAPIError(f"Failed to stream completion from Mistral: {e}") from e
 
     def get_token_count(self, messages: List[Dict[str, str]]) -> int:

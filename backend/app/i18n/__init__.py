@@ -4,7 +4,6 @@ Provides translation services for English and French
 """
 
 import gettext
-import os
 from contextvars import ContextVar
 from pathlib import Path
 from typing import Optional
