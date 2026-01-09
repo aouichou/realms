@@ -187,8 +187,7 @@ async def send_player_action(
         from app.db.models import CharacterSpell
 
         prepared_spells_result = await db.execute(
-            select(CharacterSpell)
-            .where(
+            select(CharacterSpell).where(
                 CharacterSpell.character_id == character.id,
                 CharacterSpell.is_prepared == True,
             )

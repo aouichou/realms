@@ -52,10 +52,16 @@ class ActiveEffect(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     character_id: Mapped[UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("characters.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("characters.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     session_id: Mapped[UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("game_sessions.id", ondelete="CASCADE"), nullable=True, index=True
+        UUID(as_uuid=True),
+        ForeignKey("game_sessions.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
 
     # Effect identification
@@ -64,7 +70,9 @@ class ActiveEffect(Base):
     description: Mapped[str] = mapped_column(Text, nullable=True)
 
     # Source information
-    source: Mapped[str] = mapped_column(String(200), nullable=True)  # "Bless spell", "Poisoned by trap"
+    source: Mapped[str] = mapped_column(
+        String(200), nullable=True
+    )  # "Bless spell", "Poisoned by trap"
     source_character_id: Mapped[UUID] = mapped_column(
         UUID(as_uuid=True), nullable=True
     )  # Who cast the spell/caused effect
@@ -77,10 +85,14 @@ class ActiveEffect(Base):
     rounds_remaining: Mapped[int] = mapped_column(
         Integer, nullable=True
     )  # Countdown for round-based effects
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)  # Absolute expiration time
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=True
+    )  # Absolute expiration time
 
     # Effect mechanics
-    bonus_value: Mapped[int] = mapped_column(Integer, nullable=True, default=0)  # +X to rolls, AC, etc.
+    bonus_value: Mapped[int] = mapped_column(
+        Integer, nullable=True, default=0
+    )  # +X to rolls, AC, etc.
     dice_bonus: Mapped[str] = mapped_column(String(20), nullable=True)  # "1d4", "1d8", etc.
     advantage: Mapped[bool] = mapped_column(Boolean, default=False)  # Grants advantage
     disadvantage: Mapped[bool] = mapped_column(Boolean, default=False)  # Imposes disadvantage

@@ -79,7 +79,9 @@ class EffectsService:
                 if duration_value:
                     existing_effect.rounds_remaining = duration_value
                 if duration_type == EffectDuration.MINUTES and duration_value:
-                    existing_effect.expires_at = datetime.utcnow() + timedelta(minutes=duration_value)
+                    existing_effect.expires_at = datetime.utcnow() + timedelta(
+                        minutes=duration_value
+                    )
                 elif duration_type == EffectDuration.HOURS and duration_value:
                     existing_effect.expires_at = datetime.utcnow() + timedelta(hours=duration_value)
                 await db.commit()
@@ -286,7 +288,9 @@ class EffectsService:
             Number of effects cleaned up
         """
         result = await db.execute(
-            select(ActiveEffect).where(ActiveEffect.is_active == True, ActiveEffect.expires_at.isnot(None))
+            select(ActiveEffect).where(
+                ActiveEffect.is_active == True, ActiveEffect.expires_at.isnot(None)
+            )
         )
         effects = result.scalars().all()
 
