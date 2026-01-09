@@ -264,8 +264,11 @@ class Character(Base):
     # Experience points for leveling
     experience_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
-    # Gold pieces (currency)
-    gold: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # D&D 5e Currency System (gp = gold, sp = silver, cp = copper)
+    # Conversion: 1 gp = 10 sp = 100 cp
+    gold: Mapped[int] = mapped_column(Integer, default=0, nullable=False, comment="Gold pieces")
+    silver: Mapped[int] = mapped_column(Integer, default=0, nullable=False, comment="Silver pieces")
+    copper: Mapped[int] = mapped_column(Integer, default=0, nullable=False, comment="Copper pieces")
 
     # Additional attributes for AI companions and NPCs
     background: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

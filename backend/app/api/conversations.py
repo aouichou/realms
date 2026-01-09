@@ -329,9 +329,36 @@ async def send_player_action(
     narration = result["narration"]
     roll_requests_data = []
 
+    # DEV LOG: Log full DM response for debugging
+    logger.info(
+        "DM Response Generated",
+        extra={
+            "extra_data": {
+                "session_id": str(session_id),
+                "character_id": str(request.character_id),
+                "narration_length": len(narration),
+                "narration_preview": narration[:200],
+                "has_roll_tags": RollParser.has_roll_tags(narration),
+            }
+        },
+    )
+
     if RollParser.has_roll_tags(narration):
+        logger.info(
+            "Roll tags detected in DM narration",
+            extra={"extra_data": {"session_id": str(session_id), "narration": narration}},
+        )
         cleaned_narration, roll_requests = RollParser.parse_narration(narration)
         result["narration"] = cleaned_narration
+        logger.info(
+            "Parsed roll requests",
+            extra={
+                "extra_data": {
+                    "count": len(roll_requests),
+                    "types": [r.roll_type.value for r in roll_requests],
+                }
+            },
+        )
 
         # Execute rolls automatically
         for roll_request in roll_requests:

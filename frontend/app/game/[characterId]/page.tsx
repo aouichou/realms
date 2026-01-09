@@ -577,7 +577,7 @@ export default function GamePage() {
 										{message.role === 'user' ? 'You' : 'Dungeon Master'}
 									</span>
 									{message.role === 'assistant' && (
-										<span className="text-xs font-body font-bold uppercase tracking-wide
+										<span className="text-xs font-body font-bold tracking-wide
                                    bg-accent-400 text-primary-900 px-2 py-0.5 rounded">
 											AI
 										</span>

@@ -54,28 +54,44 @@ NEVER include:
 DICE ROLLS - IMPORTANT:
 When player actions require dice rolls, embed roll tags in your narration using these EXACT formats:
 
-Attack Rolls:
-- [ROLL:attack:d20+5] for attack with modifier
-- Example: "You swing your sword [ROLL:attack:d20+4] at the goblin."
+1. SPELL SAVING THROWS (Most Important):
+- Command spell: "He must resist your magic! [ROLL:save:wis:DC13]"
+- Charm Person: "She looks into your eyes [ROLL:save:wis:DC13] as the enchantment takes hold."
+- Hold Person: "You gesture, freezing them [ROLL:save:wis:DC13] in place."
+- Thunderwave: "The sonic boom erupts! [ROLL:save:con:DC13]"
+- Burning Hands: "Flames shoot from your fingers! [ROLL:save:dex:DC13]"
+- Suggestion: "You whisper persuasively [ROLL:save:wis:DC13] into their mind."
+- Sleep: "Magical drowsiness washes over them [ROLL:save:wis:DC13]."
 
-Saving Throws:
-- [ROLL:save:dex:DC15] for DEX save vs DC 15
-- [ROLL:save:wis:DC13] for WIS save vs DC 13
-- Example: "A burst of flame erupts! [ROLL:save:dex:DC15]"
+2. Attack Rolls:
+- Melee: "You swing your sword [ROLL:attack:d20+4] at the goblin's chest."
+- Ranged: "You loose an arrow [ROLL:attack:d20+5] at the distant target."
+- Spell Attack: "A ray of frost [ROLL:attack:d20+5] streaks toward the enemy."
+- Unarmed: "You throw a punch [ROLL:attack:d20+2] at their jaw."
 
-Ability Checks:
-- [ROLL:check:perception:DC12] for Perception check
-- [ROLL:check:stealth:DC10] for Stealth check
-- Example: "You try to spot traps [ROLL:check:perception:DC15]."
+3. Ability Checks:
+- Stealth: "You creep forward silently [ROLL:check:stealth:DC12]."
+- Perception: "You scan for danger [ROLL:check:perception:DC15]."
+- Persuasion: "You make your case [ROLL:check:persuasion:DC14]."
+- Deception: "You spin your lie [ROLL:check:deception:DC13]."
+- Investigation: "You search for clues [ROLL:check:investigation:DC12]."
+- Athletics: "You climb the wall [ROLL:check:athletics:DC15]."
+- Arcana: "You identify the runes [ROLL:check:arcana:DC14]."
 
-Damage Rolls:
-- [ROLL:damage:2d6+3] after successful attacks
-- Example: "Your blade strikes true! [ROLL:damage:1d8+3]"
+4. Saving Throws (Environmental):
+- Trap: "A pressure plate clicks! [ROLL:save:dex:DC15]"
+- Poison: "The gas fills your lungs [ROLL:save:con:DC13]."
+- Fear: "Terror grips your mind [ROLL:save:wis:DC12]."
 
-Initiative:
-- [ROLL:initiative:d20+2] when combat begins
+5. Damage Rolls:
+- Weapon: "Your blade connects! [ROLL:damage:1d8+3]"
+- Spell: "The flames engulf them! [ROLL:damage:3d6]"
+- Fall: "You tumble down! [ROLL:damage:2d6]"
 
-The rolls execute automatically and results are injected back. DO NOT wait or ask - just continue narration. Keep roll tags natural in the story flow.
+6. Initiative:
+- "Combat erupts! [ROLL:initiative:d20+2]"
+
+The rolls execute AUTOMATICALLY - results appear immediately. DO NOT wait or ask - just embed tags naturally in your narration. The system handles everything.
 
 SPELL SLOTS - RESOURCE MANAGEMENT:
 You will receive the character's current spell slots in the context. BE AWARE of spell resource management:
@@ -130,28 +146,44 @@ N'INCLUEZ JAMAIS:
 JETS DE DÉS - IMPORTANT:
 Lorsque les actions du joueur nécessitent des jets de dés, intégrez des balises de jet dans votre narration en utilisant ces formats EXACTS:
 
-Jets d'attaque:
-- [ROLL:attack:d20+5] pour attaque avec modificateur
-- Exemple: "Vous balancez votre épée [ROLL:attack:d20+4] contre le gobelin."
+1. JETS DE SAUVEGARDE DE SORTS (Le Plus Important):
+- Sort Injonction: "Il doit résister à votre magie! [ROLL:save:wis:DC13]"
+- Charme-personne: "Elle croise votre regard [ROLL:save:wis:DC13] alors que l'enchantement prend effet."
+- Immobilisation de personne: "Vous gestuez, les figeant [ROLL:save:wis:DC13] sur place."
+- Vague tonnante: "Le boom sonique éclate! [ROLL:save:con:DC13]"
+- Mains brûlantes: "Les flammes jaillissent de vos doigts! [ROLL:save:dex:DC13]"
+- Suggestion: "Vous chuchotez de façon persuasive [ROLL:save:wis:DC13] dans leur esprit."
+- Sommeil: "Une somnolence magique les envahit [ROLL:save:wis:DC13]."
 
-Jets de sauvegarde:
-- [ROLL:save:dex:DC15] pour jet de DEX contre DD 15
-- [ROLL:save:wis:DC13] for jet de SAG contre DD 13
-- Exemple: "Une explosion de flammes éclate! [ROLL:save:dex:DC15]"
+2. Jets d'attaque:
+- Mêlée: "Vous balancez votre épée [ROLL:attack:d20+4] vers la poitrine du gobelin."
+- Distance: "Vous décochez une flèche [ROLL:attack:d20+5] vers la cible distante."
+- Attaque de sort: "Un rayon de givre [ROLL:attack:d20+5] file vers l'ennemi."
+- Mains nues: "Vous lancez un coup de poing [ROLL:attack:d20+2] à sa mâchoire."
 
-Tests de caractéristique:
-- [ROLL:check:perception:DC12] pour test de Perception
-- [ROLL:check:stealth:DC10] pour test de Discrétion
-- Exemple: "Vous essayez de repérer des pièges [ROLL:check:perception:DC15]."
+3. Tests de caractéristique:
+- Discrétion: "Vous avancez silencieusement [ROLL:check:stealth:DC12]."
+- Perception: "Vous scrutez les dangers [ROLL:check:perception:DC15]."
+- Persuasion: "Vous plaidez votre cause [ROLL:check:persuasion:DC14]."
+- Tromperie: "Vous tissez votre mensonge [ROLL:check:deception:DC13]."
+- Investigation: "Vous cherchez des indices [ROLL:check:investigation:DC12]."
+- Athlétisme: "Vous escaladez le mur [ROLL:check:athletics:DC15]."
+- Arcanes: "Vous identifiez les runes [ROLL:check:arcana:DC14]."
 
-Jets de dégâts:
-- [ROLL:damage:2d6+3] après attaques réussies
-- Exemple: "Votre lame frappe juste! [ROLL:damage:1d8+3]"
+4. Jets de sauvegarde (Environnement):
+- Piège: "Une plaque de pression clique! [ROLL:save:dex:DC15]"
+- Poison: "Le gaz emplit vos poumons [ROLL:save:con:DC13]."
+- Peur: "La terreur saisit votre esprit [ROLL:save:wis:DC12]."
 
-Initiative:
-- [ROLL:initiative:d20+2] quand le combat commence
+5. Jets de dégâts:
+- Arme: "Votre lame touche! [ROLL:damage:1d8+3]"
+- Sort: "Les flammes les engloutissent! [ROLL:damage:3d6]"
+- Chute: "Vous dévalez! [ROLL:damage:2d6]"
 
-Les jets s'exécutent automatiquement et les résultats sont réinjectés. N'attendez PAS - continuez simplement la narration.
+6. Initiative:
+- "Le combat éclate! [ROLL:initiative:d20+2]"
+
+Les jets s'exécutent AUTOMATIQUEMENT - les résultats apparaissent immédiatement. N'attendez PAS - intégrez simplement les balises naturellement dans votre narration.
 
 EMPLACEMENTS DE SORTS - GESTION DES RESSOURCES:
 Vous recevrez les emplacements de sorts actuels du personnage. SOYEZ CONSCIENT de la gestion des ressources magiques:
