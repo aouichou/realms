@@ -1,11 +1,12 @@
 """
 DM (Dungeon Master) Engine
-Handles D&D narrative generation with focused storytelling
+Handles D&D narrative generation with focused storytelling in multiple languages
 """
 
 from datetime import datetime
 from typing import AsyncGenerator, Dict, List, Optional
 
+from app.i18n import translate
 from app.services.mistral_client import MistralAPIError, get_mistral_client
 from app.utils.logger import logger
 
@@ -14,10 +15,12 @@ class DMEngine:
     """
     Dungeon Master Engine for D&D narrative generation
     Provides focused storytelling without conversational meta-commentary
+    Supports English and French narration
     """
 
-    # System prompt for focused D&D narration
-    SYSTEM_PROMPT = """You are an expert Dungeon Master running a D&D 5th edition adventure.
+    # System prompt templates by language
+    SYSTEM_PROMPTS = {
+        "en": """You are an expert Dungeon Master running a D&D 5th edition adventure.
 
 CRITICAL INSTRUCTIONS:
 - Narrate the story directly without meta-commentary or options
@@ -92,12 +95,101 @@ When the player has completed all objectives of their current quest, recognize t
 Include this EXACT tag to trigger reward distribution:
 [QUEST_COMPLETE: quest_id="<quest_id>"]
 
-You will be told the quest_id in the character context. After completing a quest, narrate the victory and what comes next."""
+You will be told the quest_id in the character context. After completing a quest, narrate the victory and what comes next.""",
+        "fr": """Vous êtes un Maître du Donjon expert menant une aventure de D&D 5ème édition.
+
+INSTRUCTIONS CRITIQUES:
+- Racontez l'histoire directement sans méta-commentaires ni options
+- Ne dites jamais "Voulez-vous...", "Je peux...", "Faites-moi savoir si..."
+- Concentrez-vous sur les descriptions vives, les actions des personnages et les conséquences
+- Incluez des détails sensoriels (vues, sons, odeurs)
+- Réagissez aux actions du joueur avec des conséquences narratives immédiates
+- Lorsque le combat se produit, décrivez-le de manière cinématographique
+- Maintenez la cohérence avec les règles et la tradition de D&D 5e
+- Gardez les réponses concentrées et immersives (100-200 mots typiquement)
+
+STYLE NARRATIF:
+- Présent, deuxième personne ("Vous voyez...", "Vous ressentez...")
+- Montrez, ne dites pas - utilisez des images vives
+- Créez de la tension et de l'atmosphère
+- Équilibrez description et action
+- Terminez par une situation claire nécessitant une réponse du joueur
+
+N'INCLUEZ JAMAIS:
+- Options à choix multiples ou suggestions
+- Questions sur ce que le joueur veut
+- Explications de ce que vous pouvez faire en tant que MJ
+- Briser le quatrième mur
+- Listes d'actions possibles
+
+JETS DE DÉS - IMPORTANT:
+Lorsque les actions du joueur nécessitent des jets de dés, intégrez des balises de jet dans votre narration en utilisant ces formats EXACTS:
+
+Jets d'attaque:
+- [ROLL:attack:d20+5] pour attaque avec modificateur
+- Exemple: "Vous balancez votre épée [ROLL:attack:d20+4] contre le gobelin."
+
+Jets de sauvegarde:
+- [ROLL:save:dex:DC15] pour jet de DEX contre DD 15
+- [ROLL:save:wis:DC13] for jet de SAG contre DD 13
+- Exemple: "Une explosion de flammes éclate! [ROLL:save:dex:DC15]"
+
+Tests de caractéristique:
+- [ROLL:check:perception:DC12] pour test de Perception
+- [ROLL:check:stealth:DC10] pour test de Discrétion
+- Exemple: "Vous essayez de repérer des pièges [ROLL:check:perception:DC15]."
+
+Jets de dégâts:
+- [ROLL:damage:2d6+3] après attaques réussies
+- Exemple: "Votre lame frappe juste! [ROLL:damage:1d8+3]"
+
+Initiative:
+- [ROLL:initiative:d20+2] quand le combat commence
+
+Les jets s'exécutent automatiquement et les résultats sont réinjectés. N'attendez PAS - continuez simplement la narration.
+
+EMPLACEMENTS DE SORTS - GESTION DES RESSOURCES:
+Vous recevrez les emplacements de sorts actuels du personnage. SOYEZ CONSCIENT de la gestion des ressources magiques:
+
+Lorsque les informations du personnage incluent spell_slots:
+- Suivez quels niveaux de sorts sont disponibles
+- Mentionnez quand les ressources s'épuisent: "Vous sentez vos réserves magiques s'amenuiser" (1-2 emplacements restants)
+- Encouragez subtilement la gestion: "Ce pourrait être votre dernier grand sort"
+- N'autorisez jamais de lancers impossibles - sans emplacement, racontez l'échec: "Vous cherchez la magie, mais rien ne vient"
+- Rappelez les avantages du repos: "Un repos court restaurerait un peu de pouvoir" (pour les occultistes) ou "Seul un repos long peut restaurer toute votre puissance"
+
+Exemples de conscience des emplacements:
+- "Il vous reste 2 emplacements de niveau 3 - utilisez-les judicieusement"
+- "Votre dernier emplacement de niveau 1 vacille alors que vous lancez"
+- "La magie coule librement - vous êtes encore frais avec 4 emplacements à chaque niveau"
+- Si plus d'emplacements: "Vous essayez de tisser le sort, mais votre énergie magique est épuisée. Vous aurez besoin de repos."
+
+Respectez toujours les règles d'emplacements de sorts de D&D 5e.
+
+ACHÈVEMENT DE QUÊTE:
+Lorsque le joueur a terminé tous les objectifs de sa quête actuelle, reconnaissez ce moment et célébrez son succès.
+Incluez cette balise EXACTE pour déclencher la distribution des récompenses:
+[QUEST_COMPLETE: quest_id="<quest_id>"]
+
+L'identifiant de quête vous sera fourni dans le contexte du personnage. Après avoir terminé une quête, racontez la victoire et ce qui vient ensuite.""",
+    }
 
     def __init__(self):
         """Initialize DM Engine"""
         self.mistral_client = get_mistral_client()
-        logger.info("DM Engine initialized")
+        logger.info("DM Engine initialized with multilingual support")
+
+    def get_system_prompt(self, language: str = "en") -> str:
+        """
+        Get system prompt in the specified language
+
+        Args:
+            language: Language code ("en" or "fr")
+
+        Returns:
+            System prompt in the requested language
+        """
+        return self.SYSTEM_PROMPTS.get(language, self.SYSTEM_PROMPTS["en"])
 
     @staticmethod
     def extract_roll_request(response_text: str) -> tuple[str, Optional[Dict]]:
@@ -287,6 +379,7 @@ You will be told the quest_id in the character context. After completing a quest
         character_context: Optional[Dict] = None,
         game_state: Optional[Dict] = None,
         memory_context: Optional[str] = None,
+        language: str = "en",
     ) -> List[Dict[str, str]]:
         """
         Build message list for Mistral API with context
@@ -297,11 +390,13 @@ You will be told the quest_id in the character context. After completing a quest
             character_context: Character information
             game_state: Current game state (location, inventory, etc.)
             memory_context: Relevant past memories from vector search
+            language: Language for system prompt ("en" or "fr")
 
         Returns:
             List of formatted messages
         """
-        messages = [{"role": "system", "content": self.SYSTEM_PROMPT}]
+        # Use language-specific system prompt
+        messages = [{"role": "system", "content": self.get_system_prompt(language)}]
 
         # Add character context if available
         if character_context:
@@ -368,6 +463,7 @@ You will be told the quest_id in the character context. After completing a quest
         character_context: Optional[Dict] = None,
         game_state: Optional[Dict] = None,
         memory_context: Optional[str] = None,
+        language: str = "en",
     ) -> Dict:
         """
         Generate DM narration in response to player action
@@ -378,6 +474,7 @@ You will be told the quest_id in the character context. After completing a quest
             character_context: Character information
             game_state: Current game state
             memory_context: Relevant past memories from vector search
+            language: Language for narration ("en" or "fr")
 
         Returns:
             Dictionary with response and metadata
@@ -387,7 +484,12 @@ You will be told the quest_id in the character context. After completing a quest
         """
         try:
             messages = self._build_messages(
-                user_action, conversation_history, character_context, game_state, memory_context
+                user_action,
+                conversation_history,
+                character_context,
+                game_state,
+                memory_context,
+                language,
             )
 
             logger.debug(f"Generating narration for action: {user_action[:50]}...")
@@ -430,6 +532,7 @@ You will be told the quest_id in the character context. After completing a quest
         character_context: Optional[Dict] = None,
         game_state: Optional[Dict] = None,
         memory_context: Optional[str] = None,
+        language: str = "en",
     ) -> AsyncGenerator[str, None]:
         """
         Stream DM narration in real-time
@@ -440,6 +543,7 @@ You will be told the quest_id in the character context. After completing a quest
             character_context: Character information
             game_state: Current game state
             memory_context: Relevant past memories from vector search
+            language: Language for narration ("en" or "fr")
 
         Yields:
             Narration text chunks
@@ -449,7 +553,12 @@ You will be told the quest_id in the character context. After completing a quest
         """
         try:
             messages = self._build_messages(
-                user_action, conversation_history, character_context, game_state, memory_context
+                user_action,
+                conversation_history,
+                character_context,
+                game_state,
+                memory_context,
+                language,
             )
 
             logger.debug(f"Streaming narration for action: {user_action[:50]}...")

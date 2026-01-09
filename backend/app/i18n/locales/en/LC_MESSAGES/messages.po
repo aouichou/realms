@@ -1,0 +1,124 @@
+# English translations for Mistral Realms
+# Copyright (C) 2026
+# This file is distributed under the same license as the Mistral Realms package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: 1.0\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Authentication messages
+msgid "auth.login_success"
+msgstr "Login successful"
+
+msgid "auth.login_failed"
+msgstr "Invalid credentials"
+
+msgid "auth.register_success"
+msgstr "Registration successful"
+
+msgid "auth.user_exists"
+msgstr "Username or email already exists"
+
+msgid "auth.token_expired"
+msgstr "Token has expired"
+
+msgid "auth.invalid_token"
+msgstr "Invalid token"
+
+# Character messages
+msgid "character.created"
+msgstr "Character {name} created successfully"
+
+msgid "character.updated"
+msgstr "Character updated successfully"
+
+msgid "character.deleted"
+msgstr "Character deleted successfully"
+
+msgid "character.not_found"
+msgstr "Character not found"
+
+msgid "character.invalid_class"
+msgstr "Invalid character class"
+
+msgid "character.invalid_race"
+msgstr "Invalid character race"
+
+# Session messages
+msgid "session.created"
+msgstr "Adventure session created"
+
+msgid "session.not_found"
+msgstr "Session not found"
+
+msgid "session.completed"
+msgstr "Session completed"
+
+# Conversation messages
+msgid "conversation.message_sent"
+msgstr "Message sent"
+
+msgid "conversation.error"
+msgstr "Failed to process conversation"
+
+msgid "conversation.no_history"
+msgstr "No conversation history found"
+
+# Validation errors
+msgid "validation.required_field"
+msgstr "This field is required"
+
+msgid "validation.invalid_email"
+msgstr "Invalid email format"
+
+msgid "validation.password_too_short"
+msgstr "Password must be at least 8 characters"
+
+msgid "validation.invalid_format"
+msgstr "Invalid format"
+
+# System messages
+msgid "system.welcome"
+msgstr "Welcome to Mistral Realms"
+
+msgid "system.error_occurred"
+msgstr "An error occurred. Please try again"
+
+msgid "system.not_authorized"
+msgstr "You are not authorized to perform this action"
+
+msgid "system.rate_limit_exceeded"
+msgstr "Rate limit exceeded. Please try again later"
+
+msgid "system.service_unavailable"
+msgstr "Service temporarily unavailable"
+
+# Game messages
+msgid "game.roll_dice"
+msgstr "Rolling {dice}"
+
+msgid "game.combat_started"
+msgstr "Combat encounter started!"
+
+msgid "game.level_up"
+msgstr "Congratulations! You've reached level {level}"
+
+msgid "game.quest_completed"
+msgstr "Quest completed: {quest_name}"
+
+msgid "game.item_obtained"
+msgstr "You obtained: {item_name}"
+
+msgid "game.spell_learned"
+msgstr "New spell learned: {spell_name}"
+
+# DM Narration prompts
+msgid "dm.system_prompt"
+msgstr "You are an expert Dungeon Master for D&D 5e adventures. Narrate immersive, engaging stories."
+
+msgid "dm.welcome_message"
+msgstr "Welcome, adventurer! Your journey begins now..."

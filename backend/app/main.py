@@ -36,10 +36,13 @@ from app.api import (
 from app.api.routes import rules
 from app.config import settings
 from app.db.base import close_db
+from app.middleware.language import LanguageMiddleware
+from app.middleware.observability import ObservabilityMiddleware
 from app.middleware.performance import PerformanceMiddleware
 from app.middleware.query_monitor import query_monitor
 from app.middleware.rate_limit import RateLimitMiddleware
-from app.routers import health, narrate
+from app.observability.tracing import init_tracing, instrument_app
+from app.routers import health, metrics, narrate
 from app.services.redis_service import session_service
 from app.utils.logger import logger
 
@@ -54,6 +57,16 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
+
+    # Initialize OpenTelemetry tracing
+    if settings.tracing_enabled:
+        logger.info("Initializing OpenTelemetry tracing...")
+        init_tracing(
+            service_name=settings.service_name,
+            otlp_endpoint=settings.otlp_endpoint,
+            enabled=True,
+        )
+        logger.info(f"Tracing enabled: exporting to {settings.otlp_endpoint}")
 
     # Initialize database
     try:
@@ -106,6 +119,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Language detection middleware (sets language context)
+app.add_middleware(LanguageMiddleware)
+
+# Observability middleware (correlation IDs, metrics, logging)
+app.add_middleware(ObservabilityMiddleware)
+
 # Rate limiting middleware (before performance to track blocked requests)
 app.add_middleware(
     RateLimitMiddleware,
@@ -117,6 +136,10 @@ app.add_middleware(
 
 # Performance monitoring middleware
 app.add_middleware(PerformanceMiddleware)
+
+# Instrument FastAPI with OpenTelemetry
+if settings.tracing_enabled:
+    instrument_app(app)
 
 
 # Custom exception handlers
@@ -163,6 +186,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 # Include routers
 app.include_router(health.router)
+app.include_router(metrics.router)  # Prometheus metrics
 app.include_router(auth.router)  # Authentication endpoints
 app.include_router(companion.router)  # AI Companion
 app.include_router(images.router)  # Scene Image Generation
