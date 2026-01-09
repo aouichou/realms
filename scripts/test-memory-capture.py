@@ -8,24 +8,26 @@ from pathlib import Path
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
-from sqlalchemy import select
-from app.db.base import SessionLocal
+from app.db.base import async_session
 from app.db.models import AdventureMemory
+from sqlalchemy import select
 
 
 async def test_memory_capture():
     """Test that memories are being captured"""
-    async with SessionLocal() as db:
+    async with async_session() as db:
         # Check if any memories exist
         result = await db.execute(
-            select(AdventureMemory).order_by(AdventureMemory.created_at.desc()).limit(10)
+            select(AdventureMemory)
+            .order_by(AdventureMemory.created_at.desc())
+            .limit(10)
         )
         memories = result.scalars().all()
-        
-        print(f"\n{'='*60}")
+
+        print(f"\n{'=' * 60}")
         print(f"Memory Capture Integration Test")
-        print(f"{'='*60}\n")
-        
+        print(f"{'=' * 60}\n")
+
         if not memories:
             print("❌ No memories found in database")
             print("\nTo test memory capture:")
@@ -36,12 +38,14 @@ async def test_memory_capture():
         else:
             print(f"✅ Found {len(memories)} recent memories:\n")
             for i, memory in enumerate(memories, 1):
-                print(f"{i}. [{memory.event_type.value}] Importance: {memory.importance}/10")
+                print(
+                    f"{i}. [{memory.event_type.value}] Importance: {memory.importance}/10"
+                )
                 print(f"   Content: {memory.content[:100]}...")
                 print(f"   Created: {memory.created_at}")
                 print()
-        
-        print(f"{'='*60}\n")
+
+        print(f"{'=' * 60}\n")
 
 
 if __name__ == "__main__":
