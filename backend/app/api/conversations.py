@@ -15,6 +15,7 @@ from app.schemas.message import (
     MessageCreate,
     MessageResponse,
 )
+from app.services.context_window_manager import get_context_manager
 from app.services.conversation_service import ConversationService
 from app.services.dm_engine import DMEngine
 from app.services.image_service import ImageService
@@ -264,6 +265,34 @@ async def send_player_action(
         combined_context = summary_context
     elif memory_context:
         combined_context = memory_context
+
+    # Apply context window management (prune if needed)
+    context_manager = get_context_manager()
+
+    # Build preliminary messages for token counting
+    # This mimics what DMEngine._build_messages will create
+    preliminary_messages = []
+    preliminary_messages.append({"role": "system", "content": "DM_SYSTEM_PROMPT"})  # Placeholder
+    if character_context:
+        preliminary_messages.append({"role": "system", "content": "CHARACTER_CONTEXT"})
+    if combined_context:
+        preliminary_messages.append({"role": "system", "content": combined_context})
+    preliminary_messages.extend(conversation_history)
+    preliminary_messages.append({"role": "user", "content": action_text})
+
+    # Check context size and prune if needed
+    context_stats = context_manager.get_context_stats(preliminary_messages)
+    logger.info(
+        f"Context stats: {context_stats['total_tokens']}/{context_stats['max_tokens']} tokens "
+        f"({context_stats['usage_percent']}%), {context_stats['message_count']} messages"
+    )
+
+    if context_stats["is_over_limit"]:
+        logger.warning("Context exceeds limit, pruning conversation history...")
+        conversation_history, tokens_removed = context_manager.prune_messages(
+            conversation_history, keep_recent=3
+        )
+        logger.info(f"Pruned {tokens_removed} tokens from conversation history")
 
     # Get DM response
     dm_engine = DMEngine()
