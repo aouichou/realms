@@ -38,6 +38,7 @@ from app.config import settings
 from app.db.base import close_db
 from app.middleware.performance import PerformanceMiddleware
 from app.middleware.query_monitor import query_monitor
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.routers import health, narrate
 from app.services.redis_service import session_service
 from app.utils.logger import logger
@@ -103,6 +104,15 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Rate limiting middleware (before performance to track blocked requests)
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=settings.rate_limit_per_minute,
+    requests_per_hour=settings.rate_limit_per_hour,
+    burst_threshold=settings.rate_limit_burst_threshold,
+    block_duration=settings.rate_limit_block_duration,
 )
 
 # Performance monitoring middleware
