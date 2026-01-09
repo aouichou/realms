@@ -596,11 +596,15 @@ async def cast_spell(
     # Capture spell casting as memory
     try:
         from app.db.models import GameSession
+
         result_session = await db.execute(
-            select(GameSession).where(GameSession.character_id == character_id).order_by(GameSession.created_at.desc()).limit(1)
+            select(GameSession)
+            .where(GameSession.character_id == character_id)
+            .order_by(GameSession.created_at.desc())
+            .limit(1)
         )
         session = result_session.scalar_one_or_none()
-        
+
         if session:
             details = f"{character.name} cast {spell.name}"
             if total_damage:
@@ -609,13 +613,13 @@ async def cast_spell(
                 details += " (ritual cast)"
             elif slot_level > spell.level:
                 details += f" (upcast to level {slot_level})"
-            
+
             await MemoryCaptureService.capture_spell_cast(
                 db=db,
                 session_id=session.id,
                 spell_name=spell.name,
                 spell_level=spell.level,
-                target=request.target_name if hasattr(request, 'target_name') else None,
+                target=request.target_name if hasattr(request, "target_name") else None,
                 outcome=details,
             )
     except Exception as e:

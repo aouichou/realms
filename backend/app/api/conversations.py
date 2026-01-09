@@ -240,7 +240,7 @@ async def send_player_action(
                     potential_npc = line.split(":")[0].strip()
                     if potential_npc and len(potential_npc) < 30:
                         npcs.append(potential_npc)
-            
+
             # Capture the interaction
             await MemoryCaptureService.capture_dialogue(
                 db=db,
