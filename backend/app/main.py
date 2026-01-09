@@ -19,6 +19,7 @@ from app.api import (
     conditions,
     conversations,
     dice,
+    effects,
     game,
     images,
     inventory,
@@ -160,6 +161,7 @@ app.include_router(loot.router)
 app.include_router(progression.router)
 app.include_router(rest.router)
 app.include_router(conditions.router)
+app.include_router(effects.router)  # Active effects system
 app.include_router(npcs.router)
 app.include_router(quests.router)
 app.include_router(adventures.router)  # Preset adventures

@@ -17,6 +17,7 @@ from app.schemas.message import (
 )
 from app.services.conversation_service import ConversationService
 from app.services.dm_engine import DMEngine
+from app.services.image_service import ImageService
 from app.services.memory_capture import MemoryCaptureService
 from app.services.redis_service import session_service
 from app.services.roll_executor import RollExecutor
@@ -338,6 +339,20 @@ async def send_player_action(
         except Exception as e:
             logger.warning(f"Failed to capture dialogue memory: {e}")
 
+    # Generate scene image if scene change detected
+    scene_image_url = None
+    if dm_engine.detect_scene_change(result["narration"], request.action):
+        try:
+            logger.info("Scene change detected, generating image...")
+            scene_description = dm_engine.extract_scene_description(
+                result["narration"], character_context
+            )
+            scene_image_url = await ImageService.generate_scene_image(scene_description)
+            logger.info(f"Scene image generated: {scene_image_url}")
+        except Exception as e:
+            logger.error(f"Failed to generate scene image: {e}")
+            # Image generation is optional, don't fail the request
+
     # Build response
     roll_request = None
     if result.get("roll_request"):
@@ -347,7 +362,7 @@ async def send_player_action(
         response=result["narration"],
         roll_request=roll_request,
         quest_complete_id=result.get("quest_complete_id"),
-        scene_image_url=None,  # TODO: Add image generation
+        scene_image_url=scene_image_url,
         tokens_used=result["tokens_used"],
         rolls=response_data.get("rolls"),
     )

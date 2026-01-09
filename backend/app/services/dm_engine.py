@@ -157,6 +157,113 @@ You will be told the quest_id in the character context. After completing a quest
 
         return cleaned_text, quest_id
 
+    def detect_scene_change(
+        self,
+        response_text: str,
+        user_action: Optional[str] = None
+    ) -> bool:
+        """
+        Detect if the narration describes a new scene that should trigger image generation
+        
+        Triggers on:
+        - Location changes ("you enter", "you arrive", "you see")
+        - Combat initiation ("combat begins", "initiative", "attacks")
+        - NPC introductions ("appears", "steps forward", "emerges")
+        - Major events ("door opens", "treasure", "dragon")
+        
+        Args:
+            response_text: The DM narration
+            user_action: Optional player action that triggered this narration
+            
+        Returns:
+            True if scene change detected, False otherwise
+        """
+        # Normalize text for matching
+        text_lower = response_text.lower()
+        
+        # Location change triggers
+        location_triggers = [
+            "you enter", "you arrive", "you reach", "you find yourself",
+            "before you stands", "you see a", "stretches before you",
+            "you come to", "the path leads to"
+        ]
+        
+        # Combat triggers
+        combat_triggers = [
+            "roll initiative", "[ROLL:initiative", "combat begins",
+            "attacks you", "draws their weapon", "hostile",
+            "ambush", "leaps at you"
+        ]
+        
+        # NPC/Creature appearance triggers
+        appearance_triggers = [
+            "appears before", "steps forward", "emerges from",
+            "a figure", "someone", "creature", "dragon",
+            "beast", "approaches you"
+        ]
+        
+        # Major event triggers
+        event_triggers = [
+            "door opens", "gate swings", "treasure chest",
+            "altar glows", "portal", "magical",
+            "discovery", "reveals"
+        ]
+        
+        # Check all trigger categories
+        all_triggers = location_triggers + combat_triggers + appearance_triggers + event_triggers
+        
+        for trigger in all_triggers:
+            if trigger in text_lower:
+                logger.info(f"Scene change detected: trigger='{trigger}'")
+                return True
+                
+        return False
+
+    def extract_scene_description(
+        self,
+        response_text: str,
+        character_context: Optional[Dict] = None
+    ) -> str:
+        """
+        Extract a concise scene description for image generation
+        
+        Takes the first 2-3 sentences or first paragraph of narration
+        and formats it for image generation
+        
+        Args:
+            response_text: The full DM narration
+            character_context: Character info to include in description
+            
+        Returns:
+            Formatted scene description (100-200 chars ideal)
+        """
+        # Remove roll tags and quest tags
+        clean_text = re.sub(r'\[ROLL:[^\]]+\]', '', response_text)
+        clean_text = re.sub(r'\[QUEST_COMPLETE:[^\]]+\]', '', clean_text)
+        clean_text = clean_text.strip()
+        
+        # Take first 2-3 sentences or up to first paragraph break
+        sentences = clean_text.split('. ')
+        if len(sentences) >= 3:
+            description = '. '.join(sentences[:3]) + '.'
+        else:
+            description = clean_text
+            
+        # Limit to reasonable length for image prompts
+        if len(description) > 300:
+            description = description[:297] + '...'
+            
+        # Add character context if available for better image consistency
+        if character_context:
+            char_class = character_context.get('class', '')
+            char_race = character_context.get('race', '')
+            if char_class and char_race:
+                # Prepend character description
+                char_desc = f"A {char_race} {char_class}. "
+                description = char_desc + description
+                
+        return description
+
     def _build_messages(
         self,
         user_message: str,
