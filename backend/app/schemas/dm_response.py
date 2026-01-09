@@ -36,3 +36,4 @@ class DMResponse(BaseModel):
     scene_image_url: Optional[str] = None
     tokens_used: int
     rolls: Optional[list[dict[str, Any]]] = None  # Executed dice rolls
+    companion_speech: Optional[str] = None  # AI companion contextual response

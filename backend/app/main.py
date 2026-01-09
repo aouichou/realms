@@ -36,6 +36,8 @@ from app.api import (
 from app.api.routes import rules
 from app.config import settings
 from app.db.base import close_db
+from app.middleware.performance import PerformanceMiddleware
+from app.middleware.query_monitor import query_monitor
 from app.routers import health, narrate
 from app.services.redis_service import session_service
 from app.utils.logger import logger
@@ -71,6 +73,10 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to initialize Redis: {e}")
         raise
 
+    # Setup query performance monitoring
+    logger.info("Setting up query performance monitoring...")
+    query_monitor.setup_query_logging()
+
     yield
 
     # Shutdown
@@ -98,6 +104,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Performance monitoring middleware
+app.add_middleware(PerformanceMiddleware)
 
 
 # Custom exception handlers
