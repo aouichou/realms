@@ -255,6 +255,73 @@ cmd_bulk_mark_done() {
     fi
 }
 
+# Command: Update Issue (title or description)
+cmd_update_issue() {
+    local issue_key="$1"
+    local field="$2"
+    local value="$3"
+
+    if [ -z "$issue_key" ] || [ -z "$field" ] || [ -z "$value" ]; then
+        echo -e "${RED}Usage: $0 update-issue <issue_key> <field> <value>${NC}"
+        echo -e "${BLUE}Fields: title, description${NC}"
+        exit 1
+    fi
+
+    local data=""
+    case "$field" in
+        title|summary)
+            data=$(cat <<EOF
+{
+    "fields": {
+        "summary": "${value}"
+    }
+}
+EOF
+)
+            ;;
+        description|desc)
+            data=$(cat <<EOF
+{
+    "fields": {
+        "description": {
+            "type": "doc",
+            "version": 1,
+            "content": [
+                {
+                    "type": "paragraph",
+                    "content": [
+                        {
+                            "text": "${value}",
+                            "type": "text"
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}
+EOF
+)
+            ;;
+        *)
+            echo -e "${RED}Invalid field: ${field}. Use 'title' or 'description'${NC}"
+            exit 1
+            ;;
+    esac
+
+    echo -e "${BLUE}Updating ${issue_key} ${field}...${NC}"
+    local response=$(jira_api "PUT" "issue/${issue_key}" "$data")
+
+    # If response is empty, update was successful
+    if [ -z "$response" ] || [ "$response" = "{}" ]; then
+        echo -e "${GREEN}✓ Successfully updated ${issue_key}${NC}"
+    else
+        echo -e "${RED}✗ Failed to update ${issue_key}${NC}"
+        echo "$response" | jq '.'
+        exit 1
+    fi
+}
+
 # Command: List Open Tickets
 cmd_list_tickets() {
     echo -e "${BLUE}Fetching open tickets for project ${PROJECT_KEY}...${NC}"
@@ -339,6 +406,10 @@ case "${1:-}" in
         shift
         cmd_bulk_mark_done "$@"
         ;;
+    update-issue|ui)
+        shift
+        cmd_update_issue "$@"
+        ;;
     list-tickets|lt)
         shift
         cmd_list_tickets "$@"
@@ -362,6 +433,7 @@ case "${1:-}" in
         echo "  get-transitions (gt) <issue_key> Get available transitions"
         echo "  mark-done (md) <issue_key>      Mark issue as Done"
         echo "  bulk-mark-done (bmd) <key1> [key2] ... Mark multiple issues as Done"
+        echo "  update-issue (ui) <issue_key> <field> <value>  Update title or description"
         echo ""
         echo "Environment Variables:"
         echo "  JIRA_EMAIL      Your Atlassian email"

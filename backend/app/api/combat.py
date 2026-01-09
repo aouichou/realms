@@ -20,6 +20,8 @@ from app.schemas.combat import (
     StartCombatRequest,
 )
 from app.services.character_service import CharacterService
+from app.services.memory_capture import MemoryCaptureService
+from app.utils.logger import logger
 
 router = APIRouter(prefix="/api/combat", tags=["combat"])
 
@@ -308,6 +310,30 @@ async def end_combat(combat_id: UUID, db: AsyncSession = Depends(get_db)):
     combat.combat_log.append(f"Combat ended after {combat.round_number} rounds!")
 
     await db.commit()
+
+    # Capture combat memory
+    try:
+        combatant_names = [p["name"] for p in combat.participants]
+        player_survived = any(
+            p["hp_current"] > 0 for p in combat.participants if not p.get("is_enemy", False)
+        )
+        outcome = "victory" if player_survived else "defeat"
+        
+        # Build combat summary
+        details = f"Combat lasted {combat.round_number} rounds. "
+        details += f"{survived} survived, {defeated} defeated. "
+        details += "\n".join(combat.combat_log[-10:])  # Last 10 log entries
+        
+        await MemoryCaptureService.capture_combat_event(
+            db=db,
+            session_id=combat.session_id,
+            combatant_names=combatant_names,
+            outcome=outcome,
+            details=details,
+        )
+        logger.info(f"Captured combat memory for session {combat.session_id}")
+    except Exception as e:
+        logger.warning(f"Failed to capture combat memory: {e}")
 
     return EndCombatResponse(
         combat_id=combat.id,
