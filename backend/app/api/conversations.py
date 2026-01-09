@@ -236,20 +236,22 @@ async def send_player_action(
                 )
 
                 # Format roll result for frontend
-                roll_requests_data.append({
-                    "type": roll_request.roll_type.value,
-                    "description": roll_request.description,
-                    "notation": roll_result.notation,
-                    "rolls": roll_result.rolls,
-                    "modifier": roll_result.modifier,
-                    "total": roll_result.total,
-                    "dc": roll_result.dc,
-                    "success": roll_result.success,
-                    "advantage": roll_result.advantage,
-                    "disadvantage": roll_result.disadvantage,
-                    "is_critical": roll_result.is_critical,
-                    "is_critical_fail": roll_result.is_critical_fail,
-                })
+                roll_requests_data.append(
+                    {
+                        "type": roll_request.roll_type.value,
+                        "description": roll_request.description,
+                        "notation": roll_result.notation,
+                        "rolls": roll_result.rolls,
+                        "modifier": roll_result.modifier,
+                        "total": roll_result.total,
+                        "dc": roll_result.dc,
+                        "success": roll_result.success,
+                        "advantage": roll_result.advantage,
+                        "disadvantage": roll_result.disadvantage,
+                        "is_critical": roll_result.is_critical,
+                        "is_critical_fail": roll_result.is_critical_fail,
+                    }
+                )
             except Exception as e:
                 logger.error(f"Failed to execute roll: {e}")
                 # Continue without this roll rather than failing entire request
