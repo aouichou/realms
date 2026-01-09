@@ -318,12 +318,12 @@ async def end_combat(combat_id: UUID, db: AsyncSession = Depends(get_db)):
             p["hp_current"] > 0 for p in combat.participants if not p.get("is_enemy", False)
         )
         outcome = "victory" if player_survived else "defeat"
-        
+
         # Build combat summary
         details = f"Combat lasted {combat.round_number} rounds. "
         details += f"{survived} survived, {defeated} defeated. "
         details += "\n".join(combat.combat_log[-10:])  # Last 10 log entries
-        
+
         await MemoryCaptureService.capture_combat_event(
             db=db,
             session_id=combat.session_id,

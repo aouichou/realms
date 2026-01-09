@@ -68,11 +68,15 @@ async def add_item(character_id: UUID, item_data: ItemCreate, db: AsyncSession =
     # Capture loot acquisition as memory
     try:
         from app.db.models import GameSession
+
         result_session = await db.execute(
-            select(GameSession).where(GameSession.character_id == character_id).order_by(GameSession.created_at.desc()).limit(1)
+            select(GameSession)
+            .where(GameSession.character_id == character_id)
+            .order_by(GameSession.created_at.desc())
+            .limit(1)
         )
         session = result_session.scalar_one_or_none()
-        
+
         if session:
             await MemoryCaptureService.capture_loot(
                 db=db,
