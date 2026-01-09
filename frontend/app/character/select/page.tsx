@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { SaveSlotsModal } from '@/components/SaveSlotsModal';
 
 interface Character {
 	id: string;
@@ -19,6 +20,7 @@ export default function CharacterSelectPage() {
 	const [characters, setCharacters] = useState<Character[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [showLoadModal, setShowLoadModal] = useState(false);
 
 	useEffect(() => {
 		fetchCharacters();
@@ -91,9 +93,20 @@ export default function CharacterSelectPage() {
 	return (
 		<div className="min-h-screen bg-background p-4 md:p-8">
 			<div className="max-w-6xl mx-auto">
-				<div className="mb-8">
-					<h1 className="text-4xl font-display text-primary-900 mb-2">Select Your Character</h1>
-					<p className="text-neutral-500 font-body">Choose a character to begin your adventure</p>
+				<div className="mb-8 flex items-center justify-between">
+					<div>
+						<h1 className="text-4xl font-display text-primary-900 mb-2">Select Your Character</h1>
+						<p className="text-neutral-500 font-body">Choose a character to begin your adventure</p>
+					</div>
+					<button
+						onClick={() => setShowLoadModal(true)}
+						className="inline-flex items-center gap-2 px-6 py-3 border-2 border-accent-600 text-accent-600 rounded-lg hover:bg-accent-600 hover:text-white transition-all font-body font-semibold"
+					>
+						<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+						</svg>
+						<span>Load Game</span>
+					</button>
 				</div>
 
 				{characters.length === 0 ? (
@@ -161,6 +174,11 @@ export default function CharacterSelectPage() {
 						</div>
 					</>
 				)}
+
+				<SaveSlotsModal
+					isOpen={showLoadModal}
+					onClose={() => setShowLoadModal(false)}
+				/>
 			</div>
 		</div>
 	);

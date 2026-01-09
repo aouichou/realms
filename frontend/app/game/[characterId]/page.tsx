@@ -17,6 +17,8 @@ const ImageGalleryPanel = lazy(() => import('@/components/ImageGalleryPanel').th
 const InventoryPanel = lazy(() => import('@/components/InventoryPanel').then(mod => ({ default: mod.InventoryPanel })));
 const QuestCompleteModal = lazy(() => import('@/components/QuestCompleteModal').then(mod => ({ default: mod.QuestCompleteModal })));
 const SpellsPanel = lazy(() => import('@/components/SpellsPanel').then(mod => ({ default: mod.SpellsPanel })));
+const SaveGameButton = lazy(() => import('@/components/SaveGameButton').then(mod => ({ default: mod.SaveGameButton })));
+const SaveSlotsModal = lazy(() => import('@/components/SaveSlotsModal').then(mod => ({ default: mod.SaveSlotsModal })));
 
 interface Message {
 	id: number;
@@ -98,6 +100,25 @@ export default function GamePage() {
 	useEffect(() => {
 		scrollToBottom();
 	}, [messages]);
+
+	// Auto-save every 5 minutes
+	useEffect(() => {
+		if (!sessionId) return;
+
+		const autoSaveInterval = setInterval(async () => {
+			try {
+				await apiClient.post('/api/game/save', {
+					session_id: sessionId,
+					save_name: `Auto-save ${new Date().toLocaleTimeString()}`,
+				});
+				console.log('Auto-saved game');
+			} catch (error) {
+				console.error('Auto-save failed:', error);
+			}
+		}, 5 * 60 * 1000); // 5 minutes
+
+		return () => clearInterval(autoSaveInterval);
+	}, [sessionId]);
 
 	const scrollToBottom = () => {
 		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -491,6 +512,16 @@ export default function GamePage() {
 					>
 						🖼️ Scene Gallery
 					</button>
+
+					{/* Save Game Button */}
+					{sessionId && character && (
+						<div className="pt-2 border-t border-white/10">
+							<SaveGameButton
+								sessionId={sessionId}
+								characterName={character.name}
+							/>
+						</div>
+					)}
 				</div>
 
 				{/* Center - Messages Area */}
