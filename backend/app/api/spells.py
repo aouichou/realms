@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db.base import get_db
 from app.db.models import CharacterClass, CharacterSpell, Spell
+from app.observability.logger import get_logger
 from app.schemas.spell import (
     CastSpellRequest,
     CastSpellResponse,
@@ -25,7 +26,8 @@ from app.schemas.spell import (
 )
 from app.services.character_service import CharacterService
 from app.services.memory_capture import MemoryCaptureService
-from app.utils.logger import logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/spells", tags=["spells"])
 

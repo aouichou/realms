@@ -3,12 +3,17 @@ DM (Dungeon Master) Engine
 Handles D&D narrative generation with focused storytelling in multiple languages
 """
 
+import re
+import time
 from datetime import datetime
 from typing import AsyncGenerator, Dict, List, Optional
 
-from app.i18n import translate
+from app.observability.logger import get_logger
+from app.observability.metrics import metrics
+from app.observability.tracing import trace_async
 from app.services.mistral_client import MistralAPIError, get_mistral_client
-from app.utils.logger import logger
+
+logger = get_logger(__name__)
 
 
 class DMEngine:
@@ -456,6 +461,7 @@ L'identifiant de quête vous sera fourni dans le contexte du personnage. Après 
 
         return "\n".join(parts)
 
+    @trace_async("dm_narrate")
     async def narrate(
         self,
         user_action: str,
@@ -482,6 +488,7 @@ L'identifiant de quête vous sera fourni dans le contexte du personnage. Après 
         Raises:
             MistralAPIError: If API call fails
         """
+        start_time = time.time()
         try:
             messages = self._build_messages(
                 user_action,
@@ -492,7 +499,17 @@ L'identifiant de quête vous sera fourni dans le contexte du personnage. Après 
                 language,
             )
 
-            logger.debug(f"Generating narration for action: {user_action[:50]}...")
+            logger.debug(
+                "Generating narration",
+                extra={
+                    "extra_data": {
+                        "action_preview": user_action[:50],
+                        "language": language,
+                        "has_context": character_context is not None,
+                        "has_memory": memory_context is not None,
+                    }
+                },
+            )
 
             response = await self.mistral_client.chat_completion(messages)
 
@@ -506,11 +523,33 @@ L'identifiant de quête vous sera fourni dans le contexte du personnage. Après 
             # Extract quest complete if present
             cleaned_narration, quest_complete_id = self.extract_quest_complete(cleaned_narration)
 
-            logger.info(f"Narration generated: {tokens_used} tokens")
+            duration = time.time() - start_time
+
+            # Record metrics
+            metrics.record_dm_narration(
+                duration=duration, has_roll=roll_request is not None, language=language
+            )
+
+            logger.info(
+                "Narration generated",
+                extra={
+                    "extra_data": {
+                        "tokens_used": tokens_used,
+                        "duration": duration,
+                        "has_roll": roll_request is not None,
+                        "has_quest_complete": quest_complete_id is not None,
+                        "language": language,
+                    }
+                },
+            )
+
             if roll_request:
-                logger.info(f"Roll request detected: {roll_request}")
+                logger.info("Roll request detected", extra={"extra_data": {"roll": roll_request}})
             if quest_complete_id:
-                logger.info(f"Quest completion detected: {quest_complete_id}")
+                logger.info(
+                    "Quest completion detected",
+                    extra={"extra_data": {"quest_id": quest_complete_id}},
+                )
 
             return {
                 "narration": cleaned_narration,
@@ -522,9 +561,15 @@ L'identifiant de quête vous sera fourni dans le contexte du personnage. Après 
             }
 
         except MistralAPIError as e:
-            logger.error(f"Failed to generate narration: {e}")
+            duration = time.time() - start_time
+            metrics.record_dm_narration(duration=duration, has_roll=False, language=language)
+            logger.error(
+                "Failed to generate narration",
+                extra={"extra_data": {"error": str(e), "duration": duration}},
+            )
             raise
 
+    @trace_async("dm_narrate_stream")
     async def narrate_stream(
         self,
         user_action: str,

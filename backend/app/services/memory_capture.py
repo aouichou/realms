@@ -6,8 +6,10 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import EventType
+from app.observability.logger import get_logger
 from app.services.memory_service import MemoryService
-from app.utils.logger import logger
+
+logger = get_logger(__name__)
 
 
 class MemoryCaptureService:

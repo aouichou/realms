@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
 from app.db.models import Character, CharacterQuest, Quest, QuestState
+from app.observability.logger import get_logger, log_context
 from app.schemas.dm_response import DMResponse, PlayerActionRequest, RollRequest
 from app.schemas.message import (
     ConversationHistoryResponse,
@@ -24,7 +25,8 @@ from app.services.redis_service import session_service
 from app.services.roll_executor import RollExecutor
 from app.services.roll_parser import RollParser
 from app.services.summarization_service import SummarizationService
-from app.utils.logger import logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
@@ -144,51 +146,71 @@ async def send_player_action(
     Returns:
         DM response with optional roll request
     """
-    # Get character for context
-    result = await db.execute(select(Character).where(Character.id == request.character_id))
-    character = result.scalar_one_or_none()
-    if not character:
-        raise HTTPException(status_code=404, detail="Character not found")
+    # Set logging context for this request
+    with log_context(
+        session_id=int(str(request.session_id).replace("-", "")[:8], 16),
+        character_id=int(str(request.character_id).replace("-", "")[:8], 16),
+    ):
+        logger.info(
+            "Player action received", extra={"extra_data": {"action_length": len(request.action)}}
+        )
 
-    # Get session for conversation history
-    session_id = UUID(request.session_id) if request.session_id else None
-    conversation_history = []
-    summary_context = None
+        # Get character for context
+        result = await db.execute(select(Character).where(Character.id == request.character_id))
+        character = result.scalar_one_or_none()
+        if not character:
+            raise HTTPException(status_code=404, detail="Character not found")
 
-    if session_id:
-        recent_messages = await ConversationService.get_recent_messages(db, session_id, count=20)
-        all_messages = [{"role": msg.role.value, "content": msg.content} for msg in recent_messages]
+        # Get session for conversation history
+        session_id = UUID(request.session_id) if request.session_id else None
+        conversation_history = []
+        summary_context = None
 
-        # Use summarization if conversation is long (>10 messages)
-        if SummarizationService.should_summarize(len(all_messages), threshold=10):
-            try:
-                (
-                    summary_context,
-                    conversation_history,
-                ) = await SummarizationService.get_summarized_context(
-                    all_messages, character_name=character.name, keep_recent=3
-                )
-                logger.info(
-                    f"Using summarized context: {len(all_messages)} messages -> "
-                    f"summary + {len(conversation_history)} recent"
-                )
-            except Exception as e:
-                logger.warning(f"Failed to summarize conversation: {e}")
-                # Fallback to recent messages only
-                conversation_history = all_messages[-10:]
-        else:
-            # Short conversation, use all messages
-            conversation_history = all_messages
+        if session_id:
+            recent_messages = await ConversationService.get_recent_messages(
+                db, session_id, count=20
+            )
+            all_messages = [
+                {"role": msg.role.value, "content": msg.content} for msg in recent_messages
+            ]
 
-    # Build character context
-    character_context = {
-        "name": character.name,
-        "race": character.race.value,
-        "class": character.character_class.value,
-        "level": character.level,
-        "hp_current": character.hp_current,
-        "hp_max": character.hp_max,
-    }
+            # Use summarization if conversation is long (>10 messages)
+            if SummarizationService.should_summarize(len(all_messages), threshold=10):
+                try:
+                    (
+                        summary_context,
+                        conversation_history,
+                    ) = await SummarizationService.get_summarized_context(
+                        all_messages, character_name=character.name, keep_recent=3
+                    )
+                    logger.info(
+                        "Using summarized context",
+                        extra={
+                            "extra_data": {
+                                "messages_count": len(all_messages),
+                                "summary_kept": len(conversation_history),
+                            }
+                        },
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Failed to summarize conversation", extra={"extra_data": {"error": str(e)}}
+                    )
+                    # Fallback to recent messages only
+                    conversation_history = all_messages[-10:]
+            else:
+                # Short conversation, use all messages
+                conversation_history = all_messages
+
+        # Build character context
+        character_context = {
+            "name": character.name,
+            "race": character.race.value,
+            "class": character.character_class.value,
+            "level": character.level,
+            "hp_current": character.hp_current,
+            "hp_max": character.hp_max,
+        }
 
     # Add spell slot information for spellcasters
     spell_slots = {

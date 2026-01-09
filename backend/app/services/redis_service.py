@@ -8,7 +8,9 @@ from uuid import UUID
 import redis.asyncio as redis
 
 from app.config import settings
-from app.utils.logger import logger
+from app.observability.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class RedisSessionService:

@@ -11,7 +11,9 @@ from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.utils.logger import logger
+from app.observability.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):

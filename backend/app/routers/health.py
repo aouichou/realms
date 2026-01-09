@@ -6,9 +6,8 @@ Provides comprehensive health endpoints for Kubernetes probes
 from datetime import datetime
 
 import httpx
-from fastapi import APIRouter, status
+from fastapi import APIRouter
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.base import get_db
@@ -48,7 +47,7 @@ async def check_mistral_api() -> tuple[bool, str]:
 
     try:
         # Simple API health check (just verify connectivity, not make actual request)
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient():
             # Mistral AI doesn't have a public health endpoint, so we skip actual check
             # In production, you might want to make a minimal API call
             return True, "ok"
@@ -112,6 +111,5 @@ async def readiness_check():
         "timestamp": datetime.now().isoformat(),
     }
 
-    status_code = status.HTTP_200_OK if is_ready else status.HTTP_503_SERVICE_UNAVAILABLE
 
     return response

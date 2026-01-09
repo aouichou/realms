@@ -13,7 +13,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.effects import ActiveEffect, EffectDuration, EffectType
-from app.utils.logger import logger
+from app.observability.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class EffectsService:
@@ -70,7 +72,7 @@ class EffectsService:
                 select(ActiveEffect).where(
                     ActiveEffect.character_id == character_id,
                     ActiveEffect.name == name,
-                    ActiveEffect.is_active == True,
+                    ActiveEffect.is_active,
                 )
             )
             existing_effect = existing.scalar_one_or_none()
@@ -139,7 +141,7 @@ class EffectsService:
             List of active effects
         """
         query = select(ActiveEffect).where(
-            ActiveEffect.character_id == character_id, ActiveEffect.is_active == True
+            ActiveEffect.character_id == character_id, ActiveEffect.is_active
         )
 
         if session_id:
@@ -188,8 +190,8 @@ class EffectsService:
         result = await db.execute(
             select(ActiveEffect).where(
                 ActiveEffect.character_id == character_id,
-                ActiveEffect.requires_concentration == True,
-                ActiveEffect.is_active == True,
+                ActiveEffect.requires_concentration,
+                ActiveEffect.is_active,
             )
         )
         concentration_effects = result.scalars().all()
@@ -247,7 +249,7 @@ class EffectsService:
             List of effect names that were removed
         """
         query = select(ActiveEffect).where(
-            ActiveEffect.character_id == character_id, ActiveEffect.is_active == True
+            ActiveEffect.character_id == character_id, ActiveEffect.is_active
         )
 
         if is_long_rest:
@@ -289,7 +291,7 @@ class EffectsService:
         """
         result = await db.execute(
             select(ActiveEffect).where(
-                ActiveEffect.is_active == True, ActiveEffect.expires_at.isnot(None)
+                ActiveEffect.is_active, ActiveEffect.expires_at.isnot(None)
             )
         )
         effects = result.scalars().all()
