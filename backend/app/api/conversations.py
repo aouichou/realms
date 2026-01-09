@@ -19,10 +19,10 @@ from app.services.conversation_service import ConversationService
 from app.services.dm_engine import DMEngine
 from app.services.image_service import ImageService
 from app.services.memory_capture import MemoryCaptureService
-from app.services.summarization_service import SummarizationService
 from app.services.redis_service import session_service
 from app.services.roll_executor import RollExecutor
 from app.services.roll_parser import RollParser
+from app.services.summarization_service import SummarizationService
 from app.utils.logger import logger
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
@@ -156,17 +156,16 @@ async def send_player_action(
 
     if session_id:
         recent_messages = await ConversationService.get_recent_messages(db, session_id, count=20)
-        all_messages = [
-            {"role": msg.role.value, "content": msg.content} for msg in recent_messages
-        ]
+        all_messages = [{"role": msg.role.value, "content": msg.content} for msg in recent_messages]
 
         # Use summarization if conversation is long (>10 messages)
         if SummarizationService.should_summarize(len(all_messages), threshold=10):
             try:
-                summary_context, conversation_history = (
-                    await SummarizationService.get_summarized_context(
-                        all_messages, character_name=character.name, keep_recent=3
-                    )
+                (
+                    summary_context,
+                    conversation_history,
+                ) = await SummarizationService.get_summarized_context(
+                    all_messages, character_name=character.name, keep_recent=3
                 )
                 logger.info(
                     f"Using summarized context: {len(all_messages)} messages -> "
