@@ -6,6 +6,7 @@ pydantic-settings==2.12.0
 
 # Mistral AI SDK
 mistralai==1.10.0
+tiktoken==0.8.0  # Token counting for context management
 
 # HTTP & Async
 httpx==0.28.1
