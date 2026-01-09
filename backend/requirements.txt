@@ -27,11 +27,17 @@ bcrypt==5.0.0
 python-multipart==0.0.21
 email-validator==2.3.0
 
-# Observability (for later)
+# Observability
 opentelemetry-api==1.38.0
 opentelemetry-sdk==1.38.0
 opentelemetry-instrumentation-fastapi==0.59b0
+opentelemetry-instrumentation-httpx==0.59b0
+opentelemetry-instrumentation-sqlalchemy==0.59b0
 opentelemetry-exporter-otlp==1.38.0
+prometheus-client==0.21.1
+
+# Internationalization
+babel==2.16.0
 
 # Development & Testing
 pytest==9.0.2

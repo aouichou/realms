@@ -81,6 +81,15 @@ class Settings(BaseSettings):
     )
     random_pool_timeout: float = Field(default=30.0, description="API request timeout in seconds")
 
+    # Observability
+    tracing_enabled: bool = Field(default=False, description="Enable OpenTelemetry tracing")
+    otlp_endpoint: str = Field(
+        default="http://jaeger:4317", description="OTLP collector endpoint (Jaeger)"
+    )
+    service_name: str = Field(
+        default="mistral-realms-backend", description="Service name for tracing"
+    )
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins into a list"""
