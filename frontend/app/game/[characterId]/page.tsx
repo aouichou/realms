@@ -10,13 +10,16 @@ import { lazy, useEffect, useRef, useState } from 'react';
 
 // Lazy load heavy components for better initial load
 const AbilityCheckPanel = lazy(() => import('@/components/AbilityCheckPanel').then(mod => ({ default: mod.AbilityCheckPanel })));
+const ActiveEffectsDisplay = lazy(() => import('@/components/ActiveEffectsDisplay').then(mod => ({ default: mod.ActiveEffectsDisplay })));
 const CombatTracker = lazy(() => import('@/components/CombatTracker').then(mod => ({ default: mod.CombatTracker })));
 const CompanionPanel = lazy(() => import('@/components/CompanionPanel').then(mod => ({ default: mod.CompanionPanel })));
 const EnhancedCharacterSheet = lazy(() => import('@/components/EnhancedCharacterSheet').then(mod => ({ default: mod.EnhancedCharacterSheet })));
 const ImageGalleryPanel = lazy(() => import('@/components/ImageGalleryPanel').then(mod => ({ default: mod.ImageGalleryPanel })));
 const InventoryPanel = lazy(() => import('@/components/InventoryPanel').then(mod => ({ default: mod.InventoryPanel })));
 const QuestCompleteModal = lazy(() => import('@/components/QuestCompleteModal').then(mod => ({ default: mod.QuestCompleteModal })));
+const SceneImage = lazy(() => import('@/components/SceneImage').then(mod => ({ default: mod.SceneImage })));
 const SpellsPanel = lazy(() => import('@/components/SpellsPanel').then(mod => ({ default: mod.SpellsPanel })));
+const SpellSlotsDisplay = lazy(() => import('@/components/SpellSlotsDisplay').then(mod => ({ default: mod.SpellSlotsDisplay })));
 const SaveGameButton = lazy(() => import('@/components/SaveGameButton').then(mod => ({ default: mod.SaveGameButton })));
 const SaveSlotsModal = lazy(() => import('@/components/SaveSlotsModal').then(mod => ({ default: mod.SaveSlotsModal })));
 
@@ -580,6 +583,12 @@ export default function GamePage() {
 										</span>
 									)}
 								</div>
+
+								{/* Scene Image (if present) */}
+								{message.scene_image_url && message.role === 'assistant' && (
+									<SceneImage imageUrl={message.scene_image_url} alt="Scene illustration" />
+								)}
+
 								<p className="text-narrative text-white font-body leading-relaxed whitespace-pre-line">
 									{message.content}
 								</p>
@@ -679,15 +688,27 @@ export default function GamePage() {
 
 						{/* Stats Panel */}
 						{openPanel === 'stats' && character && (
-							<div className="bg-neutral-900 rounded-lg">
-								<EnhancedCharacterSheet
+						<div className="space-y-4 bg-neutral-900 rounded-lg p-4">
+							<EnhancedCharacterSheet
+								characterId={characterId}
+								characterName={character.name}
+								characterClass={character.character_class}
+								level={character.level}
+							/>
+							
+							{/* Spell Slots Display */}
+							<SpellSlotsDisplay
+								characterId={characterId}
+								characterName={character.name}
+							/>
+							
+							{/* Active Effects Display */}
+							{sessionId && (
+								<ActiveEffectsDisplay
 									characterId={characterId}
-									characterName={character.name}
-									characterClass={character.character_class}
-									level={character.level}
+									sessionId={sessionId}
 								/>
-							</div>
-						)}
+							)}
 
 						{/* Inventory Panel */}
 						{openPanel === 'inventory' && (
@@ -712,10 +733,14 @@ export default function GamePage() {
 
 						{/* Spells Panel */}
 						{openPanel === 'spells' && (
-							<div className="bg-neutral-900 rounded-lg">
-								<SpellsPanel characterId={characterId} />
-							</div>
-						)}
+						<div className="space-y-4 bg-neutral-900 rounded-lg p-4">
+							<SpellsPanel characterId={characterId} />
+							
+							{/* Spell Slots Display */}
+							<SpellSlotsDisplay
+								characterId={characterId}
+								characterName={character?.name}
+							/>
 
 						{/* Ability Checks Panel */}
 						{openPanel === 'checks' && (
