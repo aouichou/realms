@@ -17,6 +17,7 @@ from app.schemas.message import (
 )
 from app.services.conversation_service import ConversationService
 from app.services.dm_engine import DMEngine
+from app.services.memory_capture import MemoryCaptureService
 from app.services.redis_service import session_service
 from app.utils.logger import logger
 
@@ -229,6 +230,26 @@ async def send_player_action(
             tokens_used=result["tokens_used"],
         )
         await ConversationService.create_message(db, dm_msg)
+
+        # Capture dialogue memory
+        try:
+            # Extract NPC names from narration (basic heuristic)
+            npcs = []
+            for line in result["narration"].split("\n"):
+                if ":" in line:
+                    potential_npc = line.split(":")[0].strip()
+                    if potential_npc and len(potential_npc) < 30:
+                        npcs.append(potential_npc)
+            
+            # Capture the interaction
+            await MemoryCaptureService.capture_dialogue(
+                db=db,
+                session_id=session_id,
+                npc_name=npcs[0] if npcs else "Unknown",
+                dialogue=f"{action_text}\n{result['narration'][:500]}",
+            )
+        except Exception as e:
+            logger.warning(f"Failed to capture dialogue memory: {e}")
 
     # Build response
     roll_request = None

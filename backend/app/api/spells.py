@@ -24,6 +24,8 @@ from app.schemas.spell import (
     SpellSlotsResponse,
 )
 from app.services.character_service import CharacterService
+from app.services.memory_capture import MemoryCaptureService
+from app.utils.logger import logger
 
 router = APIRouter(prefix="/api/spells", tags=["spells"])
 
@@ -590,6 +592,34 @@ async def cast_spell(
     damage_roll, total_damage = _calculate_spell_damage(spell, slot_level)
 
     await db.commit()
+
+    # Capture spell casting as memory
+    try:
+        from app.db.models import GameSession
+        result_session = await db.execute(
+            select(GameSession).where(GameSession.character_id == character_id).order_by(GameSession.created_at.desc()).limit(1)
+        )
+        session = result_session.scalar_one_or_none()
+        
+        if session:
+            details = f"{character.name} cast {spell.name}"
+            if total_damage:
+                details += f" dealing {total_damage} damage"
+            if request.is_ritual_cast:
+                details += " (ritual cast)"
+            elif slot_level > spell.level:
+                details += f" (upcast to level {slot_level})"
+            
+            await MemoryCaptureService.capture_spell_cast(
+                db=db,
+                session_id=session.id,
+                spell_name=spell.name,
+                spell_level=spell.level,
+                target=request.target_name if hasattr(request, 'target_name') else None,
+                outcome=details,
+            )
+    except Exception as e:
+        logger.warning(f"Failed to capture spell cast memory: {e}")
 
     return CastSpellResponse(
         character_id=character.id,

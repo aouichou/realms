@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import Character, Item, ItemType
 from app.schemas.inventory import InventoryResponse, ItemCreate, ItemResponse, ItemUpdate
+from app.services.memory_capture import MemoryCaptureService
+from app.utils.logger import logger
 
 router = APIRouter(prefix="/api/characters", tags=["inventory"])
 
@@ -62,6 +64,26 @@ async def add_item(character_id: UUID, item_data: ItemCreate, db: AsyncSession =
     db.add(new_item)
     await db.commit()
     await db.refresh(new_item)
+
+    # Capture loot acquisition as memory
+    try:
+        from app.db.models import GameSession
+        result_session = await db.execute(
+            select(GameSession).where(GameSession.character_id == character_id).order_by(GameSession.created_at.desc()).limit(1)
+        )
+        session = result_session.scalar_one_or_none()
+        
+        if session:
+            await MemoryCaptureService.capture_loot(
+                db=db,
+                session_id=session.id,
+                item_name=new_item.name,
+                item_type=new_item.item_type.value,
+                value=new_item.value,
+                details=f"Acquired {new_item.quantity}x {new_item.name}",
+            )
+    except Exception as e:
+        logger.warning(f"Failed to capture loot acquisition memory: {e}")
 
     return new_item
 
