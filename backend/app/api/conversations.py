@@ -19,6 +19,7 @@ from app.services.conversation_service import ConversationService
 from app.services.dm_engine import DMEngine
 from app.services.image_service import ImageService
 from app.services.memory_capture import MemoryCaptureService
+from app.services.summarization_service import SummarizationService
 from app.services.redis_service import session_service
 from app.services.roll_executor import RollExecutor
 from app.services.roll_parser import RollParser
@@ -151,11 +152,33 @@ async def send_player_action(
     # Get session for conversation history
     session_id = UUID(request.session_id) if request.session_id else None
     conversation_history = []
+    summary_context = None
+
     if session_id:
-        recent_messages = await ConversationService.get_recent_messages(db, session_id, count=10)
-        conversation_history = [
+        recent_messages = await ConversationService.get_recent_messages(db, session_id, count=20)
+        all_messages = [
             {"role": msg.role.value, "content": msg.content} for msg in recent_messages
         ]
+
+        # Use summarization if conversation is long (>10 messages)
+        if SummarizationService.should_summarize(len(all_messages), threshold=10):
+            try:
+                summary_context, conversation_history = (
+                    await SummarizationService.get_summarized_context(
+                        all_messages, character_name=character.name, keep_recent=3
+                    )
+                )
+                logger.info(
+                    f"Using summarized context: {len(all_messages)} messages -> "
+                    f"summary + {len(conversation_history)} recent"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to summarize conversation: {e}")
+                # Fallback to recent messages only
+                conversation_history = all_messages[-10:]
+        else:
+            # Short conversation, use all messages
+            conversation_history = all_messages
 
     # Build character context
     character_context = {
@@ -234,13 +257,22 @@ async def send_player_action(
             # Memory system is optional, don't fail if it errors
             logger.warning(f"Failed to fetch memory context: {e}")
 
+    # Combine summary and memory contexts
+    combined_context = None
+    if summary_context and memory_context:
+        combined_context = f"{summary_context}\n\n{memory_context}"
+    elif summary_context:
+        combined_context = summary_context
+    elif memory_context:
+        combined_context = memory_context
+
     # Get DM response
     dm_engine = DMEngine()
     result = await dm_engine.narrate(
         user_action=action_text,
         conversation_history=conversation_history,
         character_context=character_context,
-        memory_context=memory_context,
+        memory_context=combined_context,
     )
 
     # Parse for dice roll tags

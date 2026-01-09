@@ -27,9 +27,8 @@ export function SceneImage({ imageUrl, alt = "Scene illustration" }: SceneImageP
 					src={imageUrl}
 					alt={alt}
 					fill
-					className={`object-cover transition-all duration-300 ${
-						isLoading ? 'opacity-0' : 'opacity-100'
-					}`}
+					className={`object-cover transition-all duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'
+						}`}
 					onLoadingComplete={() => setIsLoading(false)}
 					priority
 				/>
