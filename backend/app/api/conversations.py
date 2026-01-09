@@ -19,6 +19,8 @@ from app.services.conversation_service import ConversationService
 from app.services.dm_engine import DMEngine
 from app.services.memory_capture import MemoryCaptureService
 from app.services.redis_service import session_service
+from app.services.roll_executor import RollExecutor
+from app.services.roll_parser import RollParser
 from app.utils.logger import logger
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
@@ -211,6 +213,60 @@ async def send_player_action(
         memory_context=memory_context,
     )
 
+    # Parse for dice roll tags
+    narration = result["narration"]
+    roll_requests_data = []
+
+    if RollParser.has_roll_tags(narration):
+        cleaned_narration, roll_requests = RollParser.parse_narration(narration)
+        result["narration"] = cleaned_narration
+
+        # Execute rolls automatically
+        for roll_request in roll_requests:
+            try:
+                roll_result = RollExecutor.execute_roll(
+                    dice_notation=roll_request.dice_notation,
+                    roll_type=roll_request.roll_type,
+                    character=character,
+                    ability=roll_request.ability,
+                    dc=roll_request.dc,
+                    advantage=roll_request.advantage,
+                    disadvantage=roll_request.disadvantage,
+                    description=roll_request.description,
+                )
+
+                # Format roll result for frontend
+                roll_requests_data.append({
+                    "type": roll_request.roll_type.value,
+                    "description": roll_request.description,
+                    "notation": roll_result.notation,
+                    "rolls": roll_result.rolls,
+                    "modifier": roll_result.modifier,
+                    "total": roll_result.total,
+                    "dc": roll_result.dc,
+                    "success": roll_result.success,
+                    "advantage": roll_result.advantage,
+                    "disadvantage": roll_result.disadvantage,
+                    "is_critical": roll_result.is_critical,
+                    "is_critical_fail": roll_result.is_critical_fail,
+                })
+            except Exception as e:
+                logger.error(f"Failed to execute roll: {e}")
+                # Continue without this roll rather than failing entire request
+
+    # Build result with roll data
+    response_data = {
+        "narration": result["narration"],
+        "tokens_used": result["tokens_used"],
+        "roll_request": None,
+        "quest_complete": result.get("quest_complete"),
+        "rolls": roll_requests_data if roll_requests_data else None,
+    }
+
+    # Check for legacy roll request format (keep for backward compatibility)
+    if result.get("roll_request"):
+        response_data["roll_request"] = result["roll_request"]
+
     # Save to conversation history if session provided
     if session_id:
         # Save player message
@@ -262,6 +318,7 @@ async def send_player_action(
         quest_complete_id=result.get("quest_complete_id"),
         scene_image_url=None,  # TODO: Add image generation
         tokens_used=result["tokens_used"],
+        rolls=response_data.get("rolls"),
     )
 
 
