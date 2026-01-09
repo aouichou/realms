@@ -213,7 +213,7 @@ async def send_player_action(
         prepared_spells_result = await db.execute(
             select(CharacterSpell).where(
                 CharacterSpell.character_id == character.id,
-                CharacterSpell.is_prepared == True,
+                CharacterSpell.is_prepared,
             )
         )
         prepared_spells = prepared_spells_result.scalars().all()
@@ -413,6 +413,68 @@ async def send_player_action(
             logger.error(f"Failed to generate scene image: {e}")
             # Image generation is optional, don't fail the request
 
+    # Generate companion response if appropriate
+    companion_response = None
+    try:
+        from app.services.companion_service import CompanionService
+
+        # Determine trigger based on game state
+        companion_trigger = None
+
+        # Check for combat start
+        combat_keywords = [
+            "combat",
+            "attack",
+            "initiative",
+            "roll for initiative",
+            "enemy",
+            "enemies",
+        ]
+        if any(keyword in result["narration"].lower() for keyword in combat_keywords):
+            companion_trigger = "combat_start"
+
+        # Check for player low HP
+        if character.current_hp and character.max_hp:
+            hp_percent = character.current_hp / character.max_hp
+            if hp_percent < 0.3:
+                companion_trigger = "player_low_hp"
+
+        # Check for victory
+        victory_keywords = ["defeated", "victory", "won", "slain", "killed the"]
+        if any(keyword in result["narration"].lower() for keyword in victory_keywords):
+            companion_trigger = "victory"
+
+        # Check for puzzle/riddle
+        puzzle_keywords = ["puzzle", "riddle", "mystery", "clue", "solve"]
+        if any(keyword in result["narration"].lower() for keyword in puzzle_keywords):
+            companion_trigger = "puzzle"
+
+        # Generate companion speech if trigger detected
+        if companion_trigger:
+            # Build game context
+            game_context = {
+                "player_hp": character.current_hp or character.max_hp,
+                "player_max_hp": character.max_hp,
+                "in_combat": companion_trigger == "combat_start",
+                "location": request.action[:100],  # Use action as context
+                "situation": result["narration"][:200],
+            }
+
+            # Use default companion personality (helpful)
+            # Frontend will override with user's selected personality
+            companion_response = await CompanionService.generate_companion_speech(
+                personality="helpful",
+                companion_name="Aria",
+                companion_race="Elf",
+                companion_class="Wizard",
+                trigger=companion_trigger,
+                context=game_context,
+                user_message=request.action,
+            )
+            logger.info(f"Generated companion response for trigger: {companion_trigger}")
+    except Exception as e:
+        logger.warning(f"Failed to generate companion response: {e}")
+
     # Build response
     roll_request = None
     if result.get("roll_request"):
@@ -425,6 +487,7 @@ async def send_player_action(
         scene_image_url=scene_image_url,
         tokens_used=result["tokens_used"],
         rolls=response_data.get("rolls"),
+        companion_speech=companion_response,
     )
 
 
