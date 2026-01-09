@@ -298,6 +298,9 @@ class Character(Base):
     conditions = relationship(
         "CharacterCondition", back_populates="character", cascade="all, delete-orphan"
     )
+    active_effects = relationship(
+        "ActiveEffect", back_populates="character", cascade="all, delete-orphan"
+    )
 
     # Indexes
     __table_args__ = (Index("ix_characters_user_type", "user_id", "character_type"),)
