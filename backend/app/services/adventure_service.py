@@ -9,9 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.data.preset_adventures import PresetAdventure, get_preset_adventure, list_preset_adventures
 from app.db.models import Adventure, Character, GameSession, Quest, QuestObjective, QuestState
+from app.observability.logger import get_logger
 from app.services.dm_engine import DMEngine
 from app.services.mistral_client import get_mistral_client
-from app.utils.logger import logger
+
+logger = get_logger(__name__)
 
 
 class AdventureService:

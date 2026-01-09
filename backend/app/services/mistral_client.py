@@ -11,7 +11,11 @@ from mistralai import Mistral
 from mistralai.models import ChatCompletionResponse
 
 from app.config import settings
-from app.utils.logger import logger
+from app.observability.logger import get_logger
+from app.observability.metrics import metrics
+from app.observability.tracing import trace_llm_call
+
+logger = get_logger(__name__)
 
 
 class MistralAPIError(Exception):
@@ -89,31 +93,80 @@ class MistralClient:
         """
         await self._wait_for_rate_limit()
 
-        try:
-            logger.debug(f"Sending chat completion request: {len(messages)} messages")
+        start_time = time.time()
+        model_name = model or self.model
 
-            response = await asyncio.to_thread(
-                self.client.chat.complete,
-                model=model or self.model,
-                messages=list(messages),  # type: ignore[arg-type]
-                temperature=temperature or self.temperature,
-                max_tokens=max_tokens or self.max_tokens,
-                stream=stream,
+        try:
+            logger.info(
+                "Sending LLM request",
+                extra={"extra_data": {"model": model_name, "messages_count": len(messages)}},
             )
 
-            if not stream:
-                logger.debug(f"Received response: {response.usage.total_tokens} tokens")
+            # Trace LLM call
+            with trace_llm_call(model_name) as span:
+                response = await asyncio.to_thread(
+                    self.client.chat.complete,
+                    model=model_name,
+                    messages=list(messages),  # type: ignore[arg-type]
+                    temperature=temperature or self.temperature,
+                    max_tokens=max_tokens or self.max_tokens,
+                    stream=stream,
+                )
+
+                if not stream and response.usage:
+                    # Update span with token counts
+                    span.set_attribute("llm.prompt_tokens", response.usage.prompt_tokens)
+                    span.set_attribute("llm.completion_tokens", response.usage.completion_tokens)
+                    span.set_attribute("llm.total_tokens", response.usage.total_tokens)
+
+                    # Record metrics
+                    duration = time.time() - start_time
+                    metrics.record_llm_request(
+                        model=model_name,
+                        status="success",
+                        duration=duration,
+                        prompt_tokens=response.usage.prompt_tokens,
+                        completion_tokens=response.usage.completion_tokens,
+                    )
+
+                    logger.info(
+                        "LLM request completed",
+                        extra={
+                            "extra_data": {
+                                "model": model_name,
+                                "tokens": response.usage.total_tokens,
+                                "duration": duration,
+                            }
+                        },
+                    )
 
             return response
 
         except Exception as e:
             error_msg = str(e).lower()
+            duration = time.time() - start_time
+
+            # Record error metrics
+            metrics.record_llm_request(
+                model=model_name,
+                status="error",
+                duration=duration,
+                prompt_tokens=0,
+                completion_tokens=0,
+            )
 
             if "rate limit" in error_msg or "429" in error_msg:
-                logger.error(f"Rate limit exceeded: {e}")
+                logger.error(
+                    "LLM rate limit exceeded",
+                    extra={"extra_data": {"model": model_name, "error": str(e)}},
+                )
                 raise RateLimitError("Rate limit exceeded. Please try again later.") from e
 
-            logger.error(f"Mistral API error: {e}")
+            logger.error(
+                "LLM API error",
+                extra={"extra_data": {"model": model_name, "error": str(e)}},
+                exc_info=True,
+            )
             raise MistralAPIError(f"Failed to get completion from Mistral: {e}") from e
 
     async def chat_completion_stream(

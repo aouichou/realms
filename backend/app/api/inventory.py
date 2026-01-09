@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
 from app.db.models import Character, Item, ItemType
+from app.observability.logger import get_logger
 from app.schemas.inventory import InventoryResponse, ItemCreate, ItemResponse, ItemUpdate
 from app.services.memory_capture import MemoryCaptureService
-from app.utils.logger import logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/characters", tags=["inventory"])
 

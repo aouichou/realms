@@ -11,7 +11,9 @@ import random
 import httpx
 
 from app.config import settings
-from app.utils.logger import logger
+from app.observability.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class TrueRandomPool:

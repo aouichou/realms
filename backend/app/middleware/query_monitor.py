@@ -10,7 +10,9 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.utils.logger import logger
+from app.observability.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class QueryPerformanceMonitor:

@@ -39,7 +39,7 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         with log_context(request_id=request_id, user_id=user_id):
             # Log request
             logger.info(
-                f"Request started",
+                "Request started",
                 extra={
                     "extra_data": {
                         "method": request.method,
@@ -64,7 +64,7 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
 
                 # Log response
                 logger.info(
-                    f"Request completed",
+                    "Request completed",
                     extra={
                         "extra_data": {
                             "method": request.method,
@@ -91,7 +91,7 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
 
                 # Log error
                 logger.error(
-                    f"Request failed",
+                    "Request failed",
                     extra={
                         "extra_data": {
                             "method": request.method,

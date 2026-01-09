@@ -183,6 +183,15 @@ class MetricsCollector:
         status = "success" if success else "failure"
         auth_attempts_total.labels(status=status).inc()
 
+    def record_dm_narration(self, duration: float, has_roll: bool, language: str):
+        """Record DM narration metrics"""
+        # Record duration (already tracked by LLM metrics, but specific to narration)
+        # Record if narration included dice rolls
+        if has_roll:
+            http_requests_total.labels(
+                method="dm_narration", endpoint="/narrate", status_code="200"
+            ).inc()
+
     def set_active_connections(self, count: int):
         """Set active database connections gauge"""
         db_connections_active.set(count)

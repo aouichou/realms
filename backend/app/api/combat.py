@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
 from app.db.models import CombatEncounter, GameSession
+from app.observability.logger import get_logger
 from app.schemas.combat import (
     CombatActionRequest,
     CombatActionResponse,
@@ -21,7 +22,8 @@ from app.schemas.combat import (
 )
 from app.services.character_service import CharacterService
 from app.services.memory_capture import MemoryCaptureService
-from app.utils.logger import logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/combat", tags=["combat"])
 

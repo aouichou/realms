@@ -41,10 +41,12 @@ from app.middleware.observability import ObservabilityMiddleware
 from app.middleware.performance import PerformanceMiddleware
 from app.middleware.query_monitor import query_monitor
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.observability.logger import get_logger
 from app.observability.tracing import init_tracing, instrument_app
 from app.routers import health, metrics, narrate
 from app.services.redis_service import session_service
-from app.utils.logger import logger
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager

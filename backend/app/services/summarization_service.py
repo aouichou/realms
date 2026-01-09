@@ -5,8 +5,10 @@ Condenses conversation history to reduce token usage and prevent repetitive resp
 
 from typing import Dict, List, Optional
 
+from app.observability.logger import get_logger
 from app.services.mistral_client import get_mistral_client
-from app.utils.logger import logger
+
+logger = get_logger(__name__)
 
 
 class SummarizationService:
