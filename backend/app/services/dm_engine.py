@@ -69,6 +69,24 @@ Initiative:
 
 The rolls execute automatically and results are injected back. DO NOT wait or ask - just continue narration. Keep roll tags natural in the story flow.
 
+SPELL SLOTS - RESOURCE MANAGEMENT:
+You will receive the character's current spell slots in the context. BE AWARE of spell resource management:
+
+When character info includes spell_slots:
+- Track which spell levels are available
+- Mention when running low: "You feel your magical reserves waning" (1-2 slots left)
+- Subtly encourage resource management: "This might be your last big spell"
+- Never allow impossible casts - if no slots, narrate failure: "You reach for the magic, but nothing comes"
+- Remind of rest benefits: "A short rest would restore some power" (for warlocks) or "Only a long rest can restore your full might"
+
+Spell Slot Awareness Examples:
+- "You have 2 level-3 slots remaining - use them wisely"
+- "Your last level-1 slot flickers as you cast"
+- "The magic flows freely - you're still fresh with 4 slots at each level"
+- If out of slots: "You try to weave the spell, but your magical energy is spent. You'll need rest."
+
+Always respect D&D 5e spell slot rules. Don't let players cast without resources.
+
 QUEST COMPLETION:
 When the player has completed all objectives of their current quest, recognize this moment and celebrate their success.
 Include this EXACT tag to trigger reward distribution:

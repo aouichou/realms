@@ -166,6 +166,36 @@ async def send_player_action(
         "hp_max": character.hp_max,
     }
 
+    # Add spell slot information for spellcasters
+    spell_slots = {
+        "level_1": {"current": character.spell_slots_1, "max": character.spell_slots_1_max},
+        "level_2": {"current": character.spell_slots_2, "max": character.spell_slots_2_max},
+        "level_3": {"current": character.spell_slots_3, "max": character.spell_slots_3_max},
+        "level_4": {"current": character.spell_slots_4, "max": character.spell_slots_4_max},
+        "level_5": {"current": character.spell_slots_5, "max": character.spell_slots_5_max},
+        "level_6": {"current": character.spell_slots_6, "max": character.spell_slots_6_max},
+        "level_7": {"current": character.spell_slots_7, "max": character.spell_slots_7_max},
+        "level_8": {"current": character.spell_slots_8, "max": character.spell_slots_8_max},
+        "level_9": {"current": character.spell_slots_9, "max": character.spell_slots_9_max},
+    }
+
+    # Only include spell slots if character has any
+    if any(slot["max"] > 0 for slot in spell_slots.values()):
+        character_context["spell_slots"] = spell_slots
+
+        # Count prepared spells
+        from app.db.models import CharacterSpell
+
+        prepared_spells_result = await db.execute(
+            select(CharacterSpell)
+            .where(
+                CharacterSpell.character_id == character.id,
+                CharacterSpell.is_prepared == True,
+            )
+        )
+        prepared_spells = prepared_spells_result.scalars().all()
+        character_context["prepared_spells_count"] = len(prepared_spells)
+
     # Add active quest info if any
     active_quest_result = await db.execute(
         select(Quest)
