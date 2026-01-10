@@ -212,22 +212,27 @@ async def send_player_action(
             "hp_max": character.hp_max,
         }
 
-    # Add spell slot information for spellcasters
-    spell_slots = {
-        "level_1": {"current": character.spell_slots_1, "max": character.spell_slots_1_max},
-        "level_2": {"current": character.spell_slots_2, "max": character.spell_slots_2_max},
-        "level_3": {"current": character.spell_slots_3, "max": character.spell_slots_3_max},
-        "level_4": {"current": character.spell_slots_4, "max": character.spell_slots_4_max},
-        "level_5": {"current": character.spell_slots_5, "max": character.spell_slots_5_max},
-        "level_6": {"current": character.spell_slots_6, "max": character.spell_slots_6_max},
-        "level_7": {"current": character.spell_slots_7, "max": character.spell_slots_7_max},
-        "level_8": {"current": character.spell_slots_8, "max": character.spell_slots_8_max},
-        "level_9": {"current": character.spell_slots_9, "max": character.spell_slots_9_max},
-    }
+        # Add background and personality for richer roleplay
+        if character.background:
+            character_context["background"] = character.background
+        if character.personality:
+            character_context["personality"] = character.personality
+        if character.background_name:
+            character_context["background_name"] = character.background_name
+        if character.background_description:
+            character_context["background_description"] = character.background_description
+        if character.personality_trait:
+            character_context["personality_trait"] = character.personality_trait
+        if character.ideal:
+            character_context["ideal"] = character.ideal
+        if character.bond:
+            character_context["bond"] = character.bond
+        if character.flaw:
+            character_context["flaw"] = character.flaw
 
-    # Only include spell slots if character has any
-    if any(slot["max"] > 0 for slot in spell_slots.values()):
-        character_context["spell_slots"] = spell_slots
+        # Add spell slot information for spellcasters (stored in JSONB field)
+        if character.spell_slots:
+            character_context["spell_slots"] = character.spell_slots
 
         # Count prepared spells
         from app.db.models import CharacterSpell

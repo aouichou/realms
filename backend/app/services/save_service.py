@@ -51,7 +51,7 @@ class SaveService:
             "timestamp": datetime.utcnow().isoformat(),
             "game_data": {
                 "location": game_session.current_location,
-                "story_progress": game_session.story_progress,
+                "state_snapshot": game_session.state_snapshot or {},
                 "redis_state": redis_state,
             },
         }

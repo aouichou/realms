@@ -52,7 +52,7 @@ class MemoryService:
             session_id=session_id,
             event_type=EventType(event_type),
             content=content,
-            embedding=embedding if embedding else [],
+            embedding=embedding if embedding else None,
             importance=importance,
             timestamp=datetime.utcnow(),
             tags=tags or [],

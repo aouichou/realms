@@ -16,7 +16,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20260109_add_currency"
-down_revision = None  # TODO: Update with your latest migration revision
+down_revision = "7526be5a8d04"  # Points to add_preferred_language_to_user
 branch_labels = None
 depends_on = None
 
