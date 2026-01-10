@@ -207,8 +207,12 @@ async def update_background(
     if not character or character.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Character not found")
 
+    # Create a summary for the background field (used by DM for context)
+    background_summary = f"{background_name}: {background_description}"
+
     # Update background
     update_data = CharacterUpdate(
+        background=background_summary,
         background_name=background_name,
         background_description=background_description,
         background_skill_proficiencies=background_skill_proficiencies,
@@ -255,8 +259,12 @@ async def update_personality(
     if not character or character.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Character not found")
 
+    # Create a summary for the personality field (used by DM for context)
+    personality_summary = f"Trait: {personality_trait}. Ideal: {ideal}. Bond: {bond}. Flaw: {flaw}."
+
     # Update personality
     update_data = CharacterUpdate(
+        personality=personality_summary,
         personality_trait=personality_trait,
         ideal=ideal,
         bond=bond,

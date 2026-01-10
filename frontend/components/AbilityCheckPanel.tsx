@@ -143,7 +143,22 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 	const fetchSkills = async () => {
 		try {
 			const response = await apiClient.get(`/api/characters/${characterId}/stats`);
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('Failed to fetch character stats:', errorText);
+				setSkills([]);
+				return;
+			}
+
 			const data = await response.json();
+
+			// Check if skills object exists
+			if (!data.skills || typeof data.skills !== 'object') {
+				console.error('Expected skills object from stats API, got:', data);
+				setSkills([]);
+				return;
+			}
 
 			// Build skills array from the data
 			const skillsList: Skill[] = [];
@@ -165,6 +180,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 			setSkills(skillsList);
 		} catch (error) {
 			console.error("Failed to fetch skills:", error);
+			setSkills([]);
 		} finally {
 			setLoading(false);
 		}

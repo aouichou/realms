@@ -160,7 +160,22 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 	const fetchSpells = async () => {
 		try {
 			const response = await apiClient.get(`/api/spells/character/${characterId}/spells`);
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('Failed to fetch spells:', errorText);
+				setSpells([]);
+				return;
+			}
+
 			const data = await response.json();
+
+			// Check if data is an array
+			if (!Array.isArray(data)) {
+				console.error('Expected array from spells API, got:', data);
+				setSpells([]);
+				return;
+			}
 
 			// The API returns an array of objects with spell data nested
 			// Need to extract the spell information properly
@@ -173,6 +188,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 			setSpells(formattedSpells);
 		} catch (error) {
 			console.error("Failed to fetch spells:", error);
+			setSpells([]);
 		} finally {
 			setLoading(false);
 		}

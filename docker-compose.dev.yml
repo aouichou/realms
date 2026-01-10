@@ -66,6 +66,8 @@ services:
       - RANDOM_POOL_SIZE=${RANDOM_POOL_SIZE:-200}
       - RANDOM_POOL_MIN_THRESHOLD=${RANDOM_POOL_MIN_THRESHOLD:-50}
       - RANDOM_POOL_TIMEOUT=${RANDOM_POOL_TIMEOUT:-30.0}
+      - OTLP_ENDPOINT=http://jaeger:4317
+      - TRACING_ENABLED=true
     depends_on:
       postgres:
         condition: service_healthy
@@ -98,6 +100,59 @@ services:
     networks:
       - realms-network
 
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: realms-jaeger-dev
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC receiver
+      - "4318:4318"    # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - realms-network
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: realms-prometheus-dev
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - realms-network
+
+  # Grafana for metrics visualization
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: realms-grafana-dev
+    ports:
+      - "3001:3000"  # Using 3001 to avoid conflict with frontend
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./observability/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - realms-network
+
 networks:
   realms-network:
     driver: bridge
@@ -107,4 +162,8 @@ volumes:
     external: true
     name: realms_postgres-data
   redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
     driver: local

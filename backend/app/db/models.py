@@ -5,7 +5,18 @@ from datetime import datetime
 from enum import Enum as PyEnum
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    ARRAY,
+    Boolean,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -796,8 +807,8 @@ class AdventureMemory(Base):
 
     # Content and embedding
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    # Embedding stored as float array (will use pgvector in queries)
-    embedding: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    # Embedding stored as array of floats (double precision[] in PostgreSQL)
+    embedding: Mapped[Optional[list[float]]] = mapped_column(ARRAY(Float), nullable=True)
 
     # Importance scoring (1-10 scale)
     importance: Mapped[int] = mapped_column(Integer, default=5, nullable=False, index=True)
@@ -808,17 +819,17 @@ class AdventureMemory(Base):
     )
 
     # Tags and relationships
-    tags: Mapped[Optional[list]] = mapped_column(
-        JSONB, nullable=True, default=list
+    tags: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(String), nullable=True
     )  # ["combat", "boss_fight"]
-    npcs_involved: Mapped[Optional[list]] = mapped_column(
-        JSONB, nullable=True, default=list
+    npcs_involved: Mapped[Optional[list[UUID]]] = mapped_column(
+        ARRAY(UUID), nullable=True
     )  # [npc_id, ...]
-    locations: Mapped[Optional[list]] = mapped_column(
-        JSONB, nullable=True, default=list
+    locations: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(String), nullable=True
     )  # ["Goblin Cave", "Forest"]
-    items_involved: Mapped[Optional[list]] = mapped_column(
-        JSONB, nullable=True, default=list
+    items_involved: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(String), nullable=True
     )  # ["Magic Sword", "Key"]
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

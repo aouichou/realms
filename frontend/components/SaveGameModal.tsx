@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
+import { apiClient } from '@/lib/api-client';
 import { Loader2, Save } from 'lucide-react';
 import { useState } from 'react';
 
@@ -42,23 +43,20 @@ export function SaveGameModal({
 		setIsSaving(true);
 
 		try {
-			const response = await fetch('/api/game/save', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				credentials: 'include',
-				body: JSON.stringify({
-					session_id: sessionId,
-					save_name: saveName,
-				}),
+			const response = await apiClient.post('/api/game/save', {
+				session_id: sessionId,
+				save_name: saveName,
 			});
 
 			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('Save failed:', errorText);
 				throw new Error('Failed to save game');
 			}
 
 			const data = await response.json();
 
-			showToast(`Game saved as "${data.save_name}"`, 'success');
+			showToast(`Game saved as "${data.save_data?.save_name || saveName}"`, 'success');
 
 			setSaveName('');
 			onClose();

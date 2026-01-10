@@ -709,156 +709,160 @@ export default function GamePage() {
 										sessionId={sessionId}
 									/>
 								)}
+							</div>
+						)}
 
-								{/* Inventory Panel */}
-								{openPanel === 'inventory' && (
-									<div className="bg-neutral-900 rounded-lg">
-										<InventoryPanel characterId={characterId} />
-									</div>
-								)}
+						{/* Inventory Panel */}
+						{openPanel === 'inventory' && (
+							<div className="bg-neutral-900 rounded-lg">
+								<InventoryPanel characterId={characterId} />
+							</div>
+						)}
 
-								{/* Combat Panel */}
-								{openPanel === 'combat' && sessionId && (
-									<div className="bg-neutral-900 rounded-lg">
-										<CombatTracker
-											sessionId={sessionId}
-											characterId={characterId}
-											onCombatEnd={() => {
-												// Refresh character stats after combat
-												loadCharacter();
+						{/* Combat Panel */}
+						{openPanel === 'combat' && sessionId && (
+							<div className="bg-neutral-900 rounded-lg">
+								<CombatTracker
+									sessionId={sessionId}
+									characterId={characterId}
+									onCombatEnd={() => {
+										// Refresh character stats after combat
+										loadCharacter();
+									}}
+								/>
+							</div>
+						)}
+
+						{/* Spells Panel */}
+						{openPanel === 'spells' && (
+							<div className="space-y-4 bg-neutral-900 rounded-lg p-4">
+								<SpellsPanel characterId={characterId} />
+
+								{/* Spell Slots Display */}
+								<SpellSlotsDisplay
+									characterId={characterId}
+									characterName={character?.name}
+								/>
+							</div>
+						)}
+
+						{/* Ability Checks Panel */}
+						{openPanel === 'checks' && (
+							<div className="bg-neutral-900 rounded-lg">
+								<AbilityCheckPanel
+									characterId={characterId}
+									onRollComplete={handleRollComplete}
+								/>
+							</div>
+						)}
+
+						{/* Companion Panel */}
+						{openPanel === 'companion' && character && (
+							<div className="bg-neutral-900 rounded-lg h-150">
+								<CompanionPanel
+									characterId={characterId}
+									gameContext={{
+										player_hp: character.hp_current,
+										player_max_hp: character.hp_max,
+										in_combat: false,
+										location: sessionId ? 'Adventure' : 'Village',
+										situation: messages.length > 0 ? messages[messages.length - 1].content : 'Ready for adventure',
+									}}
+									onSpeechGenerated={(speech) => {
+										console.log('Companion says:', speech);
+									}}
+								/>
+							</div>
+						)}
+
+						{/* Image Gallery Panel */}
+						{openPanel === 'images' && (
+							<div className="bg-neutral-900 rounded-lg h-full">
+								<ImageGalleryPanel
+									images={messages
+										.filter(m => m.scene_image_url)
+										.map(m => ({
+											url: m.scene_image_url!,
+											timestamp: m.timestamp,
+											caption: m.content.substring(0, 100),
+										}))
+									}
+								/>
+							</div>
+						)}
+
+						{/* Dice Panel */}
+						{openPanel === 'dice' && (
+							<div className="space-y-4">
+								<div className="space-y-2">
+									<label className="text-sm text-white/80 font-body">Dice Notation</label>
+									<Input
+										value={diceNotation}
+										onChange={(e) => setDiceNotation(e.target.value)}
+										placeholder="e.g., 1d20, 2d6+3"
+										className="bg-white/5 border-white/10 text-white font-mono"
+									/>
+								</div>
+
+								<div className="grid grid-cols-3 gap-2">
+									{['1d4', '1d6', '1d8', '1d10', '1d12', '1d20'].map((notation) => (
+										<Button
+											key={notation}
+											variant="outline"
+											onClick={() => {
+												setDiceNotation(notation);
+												setLastDiceResult(null);
 											}}
-										/>
-									</div>
-								)}
+											className="font-mono border-white/20 text-neutral-900 hover:bg-white/10 hover:text-white"
+										>
+											{notation}
+										</Button>
+									))}
+								</div>
 
-								{/* Spells Panel */}
-								{openPanel === 'spells' && (
-									<div className="space-y-4 bg-neutral-900 rounded-lg p-4">
-										<SpellsPanel characterId={characterId} />
+								<Button
+									onClick={rollDice}
+									className="w-full font-body"
+									size="lg"
+								>
+									Roll Dice
+								</Button>
 
-										{/* Spell Slots Display */}
-										<SpellSlotsDisplay
-											characterId={characterId}
-											characterName={character?.name}
-										/>
-
-										{/* Ability Checks Panel */}
-										{openPanel === 'checks' && (
-											<div className="bg-neutral-900 rounded-lg">
-												<AbilityCheckPanel
-													characterId={characterId}
-													onRollComplete={handleRollComplete}
-												/>
-											</div>
-										)}
-										{/* Companion Panel */}
-										{openPanel === 'companion' && character && (
-											<div className="bg-neutral-900 rounded-lg h-150">
-												<CompanionPanel
-													characterId={characterId}
-													gameContext={{
-														player_hp: character.hp_current,
-														player_max_hp: character.hp_max,
-														in_combat: false,
-														location: sessionId ? 'Adventure' : 'Village',
-														situation: messages.length > 0 ? messages[messages.length - 1].content : 'Ready for adventure',
-													}}
-													onSpeechGenerated={(speech) => {
-														console.log('Companion says:', speech);
-													}}
-												/>
-											</div>
-										)}
-
-										{/* Image Gallery Panel */}
-										{openPanel === 'images' && (
-											<div className="bg-neutral-900 rounded-lg h-full">
-												<ImageGalleryPanel
-													images={messages
-														.filter(m => m.scene_image_url)
-														.map(m => ({
-															url: m.scene_image_url!,
-															timestamp: m.timestamp,
-															caption: m.content.substring(0, 100),
-														}))
-													}
-												/>
-											</div>
-										)}
-
-										{/* Dice Panel */}
-										{openPanel === 'dice' && (
-											<div className="space-y-4">
-												<div className="space-y-2">
-													<label className="text-sm text-white/80 font-body">Dice Notation</label>
-													<Input
-														value={diceNotation}
-														onChange={(e) => setDiceNotation(e.target.value)}
-														placeholder="e.g., 1d20, 2d6+3"
-														className="bg-white/5 border-white/10 text-white font-mono"
-													/>
-												</div>
-
-												<div className="grid grid-cols-3 gap-2">
-													{['1d4', '1d6', '1d8', '1d10', '1d12', '1d20'].map((notation) => (
-														<Button
-															key={notation}
-															variant="outline"
-															onClick={() => {
-																setDiceNotation(notation);
-																setLastDiceResult(null);
-															}}
-															className="font-mono border-white/20 text-neutral-900 hover:bg-white/10 hover:text-white"
-														>
-															{notation}
-														</Button>
-													))}
-												</div>
-
-												<Button
-													onClick={rollDice}
-													className="w-full font-body"
-													size="lg"
-												>
-													Roll Dice
-												</Button>
-
-												{lastDiceResult && (
-													<Card className="bg-accent-400/20 border-accent-400/30">
-														<CardContent className="p-4">
-															<div className="text-center">
-																<p className="text-sm text-white/80 font-body mb-2">
-																	{lastDiceResult.notation}
-																</p>
-																<p className="text-4xl font-bold text-accent-400 font-display mb-2">
-																	{lastDiceResult.total}
-																</p>
-																{lastDiceResult.individual_rolls && (
-																	<p className="text-xs text-white/60 font-mono">
-																		Rolls: {lastDiceResult.individual_rolls.map((r: any) => r.roll).join(', ')}
-																		{lastDiceResult.modifier !== 0 && ` (${lastDiceResult.modifier >= 0 ? '+' : ''}${lastDiceResult.modifier})`}
-																	</p>
-																)}
-															</div>
-														</CardContent>
-													</Card>
+								{lastDiceResult && (
+									<Card className="bg-accent-400/20 border-accent-400/30">
+										<CardContent className="p-4">
+											<div className="text-center">
+												<p className="text-sm text-white/80 font-body mb-2">
+													{lastDiceResult.notation}
+												</p>
+												<p className="text-4xl font-bold text-accent-400 font-display mb-2">
+													{lastDiceResult.total}
+												</p>
+												{lastDiceResult.individual_rolls && (
+													<p className="text-xs text-white/60 font-mono">
+														Rolls: {lastDiceResult.individual_rolls.map((r: any) => r.roll).join(', ')}
+														{lastDiceResult.modifier !== 0 && ` (${lastDiceResult.modifier >= 0 ? '+' : ''}${lastDiceResult.modifier})`}
+													</p>
 												)}
 											</div>
-										)}
-									</div>
+										</CardContent>
+									</Card>
 								)}
 							</div>
-
-			{/* Quest Complete Modal */}
-						{questCompleteData && (
-							<QuestCompleteModal
-								isOpen={showQuestCompleteModal}
-								questTitle={questCompleteData.title}
-								rewards={questCompleteData.rewards}
-								onClose={() => setShowQuestCompleteModal(false)}
-								onClaimRewards={claimQuestRewards}
-							/>
 						)}
 					</div>
-				);
+				)}
+			</div>
+			{/* Quest Complete Modal */}
+			{questCompleteData && (
+				<QuestCompleteModal
+					isOpen={showQuestCompleteModal}
+					questTitle={questCompleteData.title}
+					rewards={questCompleteData.rewards}
+					onClose={() => setShowQuestCompleteModal(false)}
+					onClaimRewards={claimQuestRewards}
+				/>
+			)}
+		</div>
+	);
 }
