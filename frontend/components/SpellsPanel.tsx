@@ -453,7 +453,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 						})
 						.map(([level, spellsInLevel]) => (
 							<div key={level}>
-								<h3 className="font-bold text-lg mb-3 text-foreground">{level}</h3>
+							<h3 className="font-bold text-lg mb-3 text-white">{level}</h3>
 								<div className="grid grid-cols-1 gap-3">
 									{spellsInLevel.map((spell) => {
 										// For known casters, all spells are available; for prepared casters, only prepared spells
