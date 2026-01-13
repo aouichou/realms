@@ -31,6 +31,53 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
 
+def _is_significant_scene(narration: str, player_action: str) -> bool:
+    """Determine if scene warrants image generation
+
+    Generate images for:
+    - Combat starts
+    - New locations entered
+    - Boss/important NPC encounters
+    - Quest milestones
+    - Dramatic moments
+    """
+    combined = (narration + " " + player_action).lower()
+
+    significant_keywords = [
+        # Combat
+        "combat begins",
+        "roll initiative",
+        "attacks you",
+        "draws weapon",
+        "battle erupts",
+        # Locations
+        "you enter",
+        "you arrive at",
+        "you step into",
+        "before you lies",
+        "chamber",
+        "throne room",
+        "dungeon",
+        "temple",
+        "cavern",
+        # NPCs/Enemies
+        "dragon",
+        "towering before you",
+        "emerges from",
+        "boss",
+        "appears suddenly",
+        "looms over",
+        # Dramatic moments
+        "explosion",
+        "magical energy",
+        "portal opens",
+        "ancient artifact",
+        "treasure hoard",
+    ]
+
+    return any(keyword in combined for keyword in significant_keywords)
+
+
 @router.post("/messages", response_model=MessageResponse, status_code=201)
 async def create_message(
     message_data: MessageCreate,
@@ -453,16 +500,28 @@ async def send_player_action(
         except Exception as e:
             logger.warning(f"Failed to capture dialogue memory: {e}")
 
-    # Generate scene image if scene change detected
+    # Generate scene image for significant moments
     scene_image_url = None
-    if dm_engine.detect_scene_change(result["narration"], request.action):
+    if _is_significant_scene(result["narration"], request.action):
         try:
-            logger.info("Scene change detected, generating image...")
-            scene_description = dm_engine.extract_scene_description(
-                result["narration"], character_context
+            logger.info("Significant scene detected, generating image...")
+            from app.services.image_service import image_service
+
+            # Build character context for image
+            char_desc = None
+            if character:
+                char_desc = f"{character.name}, {character.race} {character.class_name}"
+
+            # Generate or reuse image
+            scene_image_url = await image_service.generate_scene_image(
+                scene_description=result["narration"], db=db, use_cache=True
             )
-            scene_image_url = await ImageService.generate_scene_image(scene_description)
-            logger.info(f"Scene image generated: {scene_image_url}")
+
+            if scene_image_url:
+                logger.info(f"Scene image ready: {scene_image_url}")
+            else:
+                logger.info("Image generation skipped (rate limit or disabled)")
+
         except Exception as e:
             logger.error(f"Failed to generate scene image: {e}")
             # Image generation is optional, don't fail the request

@@ -4,11 +4,13 @@ Configures the API server with middleware, routers, and error handlers
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api import (
     adventures,
@@ -212,6 +214,16 @@ app.include_router(quests.router)
 app.include_router(adventures.router)  # Preset adventures
 app.include_router(memories.router)  # Vector memory system
 app.include_router(rules.router)  # D&D 5e rules helpers
+
+# Mount static files for generated images
+MEDIA_DIR = Path(__file__).parent.parent.parent / "media"
+if MEDIA_DIR.exists():
+    app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
+else:
+    # Create media directory if it doesn't exist
+    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    (MEDIA_DIR / "images" / "generated").mkdir(parents=True, exist_ok=True)
+    app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 
 
 # Root endpoint
