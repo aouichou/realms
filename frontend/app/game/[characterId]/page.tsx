@@ -55,6 +55,9 @@ interface Character {
 	intelligence: number;
 	wisdom: number;
 	charisma: number;
+	gold: number;
+	silver: number;
+	copper: number;
 }
 
 type PanelType = 'stats' | 'inventory' | 'dice' | 'combat' | 'spells' | 'checks' | 'companion' | 'images' | null;
@@ -538,14 +541,20 @@ export default function GamePage() {
 							<p className="text-xs md:text-sm text-white/80 font-body">
 								Level {character.level} {character.race} {character.character_class}
 							</p>
+						<div className="flex gap-3 mt-2 text-xs text-white/70">
+							<span className="flex items-center gap-1">
+								<span className="text-yellow-400">🪙</span>
+								{character.gold || 0}gp
+							</span>
+							<span className="flex items-center gap-1">
+								<span className="text-gray-300">⚪</span>
+								{character.silver || 0}sp
+							</span>
+							<span className="flex items-center gap-1">
+								<span className="text-orange-400">🟤</span>
+								{character.copper || 0}cp
+							</span>
 						</div>
-					)}
-
-					{/* Messages */}
-					<div className="flex-1 overflow-y-auto space-y-3 md:space-y-4 mb-3 md:mb-4">
-						{messages.length === 0 && sessionId && (
-							<div className="flex items-center justify-center h-full">
-								<div className="text-center space-y-4">
 									<div className="text-6xl mb-4">🎲</div>
 									<h2 className="text-2xl font-display text-white mb-2">
 										Ready to Begin?

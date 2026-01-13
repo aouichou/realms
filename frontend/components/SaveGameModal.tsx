@@ -51,7 +51,26 @@ export function SaveGameModal({
 			if (!response.ok) {
 				const errorText = await response.text();
 				console.error('Save failed:', errorText);
-				throw new Error('Failed to save game');
+
+				// Check for duplicate name error
+				let errorData;
+				try {
+					errorData = JSON.parse(errorText);
+				} catch (e) {
+					// Not JSON, use text
+					errorData = { detail: errorText };
+				}
+
+				if (errorData.detail && typeof errorData.detail === 'string') {
+					if (errorData.detail.includes('already exists') || errorData.detail.includes('duplicate')) {
+						showToast('A save with this name already exists. Please choose a different name.', 'error');
+					} else {
+						showToast(errorData.detail, 'error');
+					}
+				} else {
+					showToast('Failed to save game. Please try again.', 'error');
+				}
+				return;
 			}
 
 			const data = await response.json();
