@@ -27,6 +27,7 @@ IMAGE_CACHE_TTL = 60 * 60 * 24  # 24 hours
 MEDIA_ROOT = Path("media/images/generated")
 MAX_IMAGES_PER_HOUR = int(os.getenv("IMAGE_GENERATION_MAX_PER_HOUR", "10"))
 ENABLE_IMAGE_GENERATION = os.getenv("ENABLE_IMAGE_GENERATION", "true").lower() == "true"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 # Rate limiting storage
 _image_generation_calls = []
@@ -154,10 +155,13 @@ class ImageService:
                 existing_image.last_used_at = datetime.utcnow()
                 db.commit()
 
+                # Convert relative path to full URL
+                full_url = f"{API_BASE_URL}{existing_image.image_path}"
+
                 logger.info(
                     f"Reusing existing image (hash={desc_hash}, reuse_count={existing_image.reuse_count})"
                 )
-                return existing_image.image_path
+                return full_url
 
         try:
             # Build enhanced prompt
@@ -217,13 +221,14 @@ Style Requirements:
                     filename = f"{desc_hash}.png"
                     filepath = MEDIA_ROOT / filename
                     relative_path = f"/media/images/generated/{filename}"
+                    full_url = f"{API_BASE_URL}{relative_path}"
 
                     with open(filepath, "wb") as f:
                         f.write(file_bytes)
 
                     logger.info(f"Image saved: {filepath} ({len(file_bytes)} bytes)")
 
-                    # Save to database
+                    # Save to database (store relative path for flexibility)
                     generated_image = GeneratedImage(
                         description_hash=desc_hash,
                         description_text=description,
@@ -234,14 +239,14 @@ Style Requirements:
                     db.add(generated_image)
                     db.commit()
 
-                    # Cache in Redis
+                    # Cache in Redis (store full URL)
                     if session_service.redis:
                         cache_key = f"scene_image:{desc_hash}"
                         await session_service.redis.setex(  # type: ignore[misc]
-                            cache_key, IMAGE_CACHE_TTL, relative_path
+                            cache_key, IMAGE_CACHE_TTL, full_url
                         )
 
-                    return relative_path
+                    return full_url
 
             logger.warning("No image file found in agent response")
             return None
