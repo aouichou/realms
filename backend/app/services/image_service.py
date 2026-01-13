@@ -1,89 +1,255 @@
-"""Scene Image Generation Service using Pixtral"""
+"""Scene Image Generation Service using Mistral AI Agents"""
 
 import hashlib
+import logging
 import os
+import time
+from datetime import datetime
+from functools import wraps
+from pathlib import Path
 from typing import Optional
 
 from mistralai import Mistral
+from mistralai.models import ToolFileChunk
+from sqlalchemy.orm import Session
 
+from app.models.generated_image import GeneratedImage
 from app.services.redis_service import session_service
+
+logger = logging.getLogger(__name__)
 
 # Initialize Mistral client
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 client = Mistral(api_key=MISTRAL_API_KEY) if MISTRAL_API_KEY else None
 
-# Cache TTL: 24 hours
-IMAGE_CACHE_TTL = 60 * 60 * 24
+# Configuration
+IMAGE_CACHE_TTL = 60 * 60 * 24  # 24 hours
+MEDIA_ROOT = Path("media/images/generated")
+MAX_IMAGES_PER_HOUR = int(os.getenv("IMAGE_GENERATION_MAX_PER_HOUR", "10"))
+ENABLE_IMAGE_GENERATION = os.getenv("ENABLE_IMAGE_GENERATION", "true").lower() == "true"
+
+# Rate limiting storage
+_image_generation_calls = []
+
+
+def rate_limit(max_per_hour: int = MAX_IMAGES_PER_HOUR):
+    """Decorator to limit image generation rate"""
+
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            if not ENABLE_IMAGE_GENERATION:
+                logger.info("Image generation disabled via environment variable")
+                return None
+
+            now = time.time()
+            hour_ago = now - 3600
+
+            # Clean old calls
+            global _image_generation_calls
+            _image_generation_calls = [t for t in _image_generation_calls if t > hour_ago]
+
+            if len(_image_generation_calls) >= max_per_hour:
+                logger.warning(f"Image generation rate limit hit: {max_per_hour}/hour")
+                return None
+
+            _image_generation_calls.append(now)
+            return await func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 class ImageService:
-    """Service for generating scene images with Pixtral"""
+    """Service for generating scene images using Mistral AI Agents"""
+
+    def __init__(self):
+        self.client = client
+        self.agent_id: Optional[str] = None
+        if self.client and ENABLE_IMAGE_GENERATION:
+            self._initialize_agent()
+
+        # Ensure media directory exists
+        MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+
+    def _initialize_agent(self):
+        """Create or retrieve the D&D Scene Illustrator agent"""
+        try:
+            # Check if we have a persistent agent ID in env
+            persistent_agent_id = os.getenv("MISTRAL_IMAGE_AGENT_ID")
+            if persistent_agent_id:
+                self.agent_id = persistent_agent_id
+                logger.info(f"Using persistent image agent: {persistent_agent_id}")
+                return
+
+            # Create new agent
+            agent = self.client.beta.agents.create(
+                model="mistral-medium-latest",  # Required for image generation
+                name="D&D Scene Illustrator",
+                description="Generates vivid fantasy scene images for D&D adventures",
+                instructions=(
+                    "Generate cinematic, fantasy-themed images based on D&D scene descriptions. "
+                    "Focus on atmosphere, dramatic lighting, and epic composition. "
+                    "Style: Fantasy art with detailed environments, medieval fantasy aesthetic. "
+                    "Avoid modern elements. Emphasize adventure, mystery, and epicness."
+                ),
+                tools=[{"type": "image_generation"}],
+            )
+            self.agent_id = agent.id
+            logger.info(f"Image generation agent created: {agent.id}")
+            logger.info(
+                "💡 TIP: Set MISTRAL_IMAGE_AGENT_ID=%s in .env to reuse this agent", agent.id
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to initialize image agent: {e}")
+            self.agent_id = None
 
     @staticmethod
-    def _generate_cache_key(scene_description: str) -> str:
-        """Generate cache key from scene description"""
-        # Hash the description for consistent caching
-        hash_obj = hashlib.md5(scene_description.encode())
-        return f"scene_image:{hash_obj.hexdigest()}"
+    def _generate_hash(text: str) -> str:
+        """Generate MD5 hash from text"""
+        return hashlib.md5(text.encode()).hexdigest()
 
     @staticmethod
-    async def generate_scene_image(scene_description: str, use_cache: bool = True) -> Optional[str]:
-        """Generate scene image using Pixtral
+    def _normalize_description(description: str) -> str:
+        """Normalize scene description for better matching"""
+        # Remove extra whitespace, lowercase, remove punctuation at end
+        normalized = " ".join(description.lower().strip().split())
+        return normalized.rstrip(".,!?;:")
+
+    @rate_limit(max_per_hour=MAX_IMAGES_PER_HOUR)
+    async def generate_scene_image(
+        self, scene_description: str, db: Session, use_cache: bool = True
+    ) -> Optional[str]:
+        """Generate scene image using Mistral Agent API with smart reuse
 
         Args:
             scene_description: Description of the scene to visualize
-            use_cache: Whether to use Redis cache
+            db: Database session
+            use_cache: Whether to check for existing images
 
         Returns:
-            str: Base64-encoded image data or None if generation fails
+            str: URL path to image (/media/images/generated/{hash}.png) or None
         """
-        if not client:
+        if not self.client or not self.agent_id:
+            logger.warning("Image generation not available (agent not initialized)")
             return None
 
-        # Check cache first
-        if use_cache and session_service.redis:
-            cache_key = ImageService._generate_cache_key(scene_description)
-            cached_image = await session_service.redis.get(cache_key)  # type: ignore[misc]
-            if cached_image:
-                return cached_image.decode() if isinstance(cached_image, bytes) else cached_image
+        # Normalize and hash description
+        normalized_desc = self._normalize_description(scene_description)
+        desc_hash = self._generate_hash(normalized_desc)
+
+        # Check database for existing image
+        if use_cache:
+            existing_image = (
+                db.query(GeneratedImage)
+                .filter(GeneratedImage.description_hash == desc_hash)
+                .first()
+            )
+
+            if existing_image:
+                # Update reuse stats
+                existing_image.reuse_count += 1
+                existing_image.last_used_at = datetime.utcnow()
+                db.commit()
+
+                logger.info(
+                    f"Reusing existing image (hash={desc_hash}, reuse_count={existing_image.reuse_count})"
+                )
+                return existing_image.image_path
 
         try:
-            # Call Pixtral API (Note: Actual Pixtral API integration would go here)
-            # For now, return placeholder since Pixtral API details are not fully available
-            # In production, this would call: client.images.generate(model="pixtral", prompt=scene_description)
+            # Build enhanced prompt
+            image_prompt = self._build_image_prompt(scene_description)
 
-            # Placeholder response
-            image_data = None
+            logger.info(f"Generating new image for scene (hash={desc_hash})")
 
-            # Cache the result
-            if use_cache and image_data and session_service.redis:
-                cache_key = ImageService._generate_cache_key(scene_description)
-                await session_service.redis.setex(cache_key, IMAGE_CACHE_TTL, image_data)  # type: ignore[misc]
+            # Start conversation with agent
+            response = self.client.beta.conversations.start(
+                agent_id=self.agent_id, inputs=image_prompt
+            )
 
-            return image_data
+            # Extract and save image
+            image_url = await self._process_agent_response(response, desc_hash, db, normalized_desc)
+
+            return image_url
 
         except Exception as e:
-            print(f"Error generating scene image: {e}")
+            logger.error(f"Image generation failed: {e}")
             return None
 
-    @staticmethod
-    def extract_scene_from_narration(narration: str) -> str:
-        """Extract scene description from narration text
+    def _build_image_prompt(self, scene_description: str) -> str:
+        """Enhance scene description for better image generation"""
+        # Extract key scene elements (first 2-3 sentences)
+        sentences = scene_description.split(". ")
+        core_scene = ". ".join(sentences[: min(3, len(sentences))])
 
-        Args:
-            narration: Full narration text
+        # Remove dialogue
+        core_scene = core_scene.replace('"', "")
 
-        Returns:
-            str: Cleaned scene description for image generation
-        """
-        # Extract first 2-3 sentences that describe the scene
-        sentences = narration.split(". ")
-        scene = ". ".join(sentences[: min(3, len(sentences))])
+        prompt = f"""Generate a cinematic D&D fantasy scene image:
 
-        # Clean up dialogue and player actions
-        scene = scene.replace('"', "")
+{core_scene}
 
-        # Add D&D fantasy art style
-        scene_prompt = f"Fantasy D&D scene: {scene}. Epic medieval fantasy art style, detailed environment, cinematic lighting."
+Style Requirements:
+- Epic fantasy art with dramatic lighting
+- Medieval fantasy aesthetic (no modern elements)
+- Detailed environment and atmosphere
+- Immersive and atmospheric mood
+- High detail, cinematic composition
+- Evoke sense of adventure and mystery"""
 
-        return scene_prompt
+        return prompt
+
+    async def _process_agent_response(
+        self, response, desc_hash: str, db: Session, description: str
+    ) -> Optional[str]:
+        """Extract image file from agent response and save it"""
+        try:
+            # Find the image file in response
+            for chunk in response.outputs[-1].content:
+                if isinstance(chunk, ToolFileChunk):
+                    # Download image bytes
+                    file_bytes = self.client.files.download(file_id=chunk.file_id).read()
+
+                    # Save to filesystem
+                    filename = f"{desc_hash}.png"
+                    filepath = MEDIA_ROOT / filename
+                    relative_path = f"/media/images/generated/{filename}"
+
+                    with open(filepath, "wb") as f:
+                        f.write(file_bytes)
+
+                    logger.info(f"Image saved: {filepath} ({len(file_bytes)} bytes)")
+
+                    # Save to database
+                    generated_image = GeneratedImage(
+                        description_hash=desc_hash,
+                        description_text=description,
+                        image_path=relative_path,
+                        model_used="mistral-medium-latest",
+                        reuse_count=0,
+                    )
+                    db.add(generated_image)
+                    db.commit()
+
+                    # Cache in Redis
+                    if session_service.redis:
+                        cache_key = f"scene_image:{desc_hash}"
+                        await session_service.redis.setex(  # type: ignore[misc]
+                            cache_key, IMAGE_CACHE_TTL, relative_path
+                        )
+
+                    return relative_path
+
+            logger.warning("No image file found in agent response")
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to process agent response: {e}")
+            return None
+
+
+# Global instance
+image_service = ImageService()
