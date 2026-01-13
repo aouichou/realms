@@ -50,16 +50,27 @@ def _is_significant_scene(narration: str, player_action: str) -> bool:
         "attacks you",
         "draws weapon",
         "battle erupts",
-        # Locations
+        # Locations - More comprehensive
         "you enter",
         "you arrive at",
         "you step into",
+        "you find yourself in",
+        "burst in",
+        "sprint toward",
+        "door leads into",
         "before you lies",
         "chamber",
         "throne room",
         "dungeon",
         "temple",
         "cavern",
+        "shop",
+        "tavern",
+        "market",
+        "town square",
+        "alleyway",
+        "forest",
+        "ruins",
         # NPCs/Enemies
         "dragon",
         "towering before you",
@@ -75,7 +86,14 @@ def _is_significant_scene(narration: str, player_action: str) -> bool:
         "treasure hoard",
     ]
 
-    return any(keyword in combined for keyword in significant_keywords)
+    is_significant = any(keyword in combined for keyword in significant_keywords)
+
+    # Debug logging
+    if is_significant:
+        matched = [kw for kw in significant_keywords if kw in combined]
+        logger.info(f"Significant scene detected! Matched keywords: {matched}")
+
+    return is_significant
 
 
 @router.post("/messages", response_model=MessageResponse, status_code=201)
