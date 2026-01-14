@@ -34,6 +34,19 @@ class Settings(BaseSettings):
     mistral_max_tokens: int = Field(default=2048, description="Maximum tokens per request")
     mistral_temperature: float = Field(default=0.7, description="Model temperature")
 
+    # Google Gemini AI API
+    gemini_api_key: str = Field(default="", description="Google Gemini API key")
+    gemini_model: str = Field(
+        default="gemini-3-flash-preview",
+        description="Default Gemini model (gemini-3-flash-preview for better D&D reasoning)",
+    )
+    gemini_max_tokens: int = Field(default=2048, description="Maximum tokens per request")
+    gemini_temperature: float = Field(default=0.7, description="Model temperature")
+    gemini_thinking_level: str = Field(
+        default="high",
+        description="Thinking level for Gemini 3 models (minimal, low, medium, high) - high recommended for D&D DMing",
+    )
+
     # Rate Limiting
     rate_limit_per_second: int = Field(default=1, description="Requests per second limit")
     rate_limit_burst: int = Field(default=3, description="Burst capacity for rate limiting")
@@ -105,6 +118,30 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         """Get PostgreSQL connection URL"""
         return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+
+    @property
+    def ai_providers_config(self) -> dict:
+        """Get multi-provider configuration"""
+        return {
+            "gemini": {
+                "enabled": bool(self.gemini_api_key),
+                "api_key": self.gemini_api_key,
+                "model": self.gemini_model,
+                "max_tokens": self.gemini_max_tokens,
+                "temperature": self.gemini_temperature,
+                "thinking_level": self.gemini_thinking_level,
+                "priority": 1,  # Primary (best free tier with thinking)
+            },
+            "mistral": {
+                "enabled": bool(self.mistral_api_key),
+                "api_key": self.mistral_api_key,
+                "model": self.mistral_model,
+                "max_tokens": self.mistral_max_tokens,
+                "temperature": self.mistral_temperature,
+                "rate_limit": self.rate_limit_per_second,
+                "priority": 2,  # Fallback
+            },
+        }
 
 
 # Global settings instance

@@ -1,0 +1,28 @@
+{
+  "home": {
+    "title": "Mistral Realms",
+    "subtitle": "Aventures D&D propulsées par l'IA",
+    "description1": "Embarquez dans des aventures épiques guidées par un Maître du Donjon IA propulsé par Mistral AI.",
+    "description2": "Créez votre personnage, faites des choix et regardez votre histoire se dérouler en temps réel avec un véritable hasard pour les jets de dés.",
+    "signIn": "Se connecter",
+    "register": "S'inscrire",
+    "login": "Connexion",
+    "or": "ou",
+    "noEmailRequired": "Aucun e-mail requis pour la démo • Toute progression auto-sauvegardée • Réclamez un compte à tout moment",
+    "features": {
+      "classes": {
+        "title": "12 Classes D&D",
+        "description": "Choisissez parmi Barbare, Barde, Clerc, Druide, Guerrier, Moine, Paladin, Rôdeur, Roublard, Ensorceleur, Occultiste ou Magicien"
+      },
+      "randomness": {
+        "title": "Véritable Aléatoire",
+        "description": "Jets de dés alimentés par le bruit atmosphérique de Random.org pour une imprévisibilité authentique"
+      },
+      "aiDM": {
+        "title": "Maître du Donjon IA",
+        "description": "Mistral AI crée des récits dynamiques, génère des images de scène et répond à vos choix"
+      }
+    },
+    "footer": "Créé pour la candidature au stage Mistral AI"
+  }
+}

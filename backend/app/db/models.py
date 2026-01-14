@@ -436,7 +436,14 @@ class Item(Base):
 
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     item_type: Mapped[ItemType] = mapped_column(
-        Enum(ItemType, values_callable=lambda x: [e.value for e in x]), nullable=False, index=True
+        Enum(
+            ItemType,
+            values_callable=lambda x: [e.value for e in x],
+            create_type=False,
+            native_enum=False,
+        ),
+        nullable=False,
+        index=True,
     )
 
     # Weight in pounds (D&D 5e standard)
@@ -822,9 +829,9 @@ class AdventureMemory(Base):
     tags: Mapped[Optional[list[str]]] = mapped_column(
         ARRAY(String), nullable=True
     )  # ["combat", "boss_fight"]
-    npcs_involved: Mapped[Optional[list[UUID]]] = mapped_column(
-        ARRAY(UUID), nullable=True
-    )  # [npc_id, ...]
+    npcs_involved: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(String), nullable=True
+    )  # [npc_name, ...]  Changed from UUID to String for unnamed NPCs
     locations: Mapped[Optional[list[str]]] = mapped_column(
         ARRAY(String), nullable=True
     )  # ["Goblin Cave", "Forest"]

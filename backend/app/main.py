@@ -46,6 +46,7 @@ from app.middleware.rate_limit import RateLimitMiddleware
 from app.observability.logger import get_logger
 from app.observability.tracing import init_tracing, instrument_app
 from app.routers import health, metrics, narrate
+from app.services.provider_init import initialize_providers
 from app.services.redis_service import session_service
 
 logger = get_logger(__name__)
@@ -94,6 +95,18 @@ async def lifespan(app: FastAPI):
     # Setup query performance monitoring
     logger.info("Setting up query performance monitoring...")
     query_monitor.setup_query_logging()
+
+    # Initialize AI providers
+    try:
+        logger.info("Initializing AI providers...")
+        provider_count = await initialize_providers()
+        if provider_count == 0:
+            logger.warning("⚠️  No AI providers initialized - check API keys in .env")
+        else:
+            logger.info(f"✓ {provider_count} AI provider(s) ready")
+    except Exception as e:
+        logger.error(f"Failed to initialize AI providers: {e}")
+        # Continue anyway - some endpoints might still work
 
     yield
 

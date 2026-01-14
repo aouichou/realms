@@ -11,7 +11,8 @@ from typing import Optional
 
 from mistralai import Mistral
 from mistralai.models import ToolFileChunk
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.generated_image import GeneratedImage
 from app.services.redis_service import session_service
@@ -121,7 +122,7 @@ class ImageService:
 
     @rate_limit(max_per_hour=MAX_IMAGES_PER_HOUR)
     async def generate_scene_image(
-        self, scene_description: str, db: Session, use_cache: bool = True
+        self, scene_description: str, db: AsyncSession, use_cache: bool = True
     ) -> Optional[str]:
         """Generate scene image using Mistral Agent API with smart reuse
 
@@ -143,17 +144,16 @@ class ImageService:
 
         # Check database for existing image
         if use_cache:
-            existing_image = (
-                db.query(GeneratedImage)
-                .filter(GeneratedImage.description_hash == desc_hash)
-                .first()
+            result = await db.execute(
+                select(GeneratedImage).filter(GeneratedImage.description_hash == desc_hash)
             )
+            existing_image = result.scalar_one_or_none()
 
             if existing_image:
                 # Update reuse stats
                 existing_image.reuse_count += 1
                 existing_image.last_used_at = datetime.utcnow()
-                db.commit()
+                await db.commit()
 
                 # Convert relative path to full URL
                 full_url = f"{API_BASE_URL}{existing_image.image_path}"
@@ -172,6 +172,13 @@ class ImageService:
             # Start conversation with agent
             response = self.client.beta.conversations.start(
                 agent_id=self.agent_id, inputs=image_prompt
+            )
+
+            logger.info(
+                f"Agent response received, status: {response.status if hasattr(response, 'status') else 'unknown'}"
+            )
+            logger.info(
+                f"Response has outputs: {hasattr(response, 'outputs') and len(response.outputs) > 0 if hasattr(response, 'outputs') else False}"
             )
 
             # Extract and save image
@@ -207,12 +214,32 @@ Style Requirements:
         return prompt
 
     async def _process_agent_response(
-        self, response, desc_hash: str, db: Session, description: str
+        self, response, desc_hash: str, db: AsyncSession, description: str
     ) -> Optional[str]:
         """Extract image file from agent response and save it"""
         try:
+            logger.info(
+                f"Processing agent response, outputs count: {len(response.outputs) if hasattr(response, 'outputs') else 0}"
+            )
+
             # Find the image file in response
-            for chunk in response.outputs[-1].content:
+            if not hasattr(response, "outputs") or not response.outputs:
+                logger.warning("Response has no outputs")
+                return None
+
+            last_output = response.outputs[-1]
+            logger.info(
+                f"Last output type: {type(last_output)}, has content: {hasattr(last_output, 'content')}"
+            )
+
+            if not hasattr(last_output, "content"):
+                logger.warning("Last output has no content")
+                return None
+
+            for i, chunk in enumerate(last_output.content):
+                logger.info(
+                    f"Chunk {i}: type={type(chunk)}, is_tool_file={isinstance(chunk, ToolFileChunk)}"
+                )
                 if isinstance(chunk, ToolFileChunk):
                     # Download image bytes
                     file_bytes = self.client.files.download(file_id=chunk.file_id).read()
@@ -237,7 +264,7 @@ Style Requirements:
                         reuse_count=0,
                     )
                     db.add(generated_image)
-                    db.commit()
+                    await db.commit()
 
                     # Cache in Redis (store full URL)
                     if session_service.redis:

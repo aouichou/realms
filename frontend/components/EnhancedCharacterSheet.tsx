@@ -361,25 +361,25 @@ export function EnhancedCharacterSheet({
 						{personalityTrait && (
 							<div>
 								<h4 className="text-sm font-semibold mb-1">Personality Trait</h4>
-								<p className="text-sm text-muted-foreground">{personalityTrait}</p>
+								<p className="text-sm text-muted-foreground line-clamp-3">{personalityTrait}</p>
 							</div>
 						)}
 						{ideal && (
 							<div>
 								<h4 className="text-sm font-semibold mb-1">Ideal</h4>
-								<p className="text-sm text-muted-foreground">{ideal}</p>
+								<p className="text-sm text-muted-foreground line-clamp-3">{ideal}</p>
 							</div>
 						)}
 						{bond && (
 							<div>
 								<h4 className="text-sm font-semibold mb-1">Bond</h4>
-								<p className="text-sm text-muted-foreground">{bond}</p>
+								<p className="text-sm text-muted-foreground line-clamp-3">{bond}</p>
 							</div>
 						)}
 						{flaw && (
 							<div>
 								<h4 className="text-sm font-semibold mb-1">Flaw</h4>
-								<p className="text-sm text-muted-foreground">{flaw}</p>
+								<p className="text-sm text-muted-foreground line-clamp-3">{flaw}</p>
 							</div>
 						)}
 					</CardContent>
