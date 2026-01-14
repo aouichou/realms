@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiClient } from "@/lib/api-client";
+import { useQuery } from "@tanstack/react-query";
 import {
 	Brain,
 	CheckCircle2,
@@ -118,8 +119,6 @@ const QUICK_CHECKS = [
 ];
 
 export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckPanelProps) {
-	const [skills, setSkills] = useState<Skill[]>([]);
-	const [loading, setLoading] = useState(true);
 	const [selectedSkill, setSelectedSkill] = useState<string>("");
 	const [advantage, setAdvantage] = useState(false);
 	const [disadvantage, setDisadvantage] = useState(false);
@@ -127,28 +126,16 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 	const [rolling, setRolling] = useState(false);
 	const [rollHistory, setRollHistory] = useState<RollResult[]>([]);
 
-	useEffect(() => {
-		fetchSkills();
-		// Load roll history from localStorage
-		const savedHistory = localStorage.getItem(`rollHistory_${characterId}`);
-		if (savedHistory) {
-			try {
-				setRollHistory(JSON.parse(savedHistory));
-			} catch (e) {
-				console.error('Failed to parse saved roll history:', e);
-			}
-		}
-	}, [characterId]);
-
-	const fetchSkills = async () => {
-		try {
+	// Use React Query for skills fetching with caching
+	const { data: skills = [], isLoading: loading, error } = useQuery({
+		queryKey: ['character-skills', characterId],
+		queryFn: async () => {
 			const response = await apiClient.get(`/api/characters/${characterId}/stats`);
 
 			if (!response.ok) {
 				const errorText = await response.text();
 				console.error('Failed to fetch character stats:', errorText);
-				setSkills([]);
-				return;
+				throw new Error('Failed to fetch character stats');
 			}
 
 			const data = await response.json();
@@ -156,8 +143,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 			// Check if skills object exists
 			if (!data.skills || typeof data.skills !== 'object') {
 				console.error('Expected skills object from stats API, got:', data);
-				setSkills([]);
-				return;
+				return [];
 			}
 
 			// Build skills array from the data
@@ -177,14 +163,25 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 				});
 			});
 
-			setSkills(skillsList);
-		} catch (error) {
-			console.error("Failed to fetch skills:", error);
-			setSkills([]);
-		} finally {
-			setLoading(false);
+			return skillsList;
+		},
+		staleTime: 5 * 60 * 1000, // 5 minutes
+		gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime in v5)
+		retry: 2,
+		retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+	});
+
+	useEffect(() => {
+		// Load roll history from localStorage
+		const savedHistory = localStorage.getItem(`rollHistory_${characterId}`);
+		if (savedHistory) {
+			try {
+				setRollHistory(JSON.parse(savedHistory));
+			} catch (e) {
+				console.error('Failed to parse saved roll history:', e);
+			}
 		}
-	};
+	}, [characterId]);
 
 	const performCheck = async (skillName: string) => {
 		setRolling(true);

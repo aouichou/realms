@@ -1,0 +1,28 @@
+{
+  "home": {
+    "title": "Mistral Realms",
+    "subtitle": "AI-Powered D&D Adventures",
+    "description1": "Embark on epic adventures guided by an AI Dungeon Master powered by Mistral AI.",
+    "description2": "Create your character, make choices, and watch your story unfold in real-time with true randomness for dice rolls.",
+    "signIn": "Sign In",
+    "register": "Register",
+    "login": "Login",
+    "or": "or",
+    "noEmailRequired": "No email required for demo • All progress auto-saved • Claim account anytime",
+    "features": {
+      "classes": {
+        "title": "12 D&D Classes",
+        "description": "Choose from Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue, Sorcerer, Warlock, or Wizard"
+      },
+      "randomness": {
+        "title": "True Randomness",
+        "description": "Dice rolls powered by Random.org's atmospheric noise for genuine unpredictability"
+      },
+      "aiDM": {
+        "title": "AI Dungeon Master",
+        "description": "Mistral AI creates dynamic narratives, generates scene images, and responds to your choices"
+      }
+    },
+    "footer": "Built for the Mistral AI Internship Application"
+  }
+}

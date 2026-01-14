@@ -528,7 +528,9 @@ async def send_player_action(
             # Build character context for image
             char_desc = None
             if character:
-                char_desc = f"{character.name}, {character.race} {character.class_name}"
+                char_desc = (
+                    f"{character.name}, {character.race.value} {character.character_class.value}"
+                )
 
             # Generate or reuse image
             scene_image_url = await image_service.generate_scene_image(

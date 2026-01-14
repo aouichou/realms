@@ -11,7 +11,8 @@ from typing import AsyncGenerator, Dict, List, Optional
 from app.observability.logger import get_logger
 from app.observability.metrics import metrics
 from app.observability.tracing import trace_async
-from app.services.mistral_client import MistralAPIError, get_mistral_client
+from app.services.ai_provider import ProviderUnavailableError, RateLimitError
+from app.services.provider_selector import provider_selector
 
 logger = get_logger(__name__)
 
@@ -303,8 +304,8 @@ L'identifiant de quête vous sera fourni dans le contexte du personnage. Après 
 
     def __init__(self):
         """Initialize DM Engine"""
-        self.mistral_client = get_mistral_client()
-        logger.info("DM Engine initialized with multilingual support")
+        self.provider_selector = provider_selector
+        logger.info("DM Engine initialized with multilingual support and multi-provider AI")
 
     def get_system_prompt(self, language: str = "en") -> str:
         """
@@ -633,11 +634,17 @@ L'identifiant de quête vous sera fourni dans le contexte du personnage. Après 
                 },
             )
 
-            response = await self.mistral_client.chat_completion(messages)
+            response_text = await self.provider_selector.generate_chat(
+                messages=[
+                    msg for msg in messages if msg["role"] != "system"
+                ],  # Exclude system message duplication
+                max_tokens=2048,
+                temperature=0.7,
+            )
 
-            narration_content = response.choices[0].message.content
-            narration = str(narration_content) if narration_content else ""
-            tokens_used = response.usage.total_tokens
+            narration = response_text
+            # Note: Token usage not available from provider interface yet
+            tokens_used = 0
 
             # Extract roll request if present
             cleaned_narration, roll_request = self.extract_roll_request(narration)
@@ -679,10 +686,10 @@ L'identifiant de quête vous sera fourni dans le contexte du personnage. Après 
                 "quest_complete_id": quest_complete_id,
                 "tokens_used": tokens_used,
                 "timestamp": datetime.now(),
-                "model": self.mistral_client.model,
+                "model": "multi-provider",  # Using provider selector
             }
 
-        except MistralAPIError as e:
+        except (ProviderUnavailableError, RateLimitError) as e:
             duration = time.time() - start_time
             metrics.record_dm_narration(duration=duration, has_roll=False, language=language)
             logger.error(
@@ -730,12 +737,18 @@ L'identifiant de quête vous sera fourni dans le contexte du personnage. Après 
 
             logger.debug(f"Streaming narration for action: {user_action[:50]}...")
 
-            async for chunk in self.mistral_client.chat_completion_stream(messages):
-                yield chunk
+            # TODO: Implement streaming in provider_selector
+            # For now, fallback to non-streaming
+            response_text = await self.provider_selector.generate_chat(
+                messages=[msg for msg in messages if msg["role"] != "system"],
+                max_tokens=2048,
+                temperature=0.7,
+            )
+            yield response_text
 
             logger.info("Narration streaming completed")
 
-        except MistralAPIError as e:
+        except (ProviderUnavailableError, RateLimitError) as e:
             logger.error(f"Failed to stream narration: {e}")
             raise
 

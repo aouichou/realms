@@ -16,6 +16,7 @@ const CompanionPanel = lazy(() => import('@/components/CompanionPanel').then(mod
 const EnhancedCharacterSheet = lazy(() => import('@/components/EnhancedCharacterSheet').then(mod => ({ default: mod.EnhancedCharacterSheet })));
 const ImageGalleryPanel = lazy(() => import('@/components/ImageGalleryPanel').then(mod => ({ default: mod.ImageGalleryPanel })));
 const InventoryPanel = lazy(() => import('@/components/InventoryPanel').then(mod => ({ default: mod.InventoryPanel })));
+const LanguageSelector = lazy(() => import('@/components/LanguageSelector').then(mod => ({ default: mod.LanguageSelector })));
 const QuestCompleteModal = lazy(() => import('@/components/QuestCompleteModal').then(mod => ({ default: mod.QuestCompleteModal })));
 const SceneImage = lazy(() => import('@/components/SceneImage').then(mod => ({ default: mod.SceneImage })));
 const SpellsPanel = lazy(() => import('@/components/SpellsPanel').then(mod => ({ default: mod.SpellsPanel })));
@@ -534,26 +535,31 @@ export default function GamePage() {
 				<div className="flex-1 flex flex-col p-4 md:p-6 overflow-hidden">
 					{/* Character Header */}
 					{character && (
-						<div className="mb-4 pb-4 border-b border-white/10">
-							<h1 className="font-display text-xl md:text-2xl text-white">
-								{character.name}
-							</h1>
-							<p className="text-xs md:text-sm text-white/80 font-body">
-								Level {character.level} {character.race} {character.character_class}
-							</p>
-							<div className="flex gap-3 mt-2 text-xs text-white/70">
-								<span className="flex items-center gap-1">
-									<span className="text-yellow-400">🪙</span>
-									{character.gold || 0}gp
-								</span>
-								<span className="flex items-center gap-1">
-									<span className="text-gray-300">⚪</span>
-									{character.silver || 0}sp
-								</span>
-								<span className="flex items-center gap-1">
-									<span className="text-orange-400">🟤</span>
-									{character.copper || 0}cp
-								</span>
+						<div className="mb-4 pb-4 border-b border-white/10 flex items-center justify-between">
+							<div className="flex-1">
+								<h1 className="font-display text-xl md:text-2xl text-white">
+									{character.name}
+								</h1>
+								<p className="text-xs md:text-sm text-white/80 font-body">
+									Level {character.level} {character.race} {character.character_class}
+								</p>
+								<div className="flex gap-3 mt-2 text-xs text-white/70">
+									<span className="flex items-center gap-1">
+										<span className="text-yellow-400">🪙</span>
+										{character.gold || 0}gp
+									</span>
+									<span className="flex items-center gap-1">
+										<span className="text-gray-300">⚪</span>
+										{character.silver || 0}sp
+									</span>
+									<span className="flex items-center gap-1">
+										<span className="text-orange-400">🟤</span>
+										{character.copper || 0}cp
+									</span>
+								</div>
+							</div>
+							<div className="ml-4">
+								<LanguageSelector />
 							</div>
 						</div>
 					)}

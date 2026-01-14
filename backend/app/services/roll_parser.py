@@ -40,6 +40,75 @@ class Ability(str, Enum):
     CHARISMA = "cha"
 
 
+# Comprehensive mapping of skill names, ability names, and alternatives to ability scores
+# This allows the parser to handle natural language from the DM
+ABILITY_MAPPING = {
+    # Ability score abbreviations (canonical)
+    "str": Ability.STRENGTH,
+    "dex": Ability.DEXTERITY,
+    "con": Ability.CONSTITUTION,
+    "int": Ability.INTELLIGENCE,
+    "wis": Ability.WISDOM,
+    "cha": Ability.CHARISMA,
+    # Full ability names
+    "strength": Ability.STRENGTH,
+    "dexterity": Ability.DEXTERITY,
+    "constitution": Ability.CONSTITUTION,
+    "intelligence": Ability.INTELLIGENCE,
+    "wisdom": Ability.WISDOM,
+    "charisma": Ability.CHARISMA,
+    # Strength-based skills
+    "athletics": Ability.STRENGTH,
+    # Dexterity-based skills
+    "acrobatics": Ability.DEXTERITY,
+    "sleight of hand": Ability.DEXTERITY,
+    "sleight_of_hand": Ability.DEXTERITY,
+    "sleight-of-hand": Ability.DEXTERITY,
+    "stealth": Ability.DEXTERITY,
+    # Constitution-based (rare, but for completeness)
+    "endurance": Ability.CONSTITUTION,
+    "stamina": Ability.CONSTITUTION,
+    # Intelligence-based skills
+    "arcana": Ability.INTELLIGENCE,
+    "history": Ability.INTELLIGENCE,
+    "investigation": Ability.INTELLIGENCE,
+    "nature": Ability.INTELLIGENCE,
+    "religion": Ability.INTELLIGENCE,
+    # Wisdom-based skills
+    "animal handling": Ability.WISDOM,
+    "animal_handling": Ability.WISDOM,
+    "animal-handling": Ability.WISDOM,
+    "insight": Ability.WISDOM,
+    "medicine": Ability.WISDOM,
+    "perception": Ability.WISDOM,
+    "survival": Ability.WISDOM,
+    # Charisma-based skills
+    "deception": Ability.CHARISMA,
+    "intimidation": Ability.CHARISMA,
+    "performance": Ability.CHARISMA,
+    "persuasion": Ability.CHARISMA,
+    # Common tool proficiencies (map to dexterity by default)
+    "thieves_tools": Ability.DEXTERITY,
+    "thieves tools": Ability.DEXTERITY,
+    "thieves-tools": Ability.DEXTERITY,
+    "lockpicking": Ability.DEXTERITY,
+    "disable device": Ability.DEXTERITY,
+    # Alternative terms
+    "spot": Ability.WISDOM,  # 3.5e/PF term for perception
+    "search": Ability.INTELLIGENCE,  # Often used for investigation
+    "hide": Ability.DEXTERITY,  # Alternative for stealth
+    "move silently": Ability.DEXTERITY,  # 3.5e term
+    "climb": Ability.STRENGTH,
+    "jump": Ability.STRENGTH,
+    "swim": Ability.STRENGTH,
+    "reflex": Ability.DEXTERITY,  # Alternative save name
+    "fortitude": Ability.CONSTITUTION,  # Alternative save name
+    "will": Ability.WISDOM,  # Alternative save name
+    "initiative": Ability.DEXTERITY,
+    "reaction": Ability.DEXTERITY,
+}
+
+
 @dataclass
 class RollRequest:
     """
@@ -168,13 +237,17 @@ class RollParser:
         if len(parts) < 2:
             return None
 
-        ability_str = parts[0].lower()
+        ability_str = parts[0].lower().strip()
 
-        # Try to parse ability
-        try:
-            ability = Ability(ability_str)
-        except ValueError:
-            return None
+        # Try to map the ability string using our comprehensive mapping
+        ability = ABILITY_MAPPING.get(ability_str)
+
+        # If not found in mapping, try direct Ability enum conversion (fallback)
+        if ability is None:
+            try:
+                ability = Ability(ability_str)
+            except ValueError:
+                return None
 
         # Parse DC
         dc = None
@@ -185,9 +258,29 @@ class RollParser:
         if dc_match:
             dc = int(dc_match.group(1))
 
-        # Generate description
+        # Generate description - use the original skill name if it's more descriptive than the ability
+        # For example: "Perception check" is better than "WIS check"
         roll_name = "saving throw" if roll_type == RollType.SAVE else "check"
-        description = f"{ability.value.upper()} {roll_name}"
+
+        # Check if the input was a skill name (not just an ability abbreviation)
+        if ability_str in ["str", "dex", "con", "int", "wis", "cha"]:
+            # Simple ability check, use ability abbreviation
+            description = f"{ability.value.upper()} {roll_name}"
+        elif ability_str in [
+            "strength",
+            "dexterity",
+            "constitution",
+            "intelligence",
+            "wisdom",
+            "charisma",
+        ]:
+            # Full ability name, use abbreviation for brevity
+            description = f"{ability.value.upper()} {roll_name}"
+        else:
+            # Skill name or alternative - capitalize it nicely
+            skill_name = ability_str.replace("_", " ").replace("-", " ").title()
+            description = f"{skill_name} {roll_name}"
+
         if dc:
             description += f" (DC {dc})"
 

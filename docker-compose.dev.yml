@@ -50,8 +50,12 @@ services:
       - ./backend/alembic:/app/alembic:ro
       - ./backend/scripts:/app/scripts:ro
       - ./backend/data:/app/data:ro
+      - ./backend/media:/app/media  # For generated images and other media files
     environment:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3-flash-preview}
+      - GEMINI_THINKING_LEVEL=${GEMINI_THINKING_LEVEL:-high}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - POSTGRES_HOST=postgres

@@ -1,7 +1,7 @@
 """add_spellcasting_system
 
 Revision ID: 873c750f27e1
-Revises: 7cd1aeb1a6ec
+Revises: 004
 Create Date: 2026-01-02 14:29:44.237080
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "873c750f27e1"
-down_revision = "7cd1aeb1a6ec"
+down_revision = "004"
 branch_labels = None
 depends_on = None
 
