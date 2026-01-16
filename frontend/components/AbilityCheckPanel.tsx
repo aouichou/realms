@@ -130,7 +130,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 	const { data: skills = [], isLoading: loading, error } = useQuery({
 		queryKey: ['character-skills', characterId],
 		queryFn: async () => {
-			const response = await apiClient.get(`/api/characters/${characterId}/stats`);
+			const response = await apiClient.get(`/api/v1/characters/${characterId}/stats`);
 
 			if (!response.ok) {
 				const errorText = await response.text();
@@ -190,7 +190,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 			const apiSkillName = SKILL_NAME_MAP[skillName];
 			const ability = SKILL_TO_ABILITY[skillName];
 
-			const response = await apiClient.post('/api/dice/check', {
+			const response = await apiClient.post('/api/v1/dice/check', {
 				character_id: characterId,
 				ability: ability,
 				skill: apiSkillName,

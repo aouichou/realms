@@ -78,7 +78,7 @@ export function CustomAdventureWizard({ characterId, onComplete, onCancel }: Cus
 	const handleGenerate = async () => {
 		setIsGenerating(true);
 		try {
-			const response = await apiClient.post('/api/adventures/generate', {
+			const response = await apiClient.post('/api/v1/adventures/generate', {
 				character_id: characterId,
 				setting: selectedSetting,
 				goal: selectedGoal,

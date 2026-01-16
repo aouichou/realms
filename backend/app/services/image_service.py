@@ -14,7 +14,7 @@ from mistralai.models import ToolFileChunk
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.generated_image import GeneratedImage
+from app.schemas.generated_image import GeneratedImage
 from app.services.redis_service import session_service
 
 logger = logging.getLogger(__name__)

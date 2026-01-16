@@ -176,7 +176,7 @@ export function CompanionPanel({ characterId, gameContext, onSpeechGenerated }: 
 	const generateSpeech = async (trigger?: string) => {
 		setIsGenerating(true);
 		try {
-			const response = await apiClient.post("/api/companion/speech", {
+			const response = await apiClient.post("/api/v1/companion/speech", {
 				personality: selectedPersonality,
 				companion_name: companionName,
 				companion_race: companionRace,

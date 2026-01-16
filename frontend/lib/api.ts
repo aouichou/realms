@@ -25,7 +25,7 @@ export interface NarrateResponse {
 export async function narrate(
 	request: NarrateRequest
 ): Promise<NarrateResponse> {
-	const response = await fetch(`${API_URL}/api/narrate`, {
+	const response = await fetch(`${API_URL}/api/v1/narrate`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -46,7 +46,7 @@ export async function narrate(
 export async function* narrateStream(
 	request: NarrateRequest
 ): AsyncGenerator<string, void, unknown> {
-	const response = await fetch(`${API_URL}/api/narrate/stream`, {
+	const response = await fetch(`${API_URL}/api/v1/narrate/stream`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -94,7 +94,7 @@ export async function* narrateStream(
  * Start a new adventure (non-streaming)
  */
 export async function startAdventure(): Promise<NarrateResponse> {
-	const response = await fetch(`${API_URL}/api/adventure/start`, {
+	const response = await fetch(`${API_URL}/api/v1/adventure/start`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -116,7 +116,7 @@ export async function* startAdventureStream(): AsyncGenerator<
 	void,
 	unknown
 > {
-	const response = await fetch(`${API_URL}/api/adventure/start/stream`, {
+	const response = await fetch(`${API_URL}/api/v1/adventure/start/stream`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",

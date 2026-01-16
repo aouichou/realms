@@ -43,7 +43,7 @@ export function SaveGameModal({
 		setIsSaving(true);
 
 		try {
-			const response = await apiClient.post('/api/game/save', {
+			const response = await apiClient.post('/api/v1/game/save', {
 				session_id: sessionId,
 				save_name: saveName,
 			});

@@ -114,7 +114,7 @@ export default function GamePage() {
 
 		const autoSaveInterval = setInterval(async () => {
 			try {
-				await apiClient.post('/api/game/save', {
+				await apiClient.post('/api/v1/game/save', {
 					session_id: sessionId,
 					save_name: `Auto-save ${new Date().toLocaleTimeString()}`,
 				});
@@ -133,7 +133,7 @@ export default function GamePage() {
 
 	const loadCharacter = async () => {
 		try {
-			const response = await apiClient.get(`/api/characters/${characterId}`);
+			const response = await apiClient.get(`/api/v1/characters/${characterId}`);
 			if (response.ok) {
 				const data = await response.json();
 				setCharacter(data);
@@ -147,7 +147,7 @@ export default function GamePage() {
 		try {
 			// For now, create a new session every time
 			// TODO: Implement logic to get active session or create new one
-			const response = await apiClient.post('/api/sessions', {
+			const response = await apiClient.post('/api/v1/sessions', {
 				character_id: characterId,
 				companion_id: null,
 				current_location: 'Starting Village',
@@ -168,7 +168,7 @@ export default function GamePage() {
 		if (!sessionId) return;
 
 		try {
-			const response = await apiClient.get(`/api/conversations/${sessionId}`);
+			const response = await apiClient.get(`/api/v1/conversations/${sessionId}`);
 			if (response.ok) {
 				const data = await response.json();
 				setMessages(data.messages || []);
@@ -196,7 +196,7 @@ export default function GamePage() {
 		setMessages(prev => [...prev, tempUserMsg]);
 
 		try {
-			const response = await apiClient.post('/api/conversations/action', {
+			const response = await apiClient.post('/api/v1/conversations/action', {
 				character_id: characterId,
 				session_id: sessionId,
 				action: userMessage,
@@ -228,7 +228,7 @@ export default function GamePage() {
 				if (data.quest_complete_id) {
 					// Fetch quest details
 					try {
-						const questResponse = await apiClient.get(`/api/quests/${data.quest_complete_id}`);
+						const questResponse = await apiClient.get(`/api/v1/quests/${data.quest_complete_id}`);
 						if (questResponse.ok) {
 							const questData = await questResponse.json();
 							setQuestCompleteData({
@@ -269,7 +269,7 @@ export default function GamePage() {
 		setMessages(prev => [...prev, tempUserMsg]);
 
 		try {
-			const response = await apiClient.post('/api/conversations/action', {
+			const response = await apiClient.post('/api/v1/conversations/action', {
 				character_id: characterId,
 				session_id: sessionId,
 				action: rollMessage,
@@ -306,7 +306,7 @@ export default function GamePage() {
 
 	const rollDice = async () => {
 		try {
-			const response = await apiClient.post('/api/dice/roll', { dice: diceNotation });
+			const response = await apiClient.post('/api/v1/dice/roll', { dice: diceNotation });
 
 			if (response.ok) {
 				const result = await response.json();
@@ -322,7 +322,7 @@ export default function GamePage() {
 
 		try {
 			const response = await apiClient.post(
-				`/api/quests/${questCompleteData.questId}/complete`,
+				`/api/v1/quests/${questCompleteData.questId}/complete`,
 				{
 					character_id: parseInt(characterId),
 				}
@@ -364,7 +364,7 @@ export default function GamePage() {
 			// Check if this is a new session (no messages yet)
 			if (messages.length === 0) {
 				// This is the first time - trigger the initial DM message
-				const response = await apiClient.post('/api/conversations/start', {
+				const response = await apiClient.post('/api/v1/conversations/start', {
 					session_id: sessionId,
 				});
 
@@ -380,7 +380,7 @@ export default function GamePage() {
 				}
 			} else {
 				// Continuing an existing session - ask DM for summary
-				const response = await apiClient.post('/api/conversations/action', {
+				const response = await apiClient.post('/api/v1/conversations/action', {
 					character_id: characterId,
 					session_id: sessionId,
 					action: 'Please give me a brief summary of what happened so far and ask if I want to continue.',

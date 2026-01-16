@@ -4,10 +4,9 @@ Tests the full request-response cycle for all major endpoints
 """
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.models.game import NPC, GameSession
-from app.models.schemas import Character
+from app.schemas.health import Character
+from fastapi.testclient import TestClient
 
 
 class TestCharacterEndpoints:

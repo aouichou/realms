@@ -48,7 +48,7 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 	const loadSaves = async () => {
 		setIsLoading(true);
 		try {
-			const response = await fetch('/api/game/saves', {
+			const response = await fetch('/api/v1/game/saves', {
 				credentials: 'include',
 			});
 
@@ -70,7 +70,7 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 		setLoadingSessionId(sessionId);
 
 		try {
-			const response = await fetch(`/api/game/load/${sessionId}`, {
+			const response = await fetch(`/api/v1/game/load/${sessionId}`, {
 				method: 'POST',
 				credentials: 'include',
 			});

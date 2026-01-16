@@ -72,7 +72,7 @@ export function SpellCastingPanel({
 	const fetchSpells = async () => {
 		try {
 			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/spells/character/${characterId}/spells`
+				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/spells/character/${characterId}/spells`
 			);
 
 			if (response.ok) {
@@ -119,7 +119,7 @@ export function SpellCastingPanel({
 	const castSpell = async (spell: CharacterSpell, slotLevel: number, isRitual: boolean = false) => {
 		setCasting(true);
 		try {
-			const endpoint = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/spells/character/${characterId}/cast`;
+			const endpoint = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/spells/character/${characterId}/cast`;
 
 			const response = await fetch(endpoint, {
 				method: 'POST',

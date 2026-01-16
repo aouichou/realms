@@ -12,30 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import (
-    adventures,
-    auth,
-    characters,
-    combat,
-    companion,
-    conditions,
-    conversations,
-    dice,
-    effects,
-    game,
-    images,
-    inventory,
-    loot,
-    memories,
-    npcs,
-    progression,
-    quests,
-    random_status,
-    rest,
-    sessions,
-    spells,
-)
-from app.api.routes import rules
+from app.api.v1.router import api_router
 from app.config import settings
 from app.db.base import close_db
 from app.middleware.language import LanguageMiddleware
@@ -45,7 +22,6 @@ from app.middleware.query_monitor import query_monitor
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.observability.logger import get_logger
 from app.observability.tracing import init_tracing, instrument_app
-from app.routers import health, metrics, narrate
 from app.services.provider_init import initialize_providers
 from app.services.redis_service import session_service
 
@@ -202,31 +178,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 
 # Include routers
-app.include_router(health.router)
-app.include_router(metrics.router)  # Prometheus metrics
-app.include_router(auth.router)  # Authentication endpoints
-app.include_router(companion.router)  # AI Companion
-app.include_router(images.router)  # Scene Image Generation
-app.include_router(game.router)  # Save/Load System
-app.include_router(narrate.router)
-app.include_router(characters.router)
-app.include_router(sessions.router)
-app.include_router(conversations.router)
-app.include_router(dice.router)
-app.include_router(random_status.router)
-app.include_router(inventory.router)
-app.include_router(spells.router)
-app.include_router(combat.router)
-app.include_router(loot.router)
-app.include_router(progression.router)
-app.include_router(rest.router)
-app.include_router(conditions.router)
-app.include_router(effects.router)  # Active effects system
-app.include_router(npcs.router)
-app.include_router(quests.router)
-app.include_router(adventures.router)  # Preset adventures
-app.include_router(memories.router)  # Vector memory system
-app.include_router(rules.router)  # D&D 5e rules helpers
+app.include_router(api_router, prefix="/api/v1")
 
 # Mount static files for generated images
 MEDIA_DIR = Path(__file__).parent.parent.parent / "media"
