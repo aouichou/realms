@@ -4,7 +4,7 @@ import hashlib
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
 from typing import Optional
@@ -86,6 +86,10 @@ class ImageService:
                 return
 
             # Create new agent
+            if not self.client:
+                logger.error("Cannot create agent: Mistral client not initialized")
+                return
+
             agent = self.client.beta.agents.create(
                 model="mistral-medium-latest",  # Required for image generation
                 name="D&D Scene Illustrator",
@@ -122,7 +126,11 @@ class ImageService:
 
     @rate_limit(max_per_hour=MAX_IMAGES_PER_HOUR)
     async def generate_scene_image(
-        self, scene_description: str, db: AsyncSession, use_cache: bool = True
+        self,
+        scene_description: str,
+        db: AsyncSession,
+        use_cache: bool = True,
+        character_description: Optional[str] = None,
     ) -> Optional[str]:
         """Generate scene image using Mistral Agent API with smart reuse
 
@@ -130,6 +138,7 @@ class ImageService:
             scene_description: Description of the scene to visualize
             db: Database session
             use_cache: Whether to check for existing images
+            character_description: Optional character context (e.g., "Gandalf, Human Wizard")
 
         Returns:
             str: URL path to image (/media/images/generated/{hash}.png) or None
@@ -151,8 +160,8 @@ class ImageService:
 
             if existing_image:
                 # Update reuse stats
-                existing_image.reuse_count += 1
-                existing_image.last_used_at = datetime.utcnow()
+                existing_image.reuse_count += 1  # type: ignore[assignment]
+                existing_image.last_used_at = datetime.now(timezone.utc)  # type: ignore[assignment]
                 await db.commit()
 
                 # Convert relative path to full URL
@@ -165,7 +174,7 @@ class ImageService:
 
         try:
             # Build enhanced prompt
-            image_prompt = self._build_image_prompt(scene_description)
+            image_prompt = self._build_image_prompt(scene_description, character_description)
 
             logger.info(f"Generating new image for scene (hash={desc_hash})")
 
@@ -174,9 +183,7 @@ class ImageService:
                 agent_id=self.agent_id, inputs=image_prompt
             )
 
-            logger.info(
-                f"Agent response received, status: {response.status if hasattr(response, 'status') else 'unknown'}"
-            )
+            logger.info("Agent response received")
             logger.info(
                 f"Response has outputs: {hasattr(response, 'outputs') and len(response.outputs) > 0 if hasattr(response, 'outputs') else False}"
             )
@@ -190,7 +197,9 @@ class ImageService:
             logger.error(f"Image generation failed: {e}")
             return None
 
-    def _build_image_prompt(self, scene_description: str) -> str:
+    def _build_image_prompt(
+        self, scene_description: str, character_description: Optional[str] = None
+    ) -> str:
         """Enhance scene description for better image generation"""
         # Extract key scene elements (first 2-3 sentences)
         sentences = scene_description.split(". ")
@@ -199,9 +208,14 @@ class ImageService:
         # Remove dialogue
         core_scene = core_scene.replace('"', "")
 
+        # Build character context if provided
+        character_context = ""
+        if character_description:
+            character_context = f"\n\nMain Character: {character_description}"
+
         prompt = f"""Generate a cinematic D&D fantasy scene image:
 
-{core_scene}
+{core_scene}{character_context}
 
 Style Requirements:
 - Epic fantasy art with dramatic lighting
@@ -242,6 +256,9 @@ Style Requirements:
                 )
                 if isinstance(chunk, ToolFileChunk):
                     # Download image bytes
+                    if not self.client:
+                        logger.error("Cannot download file: Mistral client not initialized")
+                        continue
                     file_bytes = self.client.files.download(file_id=chunk.file_id).read()
 
                     # Save to filesystem

@@ -83,10 +83,8 @@ async def add_item(character_id: UUID, item_data: ItemCreate, db: AsyncSession =
             await MemoryCaptureService.capture_loot(
                 db=db,
                 session_id=session.id,
-                item_name=new_item.name,
-                item_type=new_item.item_type.value,
-                value=new_item.value,
-                details=f"Acquired {new_item.quantity}x {new_item.name}",
+                items=[f"{new_item.quantity}x {new_item.name} ({new_item.item_type.value})"],
+                source=f"inventory addition (worth {new_item.value} gp)",
             )
     except Exception as e:
         logger.warning(f"Failed to capture loot acquisition memory: {e}")

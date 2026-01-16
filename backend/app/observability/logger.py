@@ -46,9 +46,9 @@ class StructuredFormatter(logging.Formatter):
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
 
-        # Add extra fields
-        if hasattr(record, "extra_data"):
-            log_data.update(record.extra_data)
+        # Add extra fields (dynamically added at runtime)
+        if extra_data := getattr(record, "extra_data", None):
+            log_data.update(extra_data)
 
         # Format as JSON-like string (simple format for readability)
         return " ".join(f"{k}={v}" for k, v in log_data.items())

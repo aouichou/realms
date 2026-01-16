@@ -7,10 +7,10 @@ and error handling specific to the Gemini API.
 
 import asyncio
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from google import genai
-from google.genai.types import GenerateContentConfig, ThinkingConfig
+from google.genai.types import GenerateContentConfig
 
 from app.services.ai_provider import (
     AIProvider,

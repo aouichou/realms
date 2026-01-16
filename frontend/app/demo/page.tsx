@@ -93,7 +93,7 @@ export default function DemoPage() {
 	};
 
 	return (
-		<div className="min-h-screen bg-gradient-to-b from-neutral-900 via-neutral-800 to-neutral-900 flex items-center justify-center p-4">
+		<div className="min-h-screen bg-linear-to-b from-neutral-900 via-neutral-800 to-neutral-900 flex items-center justify-center p-4">
 			<div className="max-w-4xl w-full">
 				{/* Header */}
 				<div className="text-center mb-12">
@@ -111,7 +111,7 @@ export default function DemoPage() {
 				{/* Demo Options */}
 				<div className="grid md:grid-cols-2 gap-6">
 					{/* Instant Demo Card */}
-					<Card className="border-2 border-primary-500 bg-gradient-to-br from-primary-950 to-neutral-900 shadow-2xl hover:shadow-primary-500/20 transition-all hover:scale-105">
+					<Card className="border-2 border-primary-500 bg-linear-to-br from-primary-950 to-neutral-900 shadow-2xl hover:shadow-primary-500/20 transition-all hover:scale-105">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2 text-2xl text-primary-100">
 								<Zap className="h-6 w-6 text-amber-400" />
@@ -150,7 +150,7 @@ export default function DemoPage() {
 
 							<Button
 								size="lg"
-								className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold shadow-lg"
+								className="w-full bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold shadow-lg"
 								onClick={startInstantDemo}
 								disabled={isStarting}
 							>
@@ -171,7 +171,7 @@ export default function DemoPage() {
 					</Card>
 
 					{/* Custom Character Card */}
-					<Card className="bg-gradient-to-br from-neutral-800 to-neutral-900 shadow-xl hover:shadow-neutral-700/20 transition-all hover:scale-105">
+					<Card className="bg-linear-to-br from-neutral-800 to-neutral-900 shadow-xl hover:shadow-neutral-700/20 transition-all hover:scale-105">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2 text-2xl text-neutral-100">
 								<User className="h-6 w-6 text-blue-400" />
@@ -233,9 +233,9 @@ export default function DemoPage() {
 				</div>
 
 				{/* AI Feature Highlight */}
-				<Card className="mt-8 bg-gradient-to-r from-purple-950 to-indigo-950 border-purple-500/30">
+				<Card className="mt-8 bg-linear-to-r from-purple-950 to-indigo-950 border-purple-500/30">
 					<CardContent className="flex items-center gap-4 p-6">
-						<Sparkles className="h-12 w-12 text-purple-400 flex-shrink-0" />
+						<Sparkles className="h-12 w-12 text-purple-400 shrink-0" />
 						<div>
 							<h3 className="font-semibold text-lg text-purple-100 mb-1">
 								✨ Try AI-Generated Custom Adventures

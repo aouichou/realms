@@ -185,7 +185,7 @@ class ContextWindowManager:
 
         return pruned_messages, tokens_removed
 
-    def get_context_stats(self, messages: List[Dict[str, str]]) -> Dict[str, int]:
+    def get_context_stats(self, messages: List[Dict[str, str]]) -> dict[str, int | float | bool]:
         """
         Get statistics about current context
 

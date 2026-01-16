@@ -16,10 +16,10 @@ export function SceneImage({ imageUrl, alt = "Scene illustration" }: SceneImageP
 
 	return (
 		<>
-			<div className="relative w-full aspect-[16/9] mb-3 rounded-lg overflow-hidden group">
+			<div className="relative w-full aspect-video mb-3 rounded-lg overflow-hidden group">
 				{/* Loading skeleton */}
 				{isLoading && (
-					<div className="absolute inset-0 bg-gradient-to-r from-white/5 via-white/10 to-white/5 animate-pulse" />
+					<div className="absolute inset-0 bg-linear-to-r from-white/5 via-white/10 to-white/5 animate-pulse" />
 				)}
 
 				{/* Image */}
@@ -46,7 +46,7 @@ export function SceneImage({ imageUrl, alt = "Scene illustration" }: SceneImageP
 
 				{/* Fade-in overlay */}
 				<div
-					className={`absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none
+					className={`absolute inset-0 bg-linear-to-t from-black/40 to-transparent pointer-events-none
                      transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
 				/>
 			</div>
