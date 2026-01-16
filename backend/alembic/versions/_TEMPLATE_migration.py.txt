@@ -1,0 +1,49 @@
+"""
+Alembic Migration Template with Best Practices
+Use this as a template for creating new migrations.
+"""
+
+from typing import Sequence, Union
+
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+from alembic import op
+
+# revision identifiers, used by Alembic.
+revision: str = "REVISION_ID"  # Will be auto-generated
+down_revision: Union[str, None] = "PARENT_REVISION"  # Set to previous migration
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    """
+    Apply migration changes.
+
+    BEST PRACTICES:
+    1. For enum creation, always use IF NOT EXISTS:
+       op.execute('''
+           DO $$ BEGIN
+               IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enumname') THEN
+                   CREATE TYPE enumname AS ENUM ('val1', 'val2', 'val3');
+               END IF;
+           END $$;
+       ''')
+
+    2. Add indexes for foreign keys and frequently queried columns
+
+    3. Use nullable=True initially, then update data, then set nullable=False
+
+    4. For data migrations, include reversible logic in downgrade()
+    """
+    pass
+
+
+def downgrade() -> None:
+    """
+    Reverse migration changes.
+
+    IMPORTANT: Always implement downgrade() for rollback capability.
+    """
+    pass

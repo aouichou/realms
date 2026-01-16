@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.db.base import get_db
 from app.db.models import Character, CharacterClass
 
-router = APIRouter(prefix="/api", tags=["rest"])
+router = APIRouter(prefix="/rest", tags=["rest"])
 
 
 class RestRequest(BaseModel):

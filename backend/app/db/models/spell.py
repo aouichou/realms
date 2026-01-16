@@ -32,12 +32,24 @@ class Spell(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
     level: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # 0 = cantrip
     school: Mapped[SpellSchool] = mapped_column(
-        Enum(SpellSchool, values_callable=lambda x: [e.value for e in x]), nullable=False
+        Enum(
+            SpellSchool,
+            values_callable=lambda x: [e.value for e in x],
+            create_type=False,
+            native_enum=False,
+        ),
+        nullable=False,
     )
 
     # Casting details
     casting_time: Mapped[CastingTime] = mapped_column(
-        Enum(CastingTime, values_callable=lambda x: [e.value for e in x]), nullable=False
+        Enum(
+            CastingTime,
+            values_callable=lambda x: [e.value for e in x],
+            create_type=False,
+            native_enum=False,
+        ),
+        nullable=False,
     )
     range: Mapped[str] = mapped_column(
         String(50), nullable=False

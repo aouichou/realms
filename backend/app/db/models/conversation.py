@@ -31,7 +31,13 @@ class ConversationMessage(Base):
     )
 
     role: Mapped[MessageRole] = mapped_column(
-        Enum(MessageRole, values_callable=lambda x: [e.value for e in x]), nullable=False
+        Enum(
+            MessageRole,
+            values_callable=lambda x: [e.value for e in x],
+            create_type=False,
+            native_enum=False,
+        ),
+        nullable=False,
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     tokens_used: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

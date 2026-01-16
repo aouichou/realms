@@ -34,16 +34,33 @@ class Character(Base):
 
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     character_type: Mapped[CharacterType] = mapped_column(
-        Enum(CharacterType, values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            CharacterType,
+            values_callable=lambda x: [e.value for e in x],
+            create_type=False,
+            native_enum=False,
+        ),
         nullable=False,
         default=CharacterType.PLAYER,
         index=True,
     )
     character_class: Mapped[CharacterClass] = mapped_column(
-        Enum(CharacterClass, values_callable=lambda x: [e.value for e in x]), nullable=False
+        Enum(
+            CharacterClass,
+            values_callable=lambda x: [e.value for e in x],
+            create_type=False,
+            native_enum=False,
+        ),
+        nullable=False,
     )
     race: Mapped[CharacterRace] = mapped_column(
-        Enum(CharacterRace, values_callable=lambda x: [e.value for e in x]), nullable=False
+        Enum(
+            CharacterRace,
+            values_callable=lambda x: [e.value for e in x],
+            create_type=False,
+            native_enum=False,
+        ),
+        nullable=False,
     )
     level: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
@@ -201,7 +218,13 @@ class CharacterCondition(Base):
     )
 
     condition: Mapped[ConditionType] = mapped_column(
-        Enum(ConditionType, values_callable=lambda x: [e.value for e in x]), nullable=False
+        Enum(
+            ConditionType,
+            values_callable=lambda x: [e.value for e in x],
+            create_type=False,
+            native_enum=False,
+        ),
+        nullable=False,
     )
 
     # Duration in rounds (combat) or minutes (out of combat), 0 = indefinite

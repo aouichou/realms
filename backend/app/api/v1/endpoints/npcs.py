@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.db.base import get_db
 from app.db.models import Character, CharacterClass, CharacterRace, CharacterType, GameSession
 
-router = APIRouter(prefix="/api", tags=["npcs"])
+router = APIRouter(prefix="/npcs", tags=["npcs"])
 
 
 class NPCCreate(BaseModel):

@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from app.schemas.health import NarrateRequest, NarrateResponse
+from app.schemas.narrate import NarrateRequest, NarrateResponse
 from app.services.dm_engine import get_dm_engine
 from app.utils.logger import get_logger
 
-router = APIRouter(prefix="/api", tags=["narration"])
 logger = get_logger(__name__)
+router = APIRouter(prefix="/narrate", tags=["narration"])
 
 
 @router.post("/narrate", response_model=NarrateResponse)
