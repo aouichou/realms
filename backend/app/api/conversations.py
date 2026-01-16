@@ -19,7 +19,6 @@ from app.schemas.message import (
 from app.services.context_window_manager import get_context_manager
 from app.services.conversation_service import ConversationService
 from app.services.dm_engine import DMEngine
-from app.services.image_service import ImageService
 from app.services.memory_capture import MemoryCaptureService
 from app.services.redis_service import session_service
 from app.services.roll_executor import RollExecutor
@@ -534,7 +533,10 @@ async def send_player_action(
 
             # Generate or reuse image
             scene_image_url = await image_service.generate_scene_image(
-                scene_description=result["narration"], db=db, use_cache=True
+                scene_description=result["narration"],
+                db=db,
+                use_cache=True,
+                character_description=char_desc,
             )
 
             if scene_image_url:

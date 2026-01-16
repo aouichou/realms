@@ -23,6 +23,8 @@ async def check_database() -> tuple[bool, str]:
         async for db in get_db():
             await db.execute(text("SELECT 1"))
             return True, "ok"
+        # If generator yields no sessions
+        return False, "no database session available"
     except Exception as e:
         return False, str(e)
 
@@ -30,6 +32,8 @@ async def check_database() -> tuple[bool, str]:
 async def check_redis() -> tuple[bool, str]:
     """Check Redis connectivity"""
     try:
+        if not session_service.redis:
+            return False, "redis not initialized"
         # Try to set and get a test key
         await session_service.redis.set("health_check", "ok", ex=5)
         result = await session_service.redis.get("health_check")

@@ -6,13 +6,11 @@ provider and falling back to alternatives when rate limits or errors occur.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from app.config import settings
 from app.services.ai_provider import (
     AIProvider,
-    ProviderStatus,
     ProviderUnavailableError,
     RateLimitError,
 )

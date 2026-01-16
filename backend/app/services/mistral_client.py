@@ -125,8 +125,8 @@ class MistralClient:
                         model=model_name,
                         status="success",
                         duration=duration,
-                        prompt_tokens=response.usage.prompt_tokens,
-                        completion_tokens=response.usage.completion_tokens,
+                        prompt_tokens=response.usage.prompt_tokens or 0,
+                        completion_tokens=response.usage.completion_tokens or 0,
                     )
 
                     logger.info(

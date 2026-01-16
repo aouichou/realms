@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import User
 from app.middleware.auth import get_current_active_user
-from app.services.image_service import ImageService
+from app.services.image_service import image_service
 
 router = APIRouter(prefix="/api/images", tags=["images"])
 
@@ -44,8 +44,10 @@ async def generate_scene_image(
         Generated image data (base64) or None
     """
     # Generate or retrieve from cache
-    image_data = await ImageService.generate_scene_image(
-        scene_description=request.scene_description, use_cache=request.use_cache
+    image_data = await image_service.generate_scene_image(
+        scene_description=request.scene_description,
+        db=db,
+        use_cache=request.use_cache,
     )
 
     return ImageGenerationResponse(

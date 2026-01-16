@@ -12,7 +12,9 @@ from mistralai.models import ChatCompletionResponse
 
 from app.observability.logger import get_logger
 from app.observability.metrics import metrics
-from app.observability.tracing import trace_llm_call
+from app.observability.tracing import (
+    trace_llm_call,  # noqa: F401 - TODO: Implement in tracing ticket
+)
 from app.services.ai_provider import AIProvider, ProviderStatus
 
 logger = get_logger(__name__)
@@ -54,7 +56,6 @@ class MistralProvider(AIProvider):
 
             self.last_request_time = time.time()
 
-    @trace_llm_call
     async def generate_narration(
         self,
         prompt: str,
@@ -78,6 +79,7 @@ class MistralProvider(AIProvider):
             ProviderUnavailableError: If the API is unavailable
             RateLimitError: If rate limit is exceeded
         """
+        # TODO: Add tracing with trace_llm_call context manager in observability ticket
         await self._wait_for_rate_limit()
 
         model = kwargs.get("model", self.model)
@@ -90,37 +92,36 @@ class MistralProvider(AIProvider):
             response: ChatCompletionResponse = await asyncio.to_thread(
                 self.client.chat.complete,
                 model=model,
-                messages=messages,
+                messages=messages,  # type: ignore[arg-type]
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
 
-            metrics.increment("mistral.requests.success")
-            self._update_status(ProviderStatus.AVAILABLE)
+            metrics.record_llm_request(model=model, status="success", duration=0.0)
+            self.set_status(ProviderStatus.AVAILABLE)
 
             content = response.choices[0].message.content
-            if not content:
-                raise ValueError("Empty response from Mistral API")
+            if not content or isinstance(content, list):
+                raise ValueError("Empty or invalid response from Mistral API")
 
             return content
 
         except Exception as e:
             error_msg = str(e)
             logger.error(f"Mistral generation error: {error_msg}")
-            metrics.increment("mistral.requests.error")
+            metrics.record_llm_request(model=model, status="error", duration=0.0)
 
             if "rate_limit" in error_msg.lower() or "429" in error_msg:
-                self._update_status(ProviderStatus.RATE_LIMITED, error_msg)
+                self.set_status(ProviderStatus.RATE_LIMITED, error_msg)
                 from app.services.ai_provider import RateLimitError
 
                 raise RateLimitError(f"Mistral rate limit exceeded: {error_msg}")
 
-            self._update_status(ProviderStatus.ERROR, error_msg)
+            self.set_status(ProviderStatus.ERROR, error_msg)
             from app.services.ai_provider import ProviderUnavailableError
 
             raise ProviderUnavailableError(f"Mistral provider error: {error_msg}")
 
-    @trace_llm_call
     async def generate_chat(
         self,
         messages: List[Dict[str, str]],
@@ -140,6 +141,7 @@ class MistralProvider(AIProvider):
         Returns:
             Generated chat response
         """
+        # TODO: Add tracing with trace_llm_call context manager in observability ticket
         await self._wait_for_rate_limit()
 
         model = kwargs.get("model", self.model)
@@ -150,36 +152,36 @@ class MistralProvider(AIProvider):
             response: ChatCompletionResponse = await asyncio.to_thread(
                 self.client.chat.complete,
                 model=model,
-                messages=messages,
+                messages=messages,  # type: ignore[arg-type]
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
 
-            metrics.increment("mistral.requests.success")
-            self._update_status(ProviderStatus.AVAILABLE)
+            metrics.record_llm_request(model=model, status="success", duration=0.0)
+            self.set_status(ProviderStatus.AVAILABLE)
 
             content = response.choices[0].message.content
-            if not content:
-                raise ValueError("Empty response from Mistral API")
+            if not content or isinstance(content, list):
+                raise ValueError("Empty or invalid response from Mistral API")
 
             return content
 
         except Exception as e:
             error_msg = str(e)
             logger.error(f"Mistral chat error: {error_msg}")
-            metrics.increment("mistral.requests.error")
+            metrics.record_llm_request(model=model, status="error", duration=0.0)
 
             if "rate_limit" in error_msg.lower() or "429" in error_msg:
-                self._update_status(ProviderStatus.RATE_LIMITED, error_msg)
+                self.set_status(ProviderStatus.RATE_LIMITED, error_msg)
                 from app.services.ai_provider import RateLimitError
 
                 raise RateLimitError(f"Mistral rate limit exceeded: {error_msg}")
 
-            self._update_status(ProviderStatus.ERROR, error_msg)
+            self.set_status(ProviderStatus.ERROR, error_msg)
             from app.services.ai_provider import ProviderUnavailableError
 
             raise ProviderUnavailableError(f"Mistral provider error: {error_msg}")
 
     async def is_available(self) -> bool:
         """Check if Mistral provider is available"""
-        return self.status == ProviderStatus.AVAILABLE or self.status == ProviderStatus.ERROR
+        return self._status == ProviderStatus.AVAILABLE or self._status == ProviderStatus.ERROR

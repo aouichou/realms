@@ -98,7 +98,7 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
-			<DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+			<DialogContent className="sm:max-w-175 max-h-[80vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>Load Game</DialogTitle>
 					<DialogDescription>

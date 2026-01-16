@@ -52,7 +52,7 @@ export function QuestCompleteModal({
 
 	return (
 		<div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-			<Card className="max-w-md w-full bg-gradient-to-b from-accent-400/20 to-primary-900 border-accent-400/30 shadow-2xl">
+			<Card className="max-w-md w-full bg-linear-to-b from-accent-400/20 to-primary-900 border-accent-400/30 shadow-2xl">
 				<CardHeader className="text-center">
 					<div className="mx-auto mb-4 w-16 h-16 bg-accent-400/20 rounded-full flex items-center justify-center">
 						<Trophy className="w-10 h-10 text-accent-400" />
