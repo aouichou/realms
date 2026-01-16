@@ -22,6 +22,7 @@ from app.middleware.query_monitor import query_monitor
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.observability.logger import get_logger
 from app.observability.tracing import init_tracing, instrument_app
+from app.routers import health, metrics
 from app.services.provider_init import initialize_providers
 from app.services.redis_service import session_service
 
@@ -178,6 +179,11 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 
 # Include routers
+# Root-level routers (health checks, metrics)
+app.include_router(health.router)
+app.include_router(metrics.router)
+
+# API v1 routers
 app.include_router(api_router, prefix="/api/v1")
 
 # Mount static files for generated images

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.db.base import get_db
 from app.db.models import Character, Item
 
-router = APIRouter(prefix="/api", tags=["loot"])
+router = APIRouter(prefix="/loot", tags=["loot"])
 
 
 class LootRequest(BaseModel):

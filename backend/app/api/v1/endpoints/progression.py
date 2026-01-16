@@ -8,11 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.spells import get_spell_slots_for_class
+from app.api.v1.endpoints.spells import get_spell_slots_for_class
 from app.db.base import get_db
 from app.db.models import Character, CharacterClass
 
-router = APIRouter(prefix="/api", tags=["progression"])
+router = APIRouter(prefix="/progression", tags=["progression"])
 
 
 class AddXPRequest(BaseModel):

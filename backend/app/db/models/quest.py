@@ -33,7 +33,12 @@ class Quest(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
     state: Mapped[QuestState] = mapped_column(
-        Enum(QuestState, values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            QuestState,
+            values_callable=lambda x: [e.value for e in x],
+            create_type=False,
+            native_enum=False,
+        ),
         nullable=False,
         default=QuestState.NOT_STARTED,
         index=True,

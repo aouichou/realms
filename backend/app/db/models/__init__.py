@@ -1,5 +1,5 @@
 from app.db.models.adventure import Adventure, AdventureMemory
-from app.db.models.character import Character
+from app.db.models.character import Character, CharacterCondition, CharacterQuest, CharacterSpell
 from app.db.models.conversation import ConversationMessage
 from app.db.models.encounter import CombatEncounter, Encounter
 from app.db.models.enums import (
@@ -35,9 +35,12 @@ __all__ = [
     "QuestObjective",
     "CastingTime",
     "CharacterClass",
+    "CharacterSpell",
     "CharacterRace",
     "CharacterType",
+    "CharacterCondition",
     "ConditionType",
+    "CharacterQuest",
     "EventType",
     "ItemType",
     "MessageRole",

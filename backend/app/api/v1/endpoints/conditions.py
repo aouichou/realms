@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.db.base import get_db
 from app.db.models import Character, CharacterCondition, ConditionType
 
-router = APIRouter(prefix="/api", tags=["conditions"])
+router = APIRouter(prefix="/conditions", tags=["conditions"])
 
 
 class AddConditionRequest(BaseModel):

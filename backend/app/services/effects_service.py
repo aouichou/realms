@@ -12,8 +12,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-app.schemas.effects import ActiveEffect, EffectDuration, EffectType
 from app.observability.logger import get_logger
+from app.schemas.effects import ActiveEffect, EffectDuration, EffectType
 
 logger = get_logger(__name__)
 

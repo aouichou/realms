@@ -79,7 +79,12 @@ class AdventureMemory(Base):
 
     # Event classification
     event_type: Mapped[EventType] = mapped_column(
-        Enum(EventType, values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            EventType,
+            values_callable=lambda x: [e.value for e in x],
+            create_type=False,
+            native_enum=False,
+        ),
         nullable=False,
         index=True,
     )
