@@ -62,7 +62,7 @@ export function SpellPreparationPanel({
 	const fetchSpells = async () => {
 		try {
 			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/spells/character/${characterId}/spells`
+				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/spells/character/${characterId}/spells`
 			);
 
 			if (response.ok) {
@@ -110,7 +110,7 @@ export function SpellPreparationPanel({
 		setSaving(true);
 		try {
 			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/spells/character/${characterId}/prepare`,
+				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/spells/character/${characterId}/prepare`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },

@@ -99,7 +99,7 @@ export function CombatTracker({
 	const startCombat = async (participants: CombatParticipant[]) => {
 		setLoading(true);
 		try {
-			const response = await apiClient.post('/api/combat/start', {
+			const response = await apiClient.post('/api/v1/combat/start', {
 				session_id: sessionId,
 				participants,
 			});
@@ -114,7 +114,7 @@ export function CombatTracker({
 
 	const fetchCombatStatus = async (combatId: string) => {
 		try {
-			const response = await apiClient.get(`/api/combat/${combatId}/status`);
+			const response = await apiClient.get(`/api/v1/combat/${combatId}/status`);
 			const data = await response.json();
 			setCombatStatus(data);
 		} catch (error) {
@@ -133,7 +133,7 @@ export function CombatTracker({
 		setLoading(true);
 		try {
 			const response = await apiClient.post(
-				`/api/combat/${combatStatus.combat_id}/action`,
+				`/api/v1/combat/${combatStatus.combat_id}/action`,
 				{
 					action_type: actionType,
 					target_index: targetIndex,
@@ -164,7 +164,7 @@ export function CombatTracker({
 
 		try {
 			await apiClient.patch(
-				`/api/combat/${combatStatus.combat_id}/participants/${participantIndex}/hp`,
+				`/api/v1/combat/${combatStatus.combat_id}/participants/${participantIndex}/hp`,
 				{ hp_current: newHP }
 			);
 			await fetchCombatStatus(combatStatus.combat_id);
@@ -178,7 +178,7 @@ export function CombatTracker({
 
 		setLoading(true);
 		try {
-			const response = await apiClient.post(`/api/combat/${combatStatus.combat_id}/end`);
+			const response = await apiClient.post(`/api/v1/combat/${combatStatus.combat_id}/end`);
 			const data = await response.json();
 			setCombatStatus(null);
 			if (onCombatEnd) onCombatEnd();

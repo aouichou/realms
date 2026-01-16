@@ -30,7 +30,7 @@ export default function DemoPage() {
 			const { user } = await authService.createGuest();
 
 			// 2. Create demo character (pre-configured)
-			const characterResponse = await apiClient.post('/api/characters', {
+			const characterResponse = await apiClient.post('/api/v1/characters', {
 				name: "Demo Hero",
 				character_class: "fighter",
 				race: "human",
@@ -57,7 +57,7 @@ export default function DemoPage() {
 			const character = await characterResponse.json();
 
 			// 3. Start Goblin Ambush adventure automatically
-			const adventureResponse = await apiClient.post('/api/adventures/start-preset', {
+			const adventureResponse = await apiClient.post('/api/v1/adventures/start-preset', {
 				character_id: character.id,
 				adventure_id: "goblin_ambush",
 			});

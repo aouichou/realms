@@ -112,13 +112,13 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 
 	const fetchCharacterData = async () => {
 		try {
-			const response = await apiClient.get(`/api/characters/${characterId}/stats`);
+			const response = await apiClient.get(`/api/v1/characters/${characterId}/stats`);
 
 			if (response.ok) {
 				const stats = await response.json();
 
 				// Get character basic data
-				const charResponse = await apiClient.get(`/api/characters/${characterId}`);
+				const charResponse = await apiClient.get(`/api/v1/characters/${characterId}`);
 
 				if (charResponse.ok) {
 					const charData = await charResponse.json();
@@ -159,7 +159,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 
 	const fetchSpells = async () => {
 		try {
-			const response = await apiClient.get(`/api/spells/character/${characterId}/spells`);
+			const response = await apiClient.get(`/api/v1/spells/character/${characterId}/spells`);
 
 			if (!response.ok) {
 				const errorText = await response.text();
@@ -196,7 +196,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 
 	const fetchSpellSlots = async () => {
 		try {
-			const response = await apiClient.get(`/api/spells/character/${characterId}/slots`);
+			const response = await apiClient.get(`/api/v1/spells/character/${characterId}/slots`);
 			const data = await response.json();
 			console.log('Spell slots fetched:', data);
 			setSpellSlots(data.spell_slots || {});
@@ -207,7 +207,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 
 	const castSpell = async (spellId: string, spellLevel: number) => {
 		try {
-			const response = await apiClient.post(`/api/spells/character/${characterId}/cast`, {
+			const response = await apiClient.post(`/api/v1/spells/character/${characterId}/cast`, {
 				spell_id: spellId,
 				spell_level: spellLevel,
 			});
@@ -235,7 +235,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 
 	const savePreparedSpells = async () => {
 		try {
-			const response = await apiClient.post(`/api/spells/character/${characterId}/prepare`, {
+			const response = await apiClient.post(`/api/v1/spells/character/${characterId}/prepare`, {
 				spell_ids: Array.from(selectedSpellsToPrepare),
 			});
 
@@ -250,7 +250,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 
 	const longRest = async () => {
 		try {
-			const response = await apiClient.post(`/api/spells/character/${characterId}/rest`);
+			const response = await apiClient.post(`/api/v1/spells/character/${characterId}/rest`);
 
 			if (response.ok) {
 				await fetchSpellSlots();

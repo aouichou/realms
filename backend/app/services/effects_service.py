@@ -12,7 +12,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.effects import ActiveEffect, EffectDuration, EffectType
+app.schemas.effects import ActiveEffect, EffectDuration, EffectType
 from app.observability.logger import get_logger
 
 logger = get_logger(__name__)

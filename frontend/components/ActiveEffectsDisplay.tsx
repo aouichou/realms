@@ -40,7 +40,7 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 	const fetchEffects = async () => {
 		try {
 			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/effects/character/${characterId}?session_id=${sessionId}`
+				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/effects/character/${characterId}?session_id=${sessionId}`
 			);
 
 			if (response.ok) {

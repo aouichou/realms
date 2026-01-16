@@ -43,7 +43,7 @@ export function StartAdventureModal({
 
 	const loadAdventures = async () => {
 		try {
-			const response = await apiClient.get('/api/adventures/list');
+			const response = await apiClient.get('/api/v1/adventures/list');
 			if (response.ok) {
 				const data = await response.json();
 				setAdventures(data);
@@ -56,7 +56,7 @@ export function StartAdventureModal({
 	const startAdventure = async (adventureId: string) => {
 		setIsLoading(true);
 		try {
-			const response = await apiClient.post('/api/adventures/start-preset', {
+			const response = await apiClient.post('/api/v1/adventures/start-preset', {
 				character_id: characterId,
 				adventure_id: adventureId,
 			});
@@ -117,10 +117,10 @@ export function StartAdventureModal({
 										</div>
 										<div
 											className={`px-3 py-1 rounded-full text-xs font-semibold ${adventure.recommended_level <= characterLevel
-													? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
-													: adventure.recommended_level === characterLevel + 1
-														? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
-														: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
+												? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+												: adventure.recommended_level === characterLevel + 1
+													? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
+													: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
 												}`}
 										>
 											Level {adventure.recommended_level}

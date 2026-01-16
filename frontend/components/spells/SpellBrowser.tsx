@@ -79,7 +79,7 @@ export function SpellBrowser({ onSpellSelect, selectedSpells, filterByClass }: S
 			if (filters.concentration !== null) params.append("concentration", filters.concentration.toString());
 			if (filters.ritual !== null) params.append("ritual", filters.ritual.toString());
 
-			const response = await fetch(`${API_URL}/api/spells?${params.toString()}`);
+			const response = await fetch(`${API_URL}/api/v1/spells?${params.toString()}`);
 			const data = await response.json();
 
 			setSpells(data.spells);

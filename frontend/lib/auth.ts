@@ -31,7 +31,7 @@ export const authService = {
 	 * Create a guest account for anonymous play
 	 */
 	async createGuest(): Promise<{ user: User; tokens: AuthTokens }> {
-		const response = await fetch(`${API_URL}/api/auth/guest`, {
+		const response = await fetch(`${API_URL}/api/v1/auth/guest`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 		});
@@ -66,7 +66,7 @@ export const authService = {
 		username: string,
 		password: string
 	): Promise<{ user: User; tokens: AuthTokens }> {
-		const response = await fetch(`${API_URL}/api/auth/register`, {
+		const response = await fetch(`${API_URL}/api/v1/auth/register`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ email, username, password }),
@@ -105,7 +105,7 @@ export const authService = {
 		email: string,
 		password: string
 	): Promise<{ user: User; tokens: AuthTokens }> {
-		const response = await fetch(`${API_URL}/api/auth/login`, {
+		const response = await fetch(`${API_URL}/api/v1/auth/login`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ email, password }),
@@ -150,7 +150,7 @@ export const authService = {
 			throw new Error('No guest account to claim');
 		}
 
-		const response = await fetch(`${API_URL}/api/auth/claim-guest`, {
+		const response = await fetch(`${API_URL}/api/v1/auth/claim-guest`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ guest_token: guestToken, email, password }),
@@ -193,7 +193,7 @@ export const authService = {
 		}
 
 		try {
-			const response = await fetch(`${API_URL}/api/auth/me`, {
+			const response = await fetch(`${API_URL}/api/v1/auth/me`, {
 				headers: {
 					Authorization: `Bearer ${token}`,
 				},

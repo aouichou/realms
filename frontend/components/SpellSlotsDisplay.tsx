@@ -33,7 +33,7 @@ export function SpellSlotsDisplay({ characterId, characterName, onRest }: SpellS
 	const fetchSpellSlots = async () => {
 		try {
 			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/spells/character/${characterId}/slots`
+				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/spells/character/${characterId}/slots`
 			);
 
 			if (response.ok) {
@@ -51,7 +51,7 @@ export function SpellSlotsDisplay({ characterId, characterName, onRest }: SpellS
 		setResting(true);
 		try {
 			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/spells/character/${characterId}/rest`,
+				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/spells/character/${characterId}/rest`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },

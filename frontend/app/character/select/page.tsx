@@ -34,7 +34,7 @@ export default function CharacterSelectPage() {
 				return;
 			}
 
-			const response = await fetch('http://localhost:8000/api/characters', {
+			const response = await fetch('http://localhost:8000/api/v1/characters', {
 				headers: {
 					'Authorization': `Bearer ${token}`,
 				},

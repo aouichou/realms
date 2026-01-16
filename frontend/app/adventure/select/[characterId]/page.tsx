@@ -65,7 +65,7 @@ export default function AdventureSelectionPage() {
 
 	const loadCharacter = async () => {
 		try {
-			const response = await apiClient.get(`/api/characters/${characterId}`);
+			const response = await apiClient.get(`/api/v1/characters/${characterId}`);
 			if (response.ok) {
 				const data = await response.json();
 				setCharacter(data);
@@ -78,7 +78,7 @@ export default function AdventureSelectionPage() {
 
 	const loadPresetAdventures = async () => {
 		try {
-			const response = await apiClient.get("/api/adventures/list");
+			const response = await apiClient.get("/api/v1/adventures/list");
 			if (response.ok) {
 				const data = await response.json();
 				setPresetAdventures(data);
@@ -90,7 +90,7 @@ export default function AdventureSelectionPage() {
 
 	const loadCustomAdventures = async () => {
 		try {
-			const response = await apiClient.get(`/api/adventures/custom/character/${characterId}`);
+			const response = await apiClient.get(`/api/v1/adventures/custom/character/${characterId}`);
 			if (response.ok) {
 				const data = await response.json();
 				setCustomAdventures(data);
@@ -103,7 +103,7 @@ export default function AdventureSelectionPage() {
 	const startPresetAdventure = async (adventureId: string) => {
 		setIsLoading(true);
 		try {
-			const response = await apiClient.post("/api/adventures/start-preset", {
+			const response = await apiClient.post("/api/v1/adventures/start-preset", {
 				character_id: characterId,
 				adventure_id: adventureId,
 			});
@@ -132,7 +132,7 @@ export default function AdventureSelectionPage() {
 	const handleStartCustomAdventure = async (adventureId: string) => {
 		setIsLoading(true);
 		try {
-			const response = await apiClient.post("/api/adventures/start-custom", {
+			const response = await apiClient.post("/api/v1/adventures/start-custom", {
 				character_id: characterId,
 				adventure_id: adventureId,
 			});

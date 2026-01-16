@@ -174,7 +174,7 @@ export default function CharacterCreation() {
 		};
 
 		try {
-			const response = await apiClient.post('/api/characters', characterData);
+			const response = await apiClient.post('/api/v1/characters', characterData);
 
 			if (response.ok) {
 				const character = await response.json();
@@ -202,7 +202,7 @@ export default function CharacterCreation() {
 		if (!characterId) return;
 
 		try {
-			const response = await apiClient.post(`/api/characters/${characterId}/skills`, skills);
+			const response = await apiClient.post(`/api/v1/characters/${characterId}/skills`, skills);
 
 			if (response.ok) {
 				setSkillProficiencies(skills);
@@ -233,7 +233,7 @@ export default function CharacterCreation() {
 				params.append('background_skill_proficiencies', skill);
 			});
 
-			const response = await apiClient.post(`/api/characters/${characterId}/background?${params.toString()}`);
+			const response = await apiClient.post(`/api/v1/characters/${characterId}/background?${params.toString()}`);
 
 			if (response.ok) {
 				setBackgroundName(background.name);
@@ -265,7 +265,7 @@ export default function CharacterCreation() {
 			params.append('bond', personality.bond);
 			params.append('flaw', personality.flaw);
 
-			const response = await apiClient.post(`/api/characters/${characterId}/personality?${params.toString()}`);
+			const response = await apiClient.post(`/api/v1/characters/${characterId}/personality?${params.toString()}`);
 
 			if (response.ok) {
 				setPersonalityTrait(personality.personality_trait);
@@ -291,7 +291,7 @@ export default function CharacterCreation() {
 			const params = new URLSearchParams();
 			params.append('motivation', selectedMotivation);
 
-			const response = await apiClient.post(`/api/characters/${characterId}/motivation?${params.toString()}`);
+			const response = await apiClient.post(`/api/v1/characters/${characterId}/motivation?${params.toString()}`);
 
 			if (response.ok) {
 				setMotivation(selectedMotivation);
@@ -324,7 +324,7 @@ export default function CharacterCreation() {
 			try {
 				await Promise.all(
 					Array.from(selectedSpells).map(spellId =>
-						apiClient.post(`/api/spells/character/${characterId}/spells`, {
+						apiClient.post(`/api/v1/spells/character/${characterId}/spells`, {
 							spell_id: spellId,
 							is_known: true,
 							// Only prepared casters need to prepare spells

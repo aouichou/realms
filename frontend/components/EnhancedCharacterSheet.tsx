@@ -104,7 +104,7 @@ export function EnhancedCharacterSheet({
 	const fetchCharacterData = async () => {
 		try {
 			// Fetch character info for background
-			const charResponse = await apiClient.get(`/api/characters/${characterId}`);
+			const charResponse = await apiClient.get(`/api/v1/characters/${characterId}`);
 			if (charResponse.ok) {
 				const charData = await charResponse.json();
 				setBackgroundName(charData.background_name || '');
@@ -119,12 +119,12 @@ export function EnhancedCharacterSheet({
 			}
 
 			// Fetch stats
-			const statsResponse = await apiClient.get(`/api/characters/${characterId}/stats`);
+			const statsResponse = await apiClient.get(`/api/v1/characters/${characterId}/stats`);
 			const statsData = await statsResponse.json();
 			setStats(statsData);
 
 			// Fetch spell slots
-			const slotsResponse = await apiClient.get(`/api/spells/character/${characterId}/slots`);
+			const slotsResponse = await apiClient.get(`/api/v1/spells/character/${characterId}/slots`);
 			const slotsData = await slotsResponse.json();
 			setSpellSlots(slotsData.spell_slots || {});
 		} catch (error) {

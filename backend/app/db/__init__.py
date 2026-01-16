@@ -1,7 +1,30 @@
 """Database initialization and session management"""
 
 from app.db.base import Base, async_session, engine, get_db
-from app.db.models import Character, ConversationMessage, GameSession, User
+from app.db.models import (
+    Adventure,
+    AdventureMemory,
+    CastingTime,
+    Character,
+    CharacterClass,
+    CharacterRace,
+    CharacterType,
+    CombatEncounter,
+    ConditionType,
+    ConversationMessage,
+    Encounter,
+    EventType,
+    GameSession,
+    Item,
+    ItemType,
+    MessageRole,
+    Quest,
+    QuestObjective,
+    QuestState,
+    Spell,
+    SpellSchool,
+    User,
+)
 
 __all__ = [
     "Base",
@@ -12,4 +35,22 @@ __all__ = [
     "Character",
     "GameSession",
     "ConversationMessage",
+    "Encounter",
+    "CombatEncounter",
+    "Item",
+    "Spell",
+    "Adventure",
+    "AdventureMemory",
+    "Quest",
+    "QuestObjective",
+    "CastingTime",
+    "CharacterClass",
+    "CharacterRace",
+    "CharacterType",
+    "ConditionType",
+    "EventType",
+    "ItemType",
+    "MessageRole",
+    "QuestState",
+    "SpellSchool",
 ]

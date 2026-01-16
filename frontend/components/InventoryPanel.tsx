@@ -81,7 +81,7 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 			}
 
 			const response = await fetch(
-				`${API_URL}/api/characters/${characterId}/inventory?${params}`
+				`${API_URL}/api/v1/characters/${characterId}/inventory?${params}`
 			);
 			const data = await response.json();
 			setInventory(data);
@@ -95,7 +95,7 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 	const toggleEquip = async (itemId: string) => {
 		try {
 			await fetch(
-				`${API_URL}/api/characters/${characterId}/inventory/${itemId}/equip`,
+				`${API_URL}/api/v1/characters/${characterId}/inventory/${itemId}/equip`,
 				{ method: "PATCH" }
 			);
 			fetchInventory();
@@ -107,7 +107,7 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 	const deleteItem = async (itemId: string) => {
 		try {
 			await fetch(
-				`${API_URL}/api/characters/${characterId}/inventory/${itemId}`,
+				`${API_URL}/api/v1/characters/${characterId}/inventory/${itemId}`,
 				{ method: "DELETE" }
 			);
 			setSelectedItem(null);
