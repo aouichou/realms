@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import CombatEncounter, GameSession
 from app.observability.logger import get_logger
+from app.observability.tracing import trace_async
 from app.schemas.combat import (
     CombatActionRequest,
     CombatActionResponse,
@@ -29,6 +30,7 @@ router = APIRouter(prefix="/combat", tags=["combat"])
 
 
 @router.post("/start", response_model=CombatStatusResponse, status_code=201)
+@trace_async("combat.start")
 async def start_combat(request: StartCombatRequest, db: AsyncSession = Depends(get_db)):
     """Start a new combat encounter
 
@@ -126,6 +128,7 @@ async def start_combat(request: StartCombatRequest, db: AsyncSession = Depends(g
 
 
 @router.get("/{combat_id}/status", response_model=CombatStatusResponse)
+@trace_async("combat.get_status")
 async def get_combat_status(combat_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get current combat status
 
@@ -161,6 +164,7 @@ async def get_combat_status(combat_id: UUID, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/{combat_id}/action", response_model=CombatActionResponse)
+@trace_async("combat.perform_action")
 async def perform_combat_action(
     combat_id: UUID, action: CombatActionRequest, db: AsyncSession = Depends(get_db)
 ):
@@ -277,6 +281,7 @@ async def perform_combat_action(
 
 
 @router.post("/{combat_id}/end", response_model=EndCombatResponse)
+@trace_async("combat.end")
 async def end_combat(combat_id: UUID, db: AsyncSession = Depends(get_db)):
     """End a combat encounter
 
@@ -350,6 +355,7 @@ async def end_combat(combat_id: UUID, db: AsyncSession = Depends(get_db)):
 @router.patch(
     "/{combat_id}/participants/{participant_index}/hp", response_model=CombatStatusResponse
 )
+@trace_async("combat.update_participant_hp")
 async def update_participant_hp(
     combat_id: UUID, participant_index: int, hp_change: int, db: AsyncSession = Depends(get_db)
 ):

@@ -1,4 +1,5 @@
 import { authService, type User } from '@/lib/auth';
+import { useTranslation } from '@/lib/hooks/useTranslation';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 
@@ -13,6 +14,7 @@ interface ProtectedRouteProps {
  * Optionally redirects guests to claim account flow
  */
 export function ProtectedRoute({ children, requireRegistered = false }: ProtectedRouteProps) {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const [isLoading, setIsLoading] = useState(true);
 	const [user, setUser] = useState<User | null>(null);
@@ -64,7 +66,7 @@ export function ProtectedRoute({ children, requireRegistered = false }: Protecte
 			<div className="flex items-center justify-center min-h-screen">
 				<div className="text-center">
 					<div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-					<p className="mt-4 text-gray-600">Loading...</p>
+					<p className="mt-4 text-gray-600">{t('common.loading')}</p>
 				</div>
 			</div>
 		);

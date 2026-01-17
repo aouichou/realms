@@ -11,6 +11,7 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
+import { useTranslation } from '@/lib/hooks/useTranslation';
 import { Loader2, Play, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -38,6 +39,7 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 	const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
 	const { showToast } = useToast();
 	const router = useRouter();
+	const { t } = useTranslation();
 
 	useEffect(() => {
 		if (isOpen) {
@@ -60,7 +62,7 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 			setSaves(data);
 		} catch (error) {
 			console.error('Load saves error:', error);
-			showToast('Could not load save files', 'error');
+			showToast(t('game.load.errorLoadSaves'), 'error');
 		} finally {
 			setIsLoading(false);
 		}
@@ -79,14 +81,14 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 				throw new Error('Failed to load game');
 			}
 
-			showToast(`Loading "${saveName}"...`, 'info');
+			showToast(t('game.load.loadingMessage').replace('{saveName}', saveName), 'info');
 
 			// Navigate to game page
 			router.push(`/game?session_id=${sessionId}`);
 			onClose();
 		} catch (error) {
 			console.error('Load error:', error);
-			showToast('Could not load saved game', 'error');
+			showToast(t('game.load.errorLoadGame'), 'error');
 			setLoadingSessionId(null);
 		}
 	};
@@ -100,9 +102,9 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 		<Dialog open={isOpen} onOpenChange={onClose}>
 			<DialogContent className="sm:max-w-175 max-h-[80vh] overflow-y-auto">
 				<DialogHeader>
-					<DialogTitle>Load Game</DialogTitle>
+					<DialogTitle>{t('game.load.title')}</DialogTitle>
 					<DialogDescription>
-						Select a save to continue your adventure
+						{t('game.load.description')}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -113,9 +115,9 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 				) : saves.length === 0 ? (
 					<div className="text-center py-12">
 						<Save className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-						<p className="text-muted-foreground">No saved games found</p>
+						<p className="text-muted-foreground">{t('game.load.noSaves')}</p>
 						<p className="text-sm text-muted-foreground mt-2">
-							Start a new adventure to create your first save
+							{t('game.load.noSavesHint')}
 						</p>
 					</div>
 				) : (
@@ -138,12 +140,12 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 											{loadingSessionId === save.session_id ? (
 												<>
 													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-													Loading...
+													{t('game.load.loading')}
 												</>
 											) : (
 												<>
 													<Play className="mr-2 h-4 w-4" />
-													Load
+													{t('game.load.loadButton')}
 												</>
 											)}
 										</Button>
@@ -152,7 +154,7 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 								{save.game_data?.location && (
 									<CardContent className="pt-0">
 										<p className="text-sm text-muted-foreground">
-											Location: {save.game_data.location}
+											{t('game.load.location')}: {save.game_data.location}
 										</p>
 									</CardContent>
 								)}

@@ -20,6 +20,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { apiClient } from "@/lib/api-client";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { BookOpen, Clock, Moon, Sparkles, Target, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -83,6 +84,7 @@ const SCHOOL_COLORS: Record<string, string> = {
 };
 
 export function SpellsPanel({ characterId }: SpellsPanelProps) {
+	const { t } = useTranslation();
 	const [spells, setSpells] = useState<CharacterSpell[]>([]);
 	const [spellSlots, setSpellSlots] = useState<SpellSlots>({});
 	const [loading, setLoading] = useState(true);
@@ -335,7 +337,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 					<div className="flex items-center justify-between">
 						<CardTitle className="flex items-center gap-2">
 							<Sparkles className="w-5 h-5" />
-							Spells
+							{t('game.spells.title')}
 						</CardTitle>
 						<div className="flex gap-2">
 							{isPreparedCaster() && (
@@ -365,7 +367,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 			{Object.keys(spellSlots).length > 0 && (
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-lg">Spell Slots</CardTitle>
+						<CardTitle className="text-lg">{t('game.spells.spellSlots')}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className="grid grid-cols-5 gap-3">
@@ -374,7 +376,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 								.map(([level, slots]) => (
 									<div key={level} className="text-center">
 										<p className="text-sm text-muted-foreground mb-2">
-											Level {level}
+											{t('game.spells.level')} {level}
 										</p>
 										<div className="flex gap-1 justify-center flex-wrap mb-1">
 											{Array.from({ length: slots.total }).map((_, i) => (
@@ -403,14 +405,14 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 					<div className="flex gap-4 items-center">
 						<Select value={filterLevel} onValueChange={setFilterLevel}>
 							<SelectTrigger className="w-37.5">
-								<SelectValue placeholder="All Levels" />
+								<SelectValue placeholder={t('game.spells.allLevels')} />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="all">All Levels</SelectItem>
-								<SelectItem value="0">Cantrips</SelectItem>
+								<SelectItem value="all">{t('game.spells.allLevels')}</SelectItem>
+								<SelectItem value="0">{t('game.spells.cantrips')}</SelectItem>
 								{[1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => (
 									<SelectItem key={level} value={level.toString()}>
-										Level {level}
+										{t('game.spells.level')} {level}
 									</SelectItem>
 								))}
 							</SelectContent>
@@ -418,12 +420,12 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 
 						<Select value={filterSchool} onValueChange={setFilterSchool}>
 							<SelectTrigger className="w-45">
-								<SelectValue placeholder="All Schools" />
+								<SelectValue placeholder={t('game.spells.allSchools')} />
 							</SelectTrigger>
 							<SelectContent>
 								{SPELL_SCHOOLS.map((school) => (
 									<SelectItem key={school} value={school}>
-										{school}
+										{school === 'All Schools' ? t('game.spells.allSchools') : t(`game.spells.schools.${school.toLowerCase()}`)}
 									</SelectItem>
 								))}
 							</SelectContent>
@@ -435,7 +437,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 								size="sm"
 								onClick={() => setShowPreparedOnly(!showPreparedOnly)}
 							>
-								Prepared Only
+								{t('game.spells.preparedOnly')}
 							</Button>
 						)}
 					</div>
@@ -453,7 +455,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 						})
 						.map(([level, spellsInLevel]) => (
 							<div key={level}>
-								<h3 className="font-bold text-lg mb-3 text-white">{level}</h3>
+								<h3 className="font-bold text-lg mb-3 text-gray-200">{level === 'Cantrips' ? t('game.spells.cantrips') : level.includes('Level') ? t('game.spells.level') + ' ' + level.split(' ')[1] : level}</h3>
 								<div className="grid grid-cols-1 gap-3">
 									{spellsInLevel.map((spell) => {
 										// For known casters, all spells are available; for prepared casters, only prepared spells
@@ -474,17 +476,17 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 																	className={`${SCHOOL_COLORS[spell.school] || "bg-gray-500"
 																		} text-white`}
 																>
-																	{spell.school}
+																	{t(`game.spells.schools.${spell.school.toLowerCase()}`)}
 																</Badge>
 																{/* Only show Prepared badge for prepared casters */}
 																{isPreparedCaster() && spell.is_prepared && (
-																	<Badge variant="outline">Prepared</Badge>
+																	<Badge variant="outline">{t('game.spells.prepared')}</Badge>
 																)}
 																{spell.is_concentration && (
-																	<Badge variant="secondary">Concentration</Badge>
+																	<Badge variant="secondary">{t('game.spells.concentration')}</Badge>
 																)}
 																{spell.is_ritual && (
-																	<Badge variant="secondary">Ritual</Badge>
+																	<Badge variant="secondary">{t('game.spells.ritual')}</Badge>
 																)}
 															</div>
 															<div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -510,7 +512,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 																disabled={!canCastSpell(spell)}
 															>
 																<Zap className="w-4 h-4 mr-1" />
-																Cast
+																{t('game.spells.cast')}
 															</Button>
 														)}
 													</div>
@@ -537,11 +539,11 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 								className={`${selectedSpell ? SCHOOL_COLORS[selectedSpell.school] : ""
 									} text-white`}
 							>
-								{selectedSpell?.school}
+								{selectedSpell && t(`game.spells.schools.${selectedSpell.school.toLowerCase()}`)}
 							</Badge>
 						</DialogTitle>
 						<DialogDescription>
-							Level {selectedSpell?.level === 0 ? "Cantrip" : selectedSpell?.level}
+							{selectedSpell?.level === 0 ? t('game.spells.cantrip') : `${t('game.spells.level')} ${selectedSpell?.level}`}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -549,25 +551,25 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 						<div className="space-y-4">
 							<div className="grid grid-cols-2 gap-4">
 								<div>
-									<p className="text-sm font-medium">Casting Time</p>
+									<p className="text-sm font-medium">{t('game.spells.castingTime')}</p>
 									<p className="text-sm text-muted-foreground">
 										{selectedSpell.casting_time}
 									</p>
 								</div>
 								<div>
-									<p className="text-sm font-medium">Range</p>
+									<p className="text-sm font-medium">{t('game.spells.range')}</p>
 									<p className="text-sm text-muted-foreground">
 										{selectedSpell.range}
 									</p>
 								</div>
 								<div>
-									<p className="text-sm font-medium">Duration</p>
+									<p className="text-sm font-medium">{t('game.spells.duration')}</p>
 									<p className="text-sm text-muted-foreground">
 										{selectedSpell.duration}
 									</p>
 								</div>
 								<div>
-									<p className="text-sm font-medium">Components</p>
+									<p className="text-sm font-medium">{t('game.spells.components')}</p>
 									<p className="text-sm text-muted-foreground">
 										{getComponents(selectedSpell)}
 										{selectedSpell.material && ` (${selectedSpell.material})`}
@@ -576,7 +578,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 							</div>
 
 							<div>
-								<p className="text-sm font-medium mb-2">Description</p>
+								<p className="text-sm font-medium mb-2">{t('game.spells.description')}</p>
 								<p className="text-sm text-muted-foreground">
 									{selectedSpell.description}
 								</p>
@@ -585,14 +587,14 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 							{selectedSpell.damage_dice && (
 								<div className="grid grid-cols-2 gap-4">
 									<div>
-										<p className="text-sm font-medium">Damage</p>
+										<p className="text-sm font-medium">{t('game.spells.damage')}</p>
 										<p className="text-sm text-muted-foreground">
 											{selectedSpell.damage_dice} {selectedSpell.damage_type}
 										</p>
 									</div>
 									{selectedSpell.save_ability && (
 										<div>
-											<p className="text-sm font-medium">Saving Throw</p>
+											<p className="text-sm font-medium">{t('game.spells.savingThrow')}</p>
 											<p className="text-sm text-muted-foreground">
 												{selectedSpell.save_ability}
 											</p>
@@ -603,10 +605,10 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 
 							<div className="flex gap-2">
 								{selectedSpell.is_concentration && (
-									<Badge variant="secondary">Requires Concentration</Badge>
+									<Badge variant="secondary">{t('game.spells.requiresConcentration')}</Badge>
 								)}
 								{selectedSpell.is_ritual && (
-									<Badge variant="secondary">Can be cast as Ritual</Badge>
+									<Badge variant="secondary">{t('game.spells.canCastRitual')}</Badge>
 								)}
 							</div>
 						</div>
@@ -621,7 +623,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 								disabled={!canCastSpell(selectedSpell)}
 							>
 								<Zap className="w-4 h-4 mr-2" />
-								Cast Spell
+								{t('game.spells.castSpell')}
 							</Button>
 						)}
 					</DialogFooter>
@@ -632,11 +634,11 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 			<Dialog open={castDialogOpen} onOpenChange={setCastDialogOpen}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Cast {selectedSpell?.name}</DialogTitle>
+						<DialogTitle>{t('game.spells.cast')} {selectedSpell?.name}</DialogTitle>
 						<DialogDescription>
 							{selectedSpell?.level === 0
-								? "This is a cantrip and doesn't consume spell slots."
-								: `This will consume a level ${selectedSpell?.level} spell slot.`}
+								? t('game.spells.cantripNoSlot')
+								: t('game.spells.consumeSlot', { level: selectedSpell?.level })}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -688,7 +690,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 								})
 								.map(([level, spellsInLevel]) => (
 									<div key={level}>
-										<h4 className="font-bold mb-2 text-foreground">{level}</h4>
+										<h4 className="font-bold mb-2 text-gray-200">{level}</h4>
 										<div className="space-y-2">
 											{spellsInLevel.map((spell) => {
 												const canToggle = spell.level === 0 || selectedSpellsToPrepare.has(spell.id) || selectedSpellsToPrepare.size < maxPreparedSpells;
@@ -718,7 +720,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 															className={`${SCHOOL_COLORS[spell.school] || "bg-gray-500"
 																} text-white`}
 														>
-															{spell.school}
+															{t(`game.spells.schools.${spell.school.toLowerCase()}`)}
 														</Badge>
 													</div>
 												);
@@ -734,15 +736,15 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 							variant="outline"
 							onClick={() => setPrepareDialogOpen(false)}
 						>
-							Cancel
+							{t('game.spells.cancel')}
 						</Button>
 						<Button onClick={savePreparedSpells}>
 							<BookOpen className="w-4 h-4 mr-2" />
-							Save Prepared Spells
+							{t('game.spells.savePreparedSpells')}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
-		</div>
+		</div >
 	);
 }

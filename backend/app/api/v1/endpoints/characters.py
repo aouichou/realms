@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import User
 from app.middleware.auth import get_current_active_user
+from app.observability.tracing import trace_async
 from app.schemas.character import (
     CharacterCreate,
     CharacterListResponse,
@@ -21,6 +22,7 @@ router = APIRouter(prefix="/characters", tags=["characters"])
 
 
 @router.post("", response_model=CharacterResponse, status_code=201)
+@trace_async("characters.create")
 async def create_character(
     character_data: CharacterCreate,
     current_user: User = Depends(get_current_active_user),
@@ -41,6 +43,7 @@ async def create_character(
 
 
 @router.get("/{character_id}", response_model=CharacterResponse)
+@trace_async("characters.get")
 async def get_character(
     character_id: UUID,
     current_user: User = Depends(get_current_active_user),
@@ -66,6 +69,7 @@ async def get_character(
 
 
 @router.get("", response_model=CharacterListResponse)
+@trace_async("characters.list")
 async def list_characters(
     current_user: User = Depends(get_current_active_user),
     page: int = Query(1, ge=1, description="Page number"),
@@ -99,6 +103,7 @@ async def list_characters(
 
 
 @router.patch("/{character_id}", response_model=CharacterResponse)
+@trace_async("characters.update")
 async def update_character(
     character_id: UUID, character_data: CharacterUpdate, db: AsyncSession = Depends(get_db)
 ):
@@ -122,6 +127,7 @@ async def update_character(
 
 
 @router.delete("/{character_id}", status_code=204)
+@trace_async("characters.delete")
 async def delete_character(character_id: UUID, db: AsyncSession = Depends(get_db)):
     """Delete a character.
 
@@ -138,6 +144,7 @@ async def delete_character(character_id: UUID, db: AsyncSession = Depends(get_db
 
 
 @router.post("/{character_id}/skills", response_model=CharacterResponse)
+@trace_async("characters.update_skills")
 async def update_skill_proficiencies(
     character_id: UUID,
     skills: list[str],
@@ -176,6 +183,7 @@ async def update_skill_proficiencies(
 
 
 @router.post("/{character_id}/background", response_model=CharacterResponse)
+@trace_async("characters.update_background")
 async def update_background(
     character_id: UUID,
     background_name: str = Query(...),
@@ -226,6 +234,7 @@ async def update_background(
 
 
 @router.post("/{character_id}/personality", response_model=CharacterResponse)
+@trace_async("characters.update_personality")
 async def update_personality(
     character_id: UUID,
     personality_trait: str = Query(...),
@@ -279,6 +288,7 @@ async def update_personality(
 
 
 @router.post("/{character_id}/motivation", response_model=CharacterResponse)
+@trace_async("characters.update_motivation")
 async def update_motivation(
     character_id: UUID,
     motivation: str = Query(...),
@@ -317,6 +327,7 @@ async def update_motivation(
 
 
 @router.get("/{character_id}/stats", response_model=CharacterStatsResponse)
+@trace_async("characters.get_stats")
 async def get_character_stats(character_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get full character statistics including equipment bonuses.
 

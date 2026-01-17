@@ -14,14 +14,14 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
 from app.config import settings
-from app.db.base import close_db
+from app.db.base import close_db, engine
 from app.middleware.language import LanguageMiddleware
 from app.middleware.observability import ObservabilityMiddleware
 from app.middleware.performance import PerformanceMiddleware
 from app.middleware.query_monitor import query_monitor
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.observability.logger import get_logger
-from app.observability.tracing import init_tracing, instrument_app
+from app.observability.tracing import init_tracing, instrument_app, instrument_sqlalchemy
 from app.routers import health, metrics
 from app.services.provider_init import initialize_providers
 from app.services.redis_service import session_service
@@ -48,6 +48,8 @@ async def lifespan(app: FastAPI):
             otlp_endpoint=settings.otlp_endpoint,
             enabled=True,
         )
+        # Instrument database queries
+        instrument_sqlalchemy(engine)
         logger.info("Tracing enabled: exporting to %s", settings.otlp_endpoint)
 
     # Initialize database

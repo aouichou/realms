@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiClient } from "@/lib/api-client";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useQuery } from "@tanstack/react-query";
 import {
 	Brain,
@@ -119,6 +120,7 @@ const QUICK_CHECKS = [
 ];
 
 export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckPanelProps) {
+	const { t } = useTranslation();
 	const [selectedSkill, setSelectedSkill] = useState<string>("");
 	const [advantage, setAdvantage] = useState(false);
 	const [disadvantage, setDisadvantage] = useState(false);
@@ -269,7 +271,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
 						<Dices className="w-5 h-5" />
-						Ability Checks & Skills
+						{t('game.abilityChecks.title')}
 					</CardTitle>
 				</CardHeader>
 			</Card>
@@ -277,7 +279,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 			{/* Quick Checks */}
 			<Card>
 				<CardHeader>
-					<CardTitle className="text-lg">Quick Checks</CardTitle>
+					<CardTitle className="text-lg">{t('game.abilityChecks.quickChecks')}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<div className="grid grid-cols-3 gap-2">
@@ -292,7 +294,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 									className="flex items-center gap-2"
 								>
 									<Icon className="w-4 h-4" />
-									{check.name}
+									{t(`game.abilityChecks.skills.${SKILL_NAME_MAP[check.name]}`)}
 								</Button>
 							);
 						})}
@@ -303,7 +305,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 			{/* Roll Modifiers */}
 			<Card>
 				<CardHeader>
-					<CardTitle className="text-lg">Roll Modifiers</CardTitle>
+					<CardTitle className="text-lg">{t('game.abilityChecks.rollModifiers')}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<div className="space-y-3">
@@ -318,7 +320,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 								disabled={disadvantage}
 							>
 								<TrendingUp className="w-4 h-4 mr-2" />
-								Advantage
+								{t('game.abilityChecks.advantage')}
 							</Button>
 							<Button
 								variant={disadvantage ? "default" : "outline"}
@@ -330,19 +332,19 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 								disabled={advantage}
 							>
 								<TrendingDown className="w-4 h-4 mr-2" />
-								Disadvantage
+								{t('game.abilityChecks.disadvantage')}
 							</Button>
 						</div>
 
 						<div className="flex items-center gap-2">
 							<label className="text-sm font-medium min-w-20">
-								Target DC:
+								{t('game.abilityChecks.targetDC')}
 							</label>
 							<Input
 								type="number"
 								value={dc}
 								onChange={(e) => setDc(e.target.value ? parseInt(e.target.value) : "")}
-								placeholder="Optional"
+								placeholder={t('game.abilityChecks.optional')}
 								className="flex-1"
 								min="1"
 								max="30"
@@ -355,7 +357,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 			{/* Skills by Ability */}
 			<Card>
 				<CardHeader>
-					<CardTitle className="text-lg">All Skills</CardTitle>
+					<CardTitle className="text-lg">{t('game.abilityChecks.allSkills')}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<ScrollArea className="h-75">
@@ -385,12 +387,12 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 															<div
 																className={`w-3 h-3 rounded-full ${skill.isProficient ? "bg-green-500" : "bg-gray-300"
 																	}`}
-																title={skill.isProficient ? "Proficient" : "Not proficient"}
+																title={skill.isProficient ? t('game.abilityChecks.proficient') : t('game.abilityChecks.notProficient')}
 															/>
 															<span className="font-medium">{skillName}</span>
 															{skill.isProficient && (
 																<Badge variant="default" className="text-xs px-1.5 py-0.5 bg-blue-600 text-white">
-																	PROF
+																	{t('game.abilityChecks.prof')}
 																</Badge>
 															)}
 															<Badge variant="secondary">
@@ -407,7 +409,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 															disabled={rolling}
 														>
 															<Dices className="w-4 h-4 mr-1" />
-															Roll
+															{t('game.abilityChecks.roll')}
 														</Button>
 													</div>
 												);
@@ -425,7 +427,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 			{rollHistory.length > 0 && (
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-lg">Recent Rolls</CardTitle>
+						<CardTitle className="text-lg">{t('game.abilityChecks.recentRolls')}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-2">
@@ -447,18 +449,18 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 													{result.advantage && (
 														<Badge variant="secondary" className="text-xs">
 															<TrendingUp className="w-3 h-3 mr-1" />
-															Adv
+															{t('game.abilityChecks.adv')}
 														</Badge>
 													)}
 													{result.disadvantage && (
 														<Badge variant="secondary" className="text-xs">
 															<TrendingDown className="w-3 h-3 mr-1" />
-															Dis
+															{t('game.abilityChecks.dis')}
 														</Badge>
 													)}
 													{result.dc && (
 														<Badge variant="outline" className="text-xs">
-															DC {result.dc}
+															{t('game.abilityChecks.dc')} {result.dc}
 														</Badge>
 													)}
 													<span className="text-xs text-muted-foreground">
@@ -468,7 +470,7 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 												<div className="flex items-center gap-2 text-sm text-muted-foreground">
 													{result.rolls && result.rolls.length > 1 ? (
 														<span className="font-mono">
-															Rolls: [{result.rolls.join(", ")}] + {result.modifier ?? 0} = {result.total}
+															{t('game.abilityChecks.rolls')}: [{result.rolls.join(", ")}] + {result.modifier ?? 0} = {result.total}
 														</span>
 													) : (
 														<span className="font-mono">

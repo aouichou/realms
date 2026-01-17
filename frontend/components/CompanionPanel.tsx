@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiClient } from "@/lib/api-client";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { Bot, Heart, MessageSquare, Shield, Sparkles, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -94,6 +95,7 @@ const TRIGGERS = [
 ];
 
 export function CompanionPanel({ characterId, gameContext, onSpeechGenerated }: CompanionPanelProps) {
+	const { t } = useTranslation();
 	const [messages, setMessages] = useState<CompanionMessage[]>([]);
 	const [selectedPersonality, setSelectedPersonality] = useState<string>("helpful");
 	const [selectedTrigger, setSelectedTrigger] = useState<string>("exploration");
@@ -226,7 +228,7 @@ export function CompanionPanel({ characterId, gameContext, onSpeechGenerated }: 
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						<PersonalityIcon className={`h-5 w-5 ${personalityInfo.color}`} />
-						<CardTitle className="text-lg">AI Companion</CardTitle>
+						<CardTitle className="text-lg">{t('game.companion.title')}</CardTitle>
 					</div>
 					<Badge variant="outline" className={personalityInfo.borderColor}>
 						{companionName}
@@ -240,7 +242,7 @@ export function CompanionPanel({ characterId, gameContext, onSpeechGenerated }: 
 			<CardContent className="flex-1 flex flex-col gap-3 overflow-hidden">
 				{/* Personality Selection */}
 				<div className="space-y-2">
-					<label className="text-xs font-medium">Personality</label>
+					<label className="text-xs font-medium">{t('game.companion.personality')}</label>
 					<Select value={selectedPersonality} onValueChange={setSelectedPersonality}>
 						<SelectTrigger className="h-8 text-sm">
 							<SelectValue />
@@ -252,7 +254,7 @@ export function CompanionPanel({ characterId, gameContext, onSpeechGenerated }: 
 									<SelectItem key={key} value={key}>
 										<div className="flex items-center gap-2">
 											<Icon className={`h-4 w-4 ${info.color}`} />
-											<span>{info.name}</span>
+											<span>{t(`game.companion.personalities.${key}`)}</span>
 										</div>
 									</SelectItem>
 								);
@@ -263,7 +265,7 @@ export function CompanionPanel({ characterId, gameContext, onSpeechGenerated }: 
 
 				{/* Trigger Selection */}
 				<div className="space-y-2">
-					<label className="text-xs font-medium">Trigger</label>
+					<label className="text-xs font-medium">{t('game.companion.trigger')}</label>
 					<Select value={selectedTrigger} onValueChange={setSelectedTrigger}>
 						<SelectTrigger className="h-8 text-sm">
 							<SelectValue />
@@ -271,7 +273,7 @@ export function CompanionPanel({ characterId, gameContext, onSpeechGenerated }: 
 						<SelectContent>
 							{TRIGGERS.map((trigger) => (
 								<SelectItem key={trigger.value} value={trigger.value}>
-									{trigger.label}
+									{t(`game.companion.triggers.${trigger.value}`)}
 								</SelectItem>
 							))}
 						</SelectContent>
@@ -285,26 +287,26 @@ export function CompanionPanel({ characterId, gameContext, onSpeechGenerated }: 
 					className="w-full h-8 text-sm"
 					size="sm"
 				>
-					{isGenerating ? "Generating..." : "Generate Speech"}
+					{isGenerating ? t('game.companion.generating') : t('game.companion.generateSpeech')}
 				</Button>
 
 				{/* Auto-respond Toggle */}
 				<div className="flex items-center justify-between text-xs">
-					<span className="text-muted-foreground">Auto-respond to events</span>
+					<span className="text-muted-foreground">{t('game.companion.autoRespond')}</span>
 					<Button
 						variant="outline"
 						size="sm"
 						className="h-6 px-2"
 						onClick={() => setAutoRespond(!autoRespond)}
 					>
-						{autoRespond ? "ON" : "OFF"}
+						{autoRespond ? t('game.companion.on') : t('game.companion.off')}
 					</Button>
 				</div>
 
 				{/* Messages */}
 				<div className="flex-1 flex flex-col min-h-0">
 					<div className="flex items-center justify-between mb-2">
-						<label className="text-xs font-medium">Messages ({messages.length})</label>
+						<label className="text-xs font-medium">{t('game.companion.messages')} ({messages.length})</label>
 						{messages.length > 0 && (
 							<Button
 								variant="ghost"
@@ -312,7 +314,7 @@ export function CompanionPanel({ characterId, gameContext, onSpeechGenerated }: 
 								className="h-6 px-2 text-xs"
 								onClick={clearMessages}
 							>
-								Clear
+								{t('game.companion.clear')}
 							</Button>
 						)}
 					</div>
@@ -322,9 +324,9 @@ export function CompanionPanel({ characterId, gameContext, onSpeechGenerated }: 
 							{messages.length === 0 ? (
 								<div className="text-center text-xs text-muted-foreground py-8">
 									<Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
-									<p>No messages yet</p>
+									<p>{t('game.companion.noMessages')}</p>
 									<p className="text-[10px] mt-1">
-										Your companion will speak during key moments
+										{t('game.companion.speakDuringMoments')}
 									</p>
 								</div>
 							) : (

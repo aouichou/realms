@@ -1,7 +1,7 @@
 """API endpoints for preset and custom adventures"""
 
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
+from app.observability.tracing import trace_async
 from app.services.adventure_service import AdventureService
 
 router = APIRouter(prefix="/adventures", tags=["adventures"])
@@ -48,9 +49,13 @@ class StartedAdventureResponse(BaseModel):
     opening_narration: str
     setting: str
     initial_location: str
+    combat_encounter_data: Optional[Dict[str, Any]] = None
+    npcs: Optional[List[Dict[str, Any]]] = None
+    initial_location: str
 
 
 @router.get("/list", response_model=List[AdventureInfo])
+@trace_async("adventures.list")
 async def list_adventures(db: AsyncSession = Depends(get_db)):
     """Get list of all available preset adventures"""
     service = AdventureService(db)
@@ -59,6 +64,7 @@ async def list_adventures(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/start-preset", response_model=StartedAdventureResponse)
+@trace_async("adventures.start_preset")
 async def start_preset_adventure(
     request: StartPresetAdventureRequest,
     db: AsyncSession = Depends(get_db),
@@ -82,6 +88,7 @@ async def start_preset_adventure(
 
 
 @router.post("/start-custom", response_model=StartedAdventureResponse)
+@trace_async("adventures.start_custom")
 async def start_custom_adventure(
     request: StartCustomAdventureRequest,
     db: AsyncSession = Depends(get_db),

@@ -19,6 +19,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { Beaker, Box, Grid3x3, List, Package, ScrollText, Shield, Sword } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -61,6 +62,7 @@ const ITEM_COLORS = {
 };
 
 export function InventoryPanel({ characterId }: InventoryPanelProps) {
+	const { t } = useTranslation();
 	const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 	const [inventory, setInventory] = useState<InventoryData | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -140,7 +142,7 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Inventory</CardTitle>
+					<CardTitle>{t('game.inventory.title')}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<div className="flex items-center justify-center h-64">
@@ -158,7 +160,7 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 					<div className="flex items-center justify-between">
 						<CardTitle className="flex items-center gap-2">
 							<Package className="w-5 h-5" />
-							Inventory
+							{t('game.inventory.title')}
 						</CardTitle>
 						<div className="flex gap-2">
 							<Button
@@ -181,9 +183,9 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 					{/* Weight Capacity Bar */}
 					<div className="space-y-2 mt-4">
 						<div className="flex justify-between text-sm">
-							<span>Carrying Capacity</span>
+							<span>{t('game.inventory.carryingCapacity')}</span>
 							<span className="font-medium">
-								{inventory?.current_weight.toFixed(1)} / {inventory?.carrying_capacity} lbs
+								{inventory?.current_weight.toFixed(1)} / {inventory?.carrying_capacity} {t('game.inventory.lbs')}
 							</span>
 						</div>
 						<Progress value={weightPercentage} className={weightColor} />
@@ -193,27 +195,27 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 					<div className="flex gap-2 mt-4">
 						<Select value={filterType} onValueChange={setFilterType}>
 							<SelectTrigger className="w-37.5">
-								<SelectValue placeholder="Filter by type" />
+								<SelectValue placeholder={t('game.inventory.filterBy')} />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="all">All Items</SelectItem>
-								<SelectItem value="weapon">Weapons</SelectItem>
-								<SelectItem value="armor">Armor</SelectItem>
-								<SelectItem value="consumable">Consumables</SelectItem>
-								<SelectItem value="quest">Quest Items</SelectItem>
-								<SelectItem value="misc">Miscellaneous</SelectItem>
+								<SelectItem value="all">{t('game.inventory.allItems')}</SelectItem>
+								<SelectItem value="weapon">{t('game.inventory.weapons')}</SelectItem>
+								<SelectItem value="armor">{t('game.inventory.armor')}</SelectItem>
+								<SelectItem value="consumable">{t('game.inventory.consumables')}</SelectItem>
+								<SelectItem value="quest">{t('game.inventory.questItems')}</SelectItem>
+								<SelectItem value="misc">{t('game.inventory.miscellaneous')}</SelectItem>
 							</SelectContent>
 						</Select>
 
 						<Select value={sortBy} onValueChange={setSortBy}>
 							<SelectTrigger className="w-37.5">
-								<SelectValue placeholder="Sort by" />
+								<SelectValue placeholder={t('game.inventory.sortBy')} />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="name">Name (A-Z)</SelectItem>
-								<SelectItem value="type">Type</SelectItem>
-								<SelectItem value="weight">Weight (Low-High)</SelectItem>
-								<SelectItem value="value">Value (High-Low)</SelectItem>
+								<SelectItem value="name">{t('game.inventory.nameAZ')}</SelectItem>
+								<SelectItem value="type">{t('game.inventory.type')}</SelectItem>
+								<SelectItem value="weight">{t('game.inventory.weightLowHigh')}</SelectItem>
+								<SelectItem value="value">{t('game.inventory.valueHighLow')}</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -224,7 +226,7 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 						{sortedItems.length === 0 ? (
 							<div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
 								<Package className="w-12 h-12 mb-2" />
-								<p>No items in inventory</p>
+								<p>{t('game.inventory.noItems')}</p>
 							</div>
 						) : viewMode === "grid" ? (
 							<div className="grid grid-cols-4 gap-3">
@@ -251,7 +253,7 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 														)}
 														{item.equipped && (
 															<Badge variant="default" className="text-xs bg-green-500">
-																Equipped
+																{t('game.inventory.equipped')}
 															</Badge>
 														)}
 													</div>
@@ -294,7 +296,7 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 														)}
 														{item.equipped && (
 															<Badge variant="default" className="bg-green-500">
-																Equipped
+																{t('game.inventory.equipped')}
 															</Badge>
 														)}
 													</div>
@@ -323,28 +325,28 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 						<div className="space-y-4">
 							<div className="grid grid-cols-2 gap-4">
 								<div>
-									<p className="text-sm text-muted-foreground">Weight</p>
-									<p className="font-medium">{selectedItem.weight} lbs</p>
+									<p className="text-sm text-muted-foreground">{t('game.inventory.weight')}</p>
+									<p className="font-medium">{selectedItem.weight} {t('game.inventory.lbs')}</p>
 								</div>
 								<div>
-									<p className="text-sm text-muted-foreground">Value</p>
-									<p className="font-medium">{selectedItem.value} gp</p>
+									<p className="text-sm text-muted-foreground">{t('game.inventory.value')}</p>
+									<p className="font-medium">{selectedItem.value} {t('game.inventory.gp')}</p>
 								</div>
 								<div>
-									<p className="text-sm text-muted-foreground">Quantity</p>
+									<p className="text-sm text-muted-foreground">{t('game.inventory.quantity')}</p>
 									<p className="font-medium">{selectedItem.quantity}</p>
 								</div>
 								<div>
-									<p className="text-sm text-muted-foreground">Status</p>
+									<p className="text-sm text-muted-foreground">{t('game.inventory.status')}</p>
 									<p className="font-medium">
-										{selectedItem.equipped ? "Equipped" : "In Inventory"}
+										{selectedItem.equipped ? t('game.inventory.equipped') : t('game.inventory.inInventory')}
 									</p>
 								</div>
 							</div>
 
 							{selectedItem.properties && Object.keys(selectedItem.properties).length > 0 && (
 								<div>
-									<p className="text-sm text-muted-foreground mb-2">Properties</p>
+									<p className="text-sm text-muted-foreground mb-2">{t('game.inventory.properties')}</p>
 									<div className="space-y-1">
 										{Object.entries(selectedItem.properties).map(([key, value]) => (
 											<div key={key} className="flex justify-between text-sm">
@@ -364,14 +366,14 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 									}}
 									className="flex-1"
 								>
-									{selectedItem.equipped ? "Unequip" : "Equip"}
+									{selectedItem.equipped ? t('game.inventory.unequip') : t('game.inventory.equip')}
 								</Button>
 								<Button
 									variant="destructive"
 									onClick={() => deleteItem(selectedItem.id)}
 									className="flex-1"
 								>
-									Drop Item
+									{t('game.inventory.dropItem')}
 								</Button>
 							</div>
 						</div>

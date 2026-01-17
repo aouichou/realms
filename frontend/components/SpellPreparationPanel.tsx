@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { BookOpen, Check, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -52,6 +53,7 @@ export function SpellPreparationPanel({
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const { showToast } = useToast();
+	const { t } = useTranslation();
 
 	const isPreparedCaster = PREPARED_CASTERS.includes(characterClass.toLowerCase());
 
@@ -97,7 +99,7 @@ export function SpellPreparationPanel({
 		} else {
 			// Check if we can prepare more spells
 			if (newPrepared.size >= calculateMaxPrepared()) {
-				showToast(`Maximum of ${calculateMaxPrepared()} spells can be prepared`, 'error');
+				showToast(t('game.spellPreparation.maxPreparedReached').replace('{max}', calculateMaxPrepared().toString()), 'error');
 				return;
 			}
 			newPrepared.add(spellId);
@@ -121,14 +123,14 @@ export function SpellPreparationPanel({
 			);
 
 			if (response.ok) {
-				showToast('Spells prepared successfully!', 'success');
+				showToast(t('game.spellPreparation.preparedSuccessfully'), 'success');
 				fetchSpells();
 			} else {
-				showToast('Failed to prepare spells', 'error');
+				showToast(t('game.spellPreparation.failedToPrepare'), 'error');
 			}
 		} catch (error) {
 			console.error("Failed to prepare spells:", error);
-			showToast('Failed to prepare spells', 'error');
+			showToast(t('game.spellPreparation.failedToPrepare'), 'error');
 		} finally {
 			setSaving(false);
 		}
@@ -198,16 +200,15 @@ export function SpellPreparationPanel({
 				<Alert>
 					<BookOpen className="h-4 w-4" />
 					<AlertDescription>
-						As a {characterClass}, you can change your prepared spells after a long rest.
-						Your spellcasting ability is <strong>{spellcastingAbility.charAt(0).toUpperCase() + spellcastingAbility.slice(1)}</strong> (modifier: {abilityModifier >= 0 ? '+' : ''}{abilityModifier}).
+						{t('game.spellPreparation.canChangeAfterRest').replace('{class}', characterClass)} <strong>{spellcastingAbility.charAt(0).toUpperCase() + spellcastingAbility.slice(1)}</strong> ({t('game.spellPreparation.modifier')}: {abilityModifier >= 0 ? '+' : ''}{abilityModifier}).
 					</AlertDescription>
 				</Alert>
 
 				{/* Spell Lists */}
 				<Tabs defaultValue="prepare">
 					<TabsList className="grid w-full grid-cols-2">
-						<TabsTrigger value="prepare">Prepare Spells</TabsTrigger>
-						<TabsTrigger value="current">Currently Prepared</TabsTrigger>
+						<TabsTrigger value="prepare">{t('game.spellPreparation.prepareSpells')}</TabsTrigger>
+						<TabsTrigger value="current">{t('game.spellPreparation.currentlyPrepared')}</TabsTrigger>
 					</TabsList>
 
 					<TabsContent value="prepare" className="space-y-4">
@@ -217,9 +218,9 @@ export function SpellPreparationPanel({
 								{cantrips.length > 0 && (
 									<div>
 										<h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-											Cantrips
+											{t('game.spellPreparation.cantrips')}
 											<Badge variant="secondary" className="text-xs">
-												Always Available
+												{t('game.spellPreparation.alwaysAvailable')}
 											</Badge>
 										</h3>
 										<div className="space-y-2">
@@ -246,7 +247,7 @@ export function SpellPreparationPanel({
 									.sort(([a], [b]) => parseInt(a) - parseInt(b))
 									.map(([level, spellList]) => (
 										<div key={level}>
-											<h3 className="text-sm font-semibold mb-2">Level {level}</h3>
+											<h3 className="text-sm font-semibold mb-2">{t('game.spellPreparation.level')} {level}</h3>
 											<div className="space-y-2">
 												{spellList.map((cs) => (
 													<div
@@ -263,10 +264,10 @@ export function SpellPreparationPanel({
 															<div className="flex items-center gap-2">
 																<span className="font-medium text-sm">{cs.spell.name}</span>
 																{cs.spell.is_concentration && (
-																	<Badge variant="outline" className="text-xs">Concentration</Badge>
+																	<Badge variant="outline" className="text-xs">{t('game.spellPreparation.concentration')}</Badge>
 																)}
 																{cs.spell.is_ritual && (
-																	<Badge variant="outline" className="text-xs">Ritual</Badge>
+																	<Badge variant="outline" className="text-xs">{t('game.spellPreparation.ritual')}</Badge>
 																)}
 															</div>
 															<p className="text-xs text-muted-foreground line-clamp-1 mt-1">
@@ -281,7 +282,7 @@ export function SpellPreparationPanel({
 
 								{leveledSpells.length === 0 && (
 									<p className="text-sm text-muted-foreground text-center py-8">
-										No spells in your spellbook yet. Learn spells from scrolls or by leveling up.
+										{t('game.spellPreparation.noSpellsInSpellbook')}
 									</p>
 								)}
 							</div>
@@ -294,7 +295,7 @@ export function SpellPreparationPanel({
 								disabled={saving || preparedSpells.size > maxPrepared}
 								className="w-full"
 							>
-								{saving ? 'Saving...' : `Save Preparation (${preparedSpells.size}/${maxPrepared})`}
+								{saving ? t('game.spellPreparation.saving') : `${t('game.spellPreparation.savePreparation')} (${preparedSpells.size}/${maxPrepared})`}
 							</Button>
 						)}
 					</TabsContent>
@@ -316,7 +317,7 @@ export function SpellPreparationPanel({
 												<div className="flex items-center gap-2">
 													<span className="font-medium">{cs.spell.name}</span>
 													<Badge variant="outline">
-														Level {cs.spell.level}
+														{t('game.spellPreparation.level')} {cs.spell.level}
 													</Badge>
 												</div>
 												<p className="text-sm text-muted-foreground mt-1">
@@ -329,7 +330,7 @@ export function SpellPreparationPanel({
 
 								{preparedSpells.size === 0 && (
 									<p className="text-sm text-muted-foreground text-center py-8">
-										No spells currently prepared. Switch to the "Prepare Spells" tab to select your spells for the day.
+										{t('game.spellPreparation.noSpellsPrepared')}
 									</p>
 								)}
 							</div>

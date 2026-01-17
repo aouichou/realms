@@ -24,5 +24,92 @@
       }
     },
     "footer": "Créé pour la candidature au stage Mistral AI"
+  },
+  "auth": {
+    "login": {
+      "title": "Bon Retour",
+      "subtitle": "Connectez-vous pour continuer votre aventure",
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "emailPlaceholder": "votre@email.com",
+      "passwordPlaceholder": "••••••••",
+      "signIn": "Se connecter",
+      "signingIn": "Connexion en cours...",
+      "orContinueAs": "Ou continuer en tant que",
+      "guestMode": "Mode Invité",
+      "noAccount": "Vous n'avez pas de compte ?",
+      "registerHere": "Inscrivez-vous ici",
+      "welcomeBack": "Bon retour !",
+      "welcomeAdventurer": "Bienvenue, aventurier !",
+      "loginFailed": "Échec de la connexion",
+      "guestFailed": "Échec de la création du compte invité"
+    },
+    "register": {
+      "title": "Créer un Compte",
+      "subtitle": "Inscrivez-vous pour sauvegarder votre progression",
+      "email": "E-mail",
+      "username": "Nom d'utilisateur",
+      "password": "Mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "emailPlaceholder": "votre@email.com",
+      "usernamePlaceholder": "aventurier",
+      "passwordPlaceholder": "••••••••",
+      "createAccount": "Créer un compte",
+      "creatingAccount": "Création du compte...",
+      "haveAccount": "Vous avez déjà un compte ?",
+      "signInHere": "Connectez-vous ici",
+      "agreementText": "En vous inscrivant, vous acceptez de sauvegarder votre progression de jeu et vos personnages.",
+      "accountCreated": "Compte créé avec succès !",
+      "passwordMismatch": "Les mots de passe ne correspondent pas",
+      "registerFailed": "Échec de l'inscription"
+    }
+  },
+  "demo": {
+    "title": "Mistral Realms",
+    "subtitle": "Un jeu d'aventure D&D propulsé par l'IA",
+    "quickStart": {
+      "title": "Démo de Démarrage Rapide",
+      "description": "Plongez directement dans l'action",
+      "prebuiltCharacter": "Personnage Guerrier niveau 2 pré-construit",
+      "instantGameplay": "Jeu instantané sans configuration",
+      "aiStory": "Histoire et images générées par IA",
+      "button": "Démarrer la démo (30 sec)",
+      "estimatedTime": "30 sec"
+    },
+    "customCharacter": {
+      "title": "Créez Votre Héros",
+      "description": "Construisez votre propre personnage",
+      "chooseRace": "Choisissez votre race",
+      "chooseClass": "Choisissez votre classe (12 options)",
+      "customizeStats": "Personnalisez les statistiques et l'historique",
+      "button": "Créer un personnage (5 min)",
+      "estimatedTime": "5 min"
+    },
+    "afterDemo": "Après avoir joué à la démo, créez votre propre personnage et utilisez notre",
+    "aiWizard": "Assistant d'Aventure IA",
+    "toGenerate": "pour générer une aventure personnalisée adaptée à votre héros !",
+    "haveAccount": "Vous avez déjà un compte ?",
+    "loginHere": "Connectez-vous ici",
+    "creatingDemo": "Création de la démo...",
+    "welcomeCreate": "Bienvenue ! Créez votre personnage."
+  },
+  "game": {
+    "panels": {
+      "stats": "⚔️ Statistiques du personnage",
+      "inventory": "🎒 Inventaire",
+      "combat": "⚔️ Combat",
+      "spells": "✨ Sorts",
+      "checks": "🎲 Tests de compétence",
+      "companion": "🐾 Compagnon",
+      "images": "🖼️ Galerie d'images",
+      "dice": "🎲 Lanceur de dés"
+    },
+    "level": "Niveau",
+    "diceRoller": {
+      "notation": "Notation des dés",
+      "placeholder": "ex: 1d20, 2d6+3",
+      "rollDice": "Lancer les dés",
+      "rolls": "Lancers :"
+    }
   }
 }

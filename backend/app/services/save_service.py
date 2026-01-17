@@ -17,7 +17,7 @@ class SaveService:
 
     @staticmethod
     async def save_game(
-        db: AsyncSession, session_id: UUID, save_name: Optional[str] = None
+        db: AsyncSession, session_id: UUID, save_name: Optional[str] = None, overwrite: bool = False
     ) -> Dict:
         """Save current game state
 
@@ -25,9 +25,13 @@ class SaveService:
             db: Database session
             session_id: Game session ID
             save_name: Optional name for the save
+            overwrite: If True, overwrite existing save with same name
 
         Returns:
             Dict with save information
+
+        Raises:
+            ValueError: If save name already exists and overwrite is False
         """
         # Get session from database
         result = await db.execute(select(GameSession).where(GameSession.id == session_id))
@@ -39,12 +43,27 @@ class SaveService:
         # Get character
         character = await db.get(Character, game_session.character_id)
 
+        # Generate save name if not provided
+        if not save_name:
+            save_name = f"Auto-save {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}"
+
+        # Check for duplicate save name (unless overwriting)
+        if not overwrite and session_service.redis:
+            # Check if a save with this name already exists for this session
+            save_key = f"save:{session_id}"
+            existing_save = await session_service.redis.get(save_key)  # type: ignore[misc]
+
+            if existing_save:
+                existing_data = json.loads(existing_save)
+                if existing_data.get("save_name") == save_name:
+                    raise ValueError(f"A save named '{save_name}' already exists")
+
         # Get session state from Redis
         redis_state = await session_service.get_session_state(session_id)
 
         # Create save data
         save_data = {
-            "save_name": save_name or f"Auto-save {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}",
+            "save_name": save_name,
             "session_id": str(session_id),
             "character_id": str(game_session.character_id),
             "character_name": character.name if character else "Unknown",

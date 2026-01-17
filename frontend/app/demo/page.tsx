@@ -6,6 +6,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useToast } from "@/components/ui/toast";
 import { apiClient } from "@/lib/api-client";
 import { authService } from "@/lib/auth";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { Sparkles, User, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -21,6 +22,7 @@ import { useState } from "react";
 export default function DemoPage() {
 	const router = useRouter();
 	const { showToast } = useToast();
+	const { t } = useTranslation();
 	const [isStarting, setIsStarting] = useState(false);
 
 	const startInstantDemo = async () => {
@@ -83,7 +85,7 @@ export default function DemoPage() {
 		try {
 			// Create guest account and go to character creation
 			await authService.createGuest();
-			showToast("Welcome! Create your character.", "success");
+			showToast(t("demo.welcomeCreate"), "success");
 			router.push('/character/create');
 		} catch (error) {
 			console.error("Error creating guest:", error);
@@ -98,10 +100,10 @@ export default function DemoPage() {
 				{/* Header */}
 				<div className="text-center mb-12">
 					<h1 className="font-display text-6xl text-primary-100 mb-4 animate-fadeIn">
-						Welcome to Mistral Realms
-					</h1>
-					<p className="text-xl text-neutral-300 font-body animate-fadeIn animation-delay-200">
-						An AI-powered D&D adventure game
+					{t("demo.title")}
+				</h1>
+				<p className="text-xl text-neutral-300 font-body animate-fadeIn animation-delay-200">
+					{t("demo.subtitle")}
 					</p>
 					<p className="text-neutral-400 mt-2 animate-fadeIn animation-delay-300">
 						No signup required • Start playing immediately
@@ -127,7 +129,7 @@ export default function DemoPage() {
 								<ul className="space-y-2 text-sm text-neutral-300">
 									<li className="flex items-start gap-2">
 										<span className="text-green-400 mt-0.5">✓</span>
-										<span>Pre-built Level 2 Fighter character</span>
+									<span>{t("demo.quickStart.prebuiltCharacter")}</span>
 									</li>
 									<li className="flex items-start gap-2">
 										<span className="text-green-400 mt-0.5">✓</span>

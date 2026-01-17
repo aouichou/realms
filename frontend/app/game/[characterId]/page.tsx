@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api-client';
+import { useTranslation } from '@/lib/hooks/useTranslation';
 import Image from 'next/image';
 import { useParams, useSearchParams } from 'next/navigation';
 import { lazy, useEffect, useRef, useState } from 'react';
@@ -65,6 +66,7 @@ type PanelType = 'stats' | 'inventory' | 'dice' | 'combat' | 'spells' | 'checks'
 
 export default function GamePage() {
 	const params = useParams();
+	const { t } = useTranslation();
 	const searchParams = useSearchParams();
 	const characterId = params.characterId as string;
 	const sessionIdFromUrl = searchParams.get('session');
@@ -456,7 +458,7 @@ export default function GamePage() {
 						className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
                      hover:bg-white/20 transition-all text-white font-body text-sm"
 					>
-						⚔️ Character Stats
+						{t('game.panels.stats')}
 					</button>
 
 					{/* Inventory Button */}
@@ -465,7 +467,7 @@ export default function GamePage() {
 						className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
                      hover:bg-white/20 transition-all text-white font-body text-sm"
 					>
-						🎒 Inventory
+						{t('game.panels.inventory')}
 					</button>
 
 					{/* Dice Button */}
@@ -474,7 +476,7 @@ export default function GamePage() {
 						className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
                      hover:bg-white/20 transition-all text-white font-body text-sm"
 					>
-						🎲 Dice Roller
+						{t('game.panels.dice')}
 					</button>
 
 					{/* Combat Button */}
@@ -483,23 +485,25 @@ export default function GamePage() {
 						className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
                      hover:bg-white/20 transition-all text-white font-body text-sm"
 					>
-						⚔️ Combat
+						{t('game.panels.combat')}
 					</button>
 
+					{/* Spells Button */}
 					<button
 						onClick={() => togglePanel('spells')}
 						className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
                      hover:bg-white/20 transition-all text-white font-body text-sm"
 					>
-						✨ Spells
+						{t('game.panels.spells')}
 					</button>
 
+					{/* Checks Button */}
 					<button
 						onClick={() => togglePanel('checks')}
 						className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
                      hover:bg-white/20 transition-all text-white font-body text-sm"
 					>
-						🎲 Checks
+						{t('game.panels.checks')}
 					</button>
 
 					{/* Companion Button */}
@@ -508,7 +512,7 @@ export default function GamePage() {
 						className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
                      hover:bg-white/20 transition-all text-white font-body text-sm"
 					>
-						🤖 AI Companion
+						{t('game.panels.companion')}
 					</button>
 
 					{/* Image Gallery Button */}
@@ -517,7 +521,7 @@ export default function GamePage() {
 						className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
                      hover:bg-white/20 transition-all text-white font-body text-sm"
 					>
-						🖼️ Scene Gallery
+						{t('game.panels.images')}
 					</button>
 
 					{/* Save Game Button */}
@@ -570,10 +574,10 @@ export default function GamePage() {
 							<div className="text-center max-w-md">
 								<div className="text-6xl mb-4">🎲</div>
 								<h2 className="text-2xl font-display text-white mb-2">
-									Ready to Begin?
+									{t('game.startScreen.title')}
 								</h2>
 								<p className="text-white/70 font-body mb-6">
-									Your adventure awaits! Click the button below to start your journey with the AI Dungeon Master.
+									{t('game.startScreen.description')}
 								</p>
 								<Button
 									onClick={startSession}
@@ -581,7 +585,7 @@ export default function GamePage() {
 									size="lg"
 									className="bg-accent-400 hover:bg-accent-500 text-primary-900 font-display text-lg px-8 py-6"
 								>
-									{isStartingSession ? 'Starting...' : 'Start Session'}
+									{isStartingSession ? t('game.startScreen.starting') : t('game.startScreen.startButton')}
 								</Button>
 							</div>
 						</div>
@@ -762,12 +766,6 @@ export default function GamePage() {
 							{openPanel === 'spells' && (
 								<div className="space-y-4 bg-neutral-900 rounded-lg p-4">
 									<SpellsPanel characterId={characterId} />
-
-									{/* Spell Slots Display */}
-									<SpellSlotsDisplay
-										characterId={characterId}
-										characterName={character?.name}
-									/>
 								</div>
 							)}
 
@@ -820,11 +818,11 @@ export default function GamePage() {
 							{openPanel === 'dice' && (
 								<div className="space-y-4">
 									<div className="space-y-2">
-										<label className="text-sm text-white/80 font-body">Dice Notation</label>
+										<label className="text-sm text-white/80 font-body">{t('game.diceRoller.notation')}</label>
 										<Input
 											value={diceNotation}
 											onChange={(e) => setDiceNotation(e.target.value)}
-											placeholder="e.g., 1d20, 2d6+3"
+											placeholder={t('game.diceRoller.placeholder')}
 											className="bg-white/5 border-white/10 text-white font-mono"
 										/>
 									</div>
@@ -850,7 +848,7 @@ export default function GamePage() {
 										className="w-full font-body"
 										size="lg"
 									>
-										Roll Dice
+										{t('game.diceRoller.rollDice')}
 									</Button>
 
 									{lastDiceResult && (
@@ -865,7 +863,7 @@ export default function GamePage() {
 													</p>
 													{lastDiceResult.individual_rolls && (
 														<p className="text-xs text-white/60 font-mono">
-															Rolls: {lastDiceResult.individual_rolls.map((r: any) => r.roll).join(', ')}
+															{t('game.diceRoller.rolls')} {lastDiceResult.individual_rolls.map((r: any) => r.roll).join(', ')}
 															{lastDiceResult.modifier !== 0 && ` (${lastDiceResult.modifier >= 0 ? '+' : ''}${lastDiceResult.modifier})`}
 														</p>
 													)}
@@ -877,11 +875,9 @@ export default function GamePage() {
 							)}
 						</div>
 					)}
-			</div>
 
-			{/* Quest Complete Modal */}
-			{
-				questCompleteData && (
+				{/* Quest Complete Modal */}
+				{questCompleteData && (
 					<QuestCompleteModal
 						isOpen={showQuestCompleteModal}
 						questTitle={questCompleteData.title}
@@ -889,8 +885,8 @@ export default function GamePage() {
 						onClose={() => setShowQuestCompleteModal(false)}
 						onClaimRewards={claimQuestRewards}
 					/>
-				)
-			}
+				)}
+			</div>
 		</div>
 	);
 }

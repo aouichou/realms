@@ -9,6 +9,7 @@ import { apiClient } from "@/lib/api-client";
 import {
 	BookOpen,
 	Brain,
+	Coins,
 	Eye,
 	Heart,
 	MessageCircle,
@@ -88,6 +89,9 @@ export function EnhancedCharacterSheet({
 }: EnhancedCharacterSheetProps) {
 	const [stats, setStats] = useState<CharacterStats | null>(null);
 	const [spellSlots, setSpellSlots] = useState<SpellSlots>({});
+	const [gold, setGold] = useState<number>(0);
+	const [silver, setSilver] = useState<number>(0);
+	const [copper, setCopper] = useState<number>(0);
 	const [backgroundName, setBackgroundName] = useState<string>('');
 	const [backgroundDescription, setBackgroundDescription] = useState<string>('');
 	const [personalityTrait, setPersonalityTrait] = useState<string>('');
@@ -114,6 +118,10 @@ export function EnhancedCharacterSheet({
 				setBond(charData.bond || '');
 				setFlaw(charData.flaw || '');
 				setSkillProficiencies(charData.skill_proficiencies || []);
+				// Set currency
+				setGold(charData.gold || 0);
+				setSilver(charData.silver || 0);
+				setCopper(charData.copper || 0);
 			} else {
 				console.warn('Failed to fetch character data:', charResponse.status);
 			}
@@ -293,6 +301,38 @@ export function EnhancedCharacterSheet({
 					</CardContent>
 				</Card>
 			</div>
+
+			{/* Wealth Card */}
+			<Card>
+				<CardHeader>
+					<CardTitle className="text-lg flex items-center gap-2">
+						<Coins className="w-5 h-5 text-yellow-500" />
+						Wealth
+					</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<div className="grid grid-cols-3 gap-6">
+						<div className="flex flex-col items-center">
+							<div className="text-sm text-muted-foreground mb-1">Gold</div>
+							<div className="text-3xl font-bold text-yellow-500">{gold}</div>
+							<div className="text-xs text-muted-foreground mt-1">GP</div>
+						</div>
+						<div className="flex flex-col items-center">
+							<div className="text-sm text-muted-foreground mb-1">Silver</div>
+							<div className="text-3xl font-bold text-gray-400">{silver}</div>
+							<div className="text-xs text-muted-foreground mt-1">SP</div>
+						</div>
+						<div className="flex flex-col items-center">
+							<div className="text-sm text-muted-foreground mb-1">Copper</div>
+							<div className="text-3xl font-bold text-amber-600">{copper}</div>
+							<div className="text-xs text-muted-foreground mt-1">CP</div>
+						</div>
+					</div>
+					<div className="mt-4 pt-4 border-t border-border text-center text-sm text-muted-foreground">
+						1 GP = 10 SP = 100 CP
+					</div>
+				</CardContent>
+			</Card>
 
 			{/* Spell Slots */}
 			{Object.keys(spellSlots).length > 0 && (

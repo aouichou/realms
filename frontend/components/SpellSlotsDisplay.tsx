@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { Circle, CircleDot, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -21,6 +22,7 @@ interface SpellSlotsDisplayProps {
 }
 
 export function SpellSlotsDisplay({ characterId, characterName, onRest }: SpellSlotsDisplayProps) {
+	const { t } = useTranslation();
 	const [spellSlots, setSpellSlots] = useState<SpellSlots>({});
 	const [loading, setLoading] = useState(true);
 	const [resting, setResting] = useState(false);
@@ -90,7 +92,7 @@ export function SpellSlotsDisplay({ characterId, characterName, onRest }: SpellS
 					<CardTitle>Spell Slots</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<p className="text-sm text-muted-foreground">Loading...</p>
+					<p className="text-sm text-muted-foreground">{t('common.loading')}</p>
 				</CardContent>
 			</Card>
 		);

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { AlertTriangle, BookOpen, Sparkles, Swords, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ConcentrationTracker, useConcentration } from "./ConcentrationTracker";
@@ -63,6 +64,7 @@ export function SpellCastingPanel({
 	const [casting, setCasting] = useState(false);
 	const [castResult, setCastResult] = useState<any>(null);
 	const { showToast } = useToast();
+	const { t } = useTranslation();
 	const { concentrating, startConcentration, breakConcentration } = useConcentration();
 
 	useEffect(() => {
@@ -92,7 +94,9 @@ export function SpellCastingPanel({
 		// Check if spell requires concentration while already concentrating
 		if (spell.spell.is_concentration && concentrating) {
 			const breakCurrent = confirm(
-				`You are already concentrating on ${concentrating.spellName}. Casting ${spell.spell.name} will break that concentration. Continue?`
+				t('game.spellCasting.concentrationWarning')
+					.replace('{spell}', concentrating.spellName)
+					.replace('{newSpell}', spell.spell.name)
 			);
 			if (!breakCurrent) {
 				return;
@@ -147,14 +151,14 @@ export function SpellCastingPanel({
 					});
 				}
 
-				let message = `Cast ${data.spell_name}!`;
+				let message = `${data.spell_name} ${t('game.spellCasting.castSuccess')}`;
 				if (isRitual) {
-					message += ' (as ritual, +10 minutes)';
+					message += ' ' + t('game.spellCasting.asRitual');
 				} else if (slotLevel > spell.spell.level) {
-					message += ` (upcast at level ${slotLevel})`;
+					message += ' ' + t('game.spellCasting.upcastAt').replace('{level}', slotLevel.toString());
 				}
 				if (data.total_damage) {
-					message += ` Dealt ${data.total_damage} damage! (${data.damage_roll})`;
+					message += ` ${t('game.spellCasting.dealt')} ${data.total_damage} ${t('game.spellCasting.damage')}! (${data.damage_roll})`;
 				}
 				showToast(message, 'success');
 
@@ -167,11 +171,11 @@ export function SpellCastingPanel({
 				}, 5000);
 			} else {
 				const error = await response.json();
-				showToast(error.detail || 'Failed to cast spell', 'error');
+				showToast(error.detail || t('game.spellCasting.failedToCast'), 'error');
 			}
 		} catch (error) {
 			console.error("Failed to cast spell:", error);
-			showToast('Failed to cast spell', 'error');
+			showToast(t('game.spellCasting.failedToCast'), 'error');
 		} finally {
 			setCasting(false);
 		}
@@ -213,10 +217,10 @@ export function SpellCastingPanel({
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Spellcasting</CardTitle>
+					<CardTitle>{t('game.spellCasting.title')}</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<p className="text-sm text-muted-foreground">Loading spells...</p>
+					<p className="text-sm text-muted-foreground">{t('game.spellCasting.loadingSpells')}</p>
 				</CardContent>
 			</Card>
 		);
@@ -246,10 +250,10 @@ export function SpellCastingPanel({
 				<Alert>
 					<Sparkles className="h-4 w-4" />
 					<AlertDescription>
-						<strong>{castResult.spell_name}</strong> cast successfully!
+						<strong>{castResult.spell_name}</strong> {t('game.spellCasting.castSuccess')}
 						{castResult.total_damage && (
 							<span className="ml-2">
-								Dealt <strong>{castResult.total_damage}</strong> damage ({castResult.damage_roll})
+								{t('game.spellCasting.dealt')} <strong>{castResult.total_damage}</strong> {t('game.spellCasting.damage')} ({castResult.damage_roll})
 							</span>
 						)}
 					</AlertDescription>
@@ -261,7 +265,7 @@ export function SpellCastingPanel({
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
 						<BookOpen className="h-5 w-5" />
-						Spellcasting
+						{t('game.spellCasting.title')}
 						{characterClass && <Badge variant="outline">{characterClass}</Badge>}
 					</CardTitle>
 				</CardHeader>
@@ -271,7 +275,7 @@ export function SpellCastingPanel({
 							{/* Cantrips */}
 							{cantrips.length > 0 && (
 								<div>
-									<h3 className="text-sm font-semibold mb-3">Cantrips</h3>
+									<h3 className="text-sm font-semibold mb-3">{t('game.spellCasting.cantrips')}</h3>
 									<div className="space-y-2">
 										{cantrips.map((cs) => (
 											<SpellItem
@@ -291,7 +295,10 @@ export function SpellCastingPanel({
 								.map((level) => (
 									<div key={level}>
 										<h3 className="text-sm font-semibold mb-3">
-											{level === "1" ? "1st" : level === "2" ? "2nd" : level === "3" ? "3rd" : `${level}th`} Level
+											{level === "1" ? t('game.spellCasting.level1st') :
+												level === "2" ? t('game.spellCasting.level2nd') :
+													level === "3" ? t('game.spellCasting.level3rd') :
+														t('game.spellCasting.levelNth').replace('{level}', level)}
 										</h3>
 										<div className="space-y-2">
 											{spellsByLevel[parseInt(level)].map((cs) => (
@@ -316,24 +323,24 @@ export function SpellCastingPanel({
 					<Dialog open={castDialogOpen} onOpenChange={setCastDialogOpen}>
 						<DialogContent>
 							<DialogHeader>
-								<DialogTitle>Cast {selectedSpell.spell.name}</DialogTitle>
+								<DialogTitle>{t('game.spellCasting.cast')} {selectedSpell.spell.name}</DialogTitle>
 								<DialogDescription>
-									Select the spell slot level to use for casting.
+									{t('game.spellCasting.selectSlotLevel')}
 								</DialogDescription>
 							</DialogHeader>
 
 							<div className="space-y-4">
 								<div>
-									<label className="text-sm font-medium">Spell Slot Level</label>
+									<label className="text-sm font-medium">{t('game.spellCasting.spellSlotLevel')}</label>
 									<Select value={selectedSlotLevel} onValueChange={setSelectedSlotLevel}>
 										<SelectTrigger>
-											<SelectValue placeholder="Select slot level" />
+											<SelectValue placeholder={t('game.spellCasting.selectSlot')} />
 										</SelectTrigger>
 										<SelectContent>
 											{Array.from({ length: 10 - selectedSpell.spell.level }, (_, i) => i + selectedSpell.spell.level).map((level) => (
 												<SelectItem key={level} value={level.toString()}>
-													Level {level}
-													{level > selectedSpell.spell.level && " (Upcasting)"}
+													{t('game.spellCasting.level')} {level}
+													{level > selectedSpell.spell.level && ` (${t('game.spellCasting.upcasting')})`}
 												</SelectItem>
 											))}
 										</SelectContent>
@@ -344,8 +351,10 @@ export function SpellCastingPanel({
 									<Alert>
 										<AlertTriangle className="h-4 w-4" />
 										<AlertDescription>
-											You are upcasting this spell from level {selectedSpell.spell.level} to level {selectedSlotLevel}.
-											{selectedSpell.spell.damage_dice && " This may increase damage or other effects."}
+											{t('game.spellCasting.upcastingAlert')
+												.replace('{from}', selectedSpell.spell.level.toString())
+												.replace('{to}', selectedSlotLevel)}
+											{selectedSpell.spell.damage_dice && " " + t('game.spellCasting.upcastingAlertExtra')}
 										</AlertDescription>
 									</Alert>
 								)}
@@ -356,7 +365,7 @@ export function SpellCastingPanel({
 									onClick={handleConfirmCast}
 									disabled={!selectedSlotLevel || casting}
 								>
-									{casting ? "Casting..." : "Cast Spell"}
+									{casting ? t('game.spellCasting.casting') : t('game.spellCasting.castSpell')}
 								</Button>
 							</DialogFooter>
 						</DialogContent>
@@ -384,6 +393,7 @@ interface SpellItemProps {
 }
 
 function SpellItem({ spell, onCast, casting }: SpellItemProps) {
+	const { t } = useTranslation();
 	return (
 		<div className="flex items-start justify-between p-3 bg-muted rounded-lg">
 			<div className="flex-1">
@@ -392,18 +402,18 @@ function SpellItem({ spell, onCast, casting }: SpellItemProps) {
 					{spell.spell.is_concentration && (
 						<Badge variant="outline" className="text-xs">
 							<Zap className="h-3 w-3 mr-1" />
-							Concentration
+							{t('game.spellCasting.concentration')}
 						</Badge>
 					)}
 					{spell.spell.is_ritual && (
 						<Badge variant="secondary" className="text-xs">
 							<Sparkles className="h-3 w-3 mr-1" />
-							Ritual
+							{t('game.spellCasting.ritual')}
 						</Badge>
 					)}
 					{spell.spell.upcast_damage_dice && (
 						<Badge variant="default" className="text-xs">
-							Upcast: {spell.spell.upcast_damage_dice}/level
+							{t('game.spellCasting.upcast')}: {spell.spell.upcast_damage_dice}{t('game.spellCasting.perLevel')}
 						</Badge>
 					)}
 				</div>
@@ -413,8 +423,8 @@ function SpellItem({ spell, onCast, casting }: SpellItemProps) {
 				</p>
 				{spell.spell.material_cost && spell.spell.material_cost > 0 && (
 					<p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">
-						Requires: {spell.spell.material_cost} gp worth of materials
-						{spell.spell.material_consumed && " (consumed)"}
+						{t('game.spellCasting.requires')}: {spell.spell.material_cost} {t('game.spellCasting.gpWorthOfMaterials')}
+						{spell.spell.material_consumed && " " + t('game.spellCasting.consumed')}
 					</p>
 				)}
 			</div>
@@ -424,7 +434,7 @@ function SpellItem({ spell, onCast, casting }: SpellItemProps) {
 				disabled={casting}
 			>
 				<Swords className="h-4 w-4 mr-1" />
-				{casting ? "Casting..." : "Cast"}
+				{casting ? t('game.spellCasting.casting') : t('game.spellCasting.cast')}
 			</Button>
 		</div>
 	);

@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { AlertCircle, Clock, Sparkles, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -27,6 +28,7 @@ interface ActiveEffectsDisplayProps {
 }
 
 export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDisplayProps) {
+	const { t } = useTranslation();
 	const [effects, setEffects] = useState<ActiveEffect[]>([]);
 	const [loading, setLoading] = useState(true);
 
@@ -85,14 +87,14 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 	};
 
 	const getDurationText = (effect: ActiveEffect): string => {
-		if (effect.duration_type === 'permanent') return 'Permanent';
-		if (effect.duration_type === 'until_long_rest') return 'Until Long Rest';
-		if (effect.duration_type === 'until_short_rest') return 'Until Short Rest';
-		if (effect.duration_type === 'concentration') return 'Concentration';
+		if (effect.duration_type === 'permanent') return t('game.activeEffects.permanent');
+		if (effect.duration_type === 'until_long_rest') return t('game.activeEffects.untilLongRest');
+		if (effect.duration_type === 'until_short_rest') return t('game.activeEffects.untilShortRest');
+		if (effect.duration_type === 'concentration') return t('game.activeEffects.concentration');
 
 		if (effect.rounds_remaining !== undefined && effect.rounds_remaining !== null) {
 			const rounds = effect.rounds_remaining;
-			return rounds === 1 ? '1 round' : `${rounds} rounds`;
+			return rounds === 1 ? `1 ${t('game.activeEffects.round')}` : `${rounds} ${t('game.activeEffects.rounds')}`;
 		}
 
 		if (effect.expires_at) {
@@ -101,15 +103,15 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 			const diffMs = expiresAt.getTime() - now.getTime();
 			const diffMins = Math.ceil(diffMs / 60000);
 
-			if (diffMins < 1) return 'Expiring soon';
-			if (diffMins === 1) return '1 minute';
-			if (diffMins < 60) return `${diffMins} minutes`;
+			if (diffMins < 1) return t('game.activeEffects.expiringSoon');
+			if (diffMins === 1) return `1 ${t('game.activeEffects.minute')}`;
+			if (diffMins < 60) return `${diffMins} ${t('game.activeEffects.minutes')}`;
 
 			const diffHours = Math.ceil(diffMins / 60);
-			return diffHours === 1 ? '1 hour' : `${diffHours} hours`;
+			return diffHours === 1 ? `1 ${t('game.activeEffects.hour')}` : `${diffHours} ${t('game.activeEffects.hours')}`;
 		}
 
-		return 'Active';
+		return t('game.activeEffects.active');
 	};
 
 	const getEffectBonus = (effect: ActiveEffect): string | null => {
@@ -120,10 +122,10 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 			return effect.dice_bonus;
 		}
 		if (effect.advantage) {
-			return 'Advantage';
+			return t('game.activeEffects.advantage');
 		}
 		if (effect.disadvantage) {
-			return 'Disadvantage';
+			return t('game.activeEffects.disadvantage');
 		}
 		return null;
 	};
@@ -132,10 +134,10 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Active Effects</CardTitle>
+					<CardTitle>{t('game.activeEffects.title')}</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<p className="text-sm text-muted-foreground">Loading...</p>
+					<p className="text-sm text-muted-foreground">{t('game.activeEffects.loading')}</p>
 				</CardContent>
 			</Card>
 		);
@@ -145,10 +147,10 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Active Effects</CardTitle>
+					<CardTitle>{t('game.activeEffects.title')}</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<p className="text-sm text-muted-foreground">No active effects</p>
+					<p className="text-sm text-muted-foreground">{t('game.activeEffects.noActiveEffects')}</p>
 				</CardContent>
 			</Card>
 		);
@@ -158,7 +160,7 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 		<Card>
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
-					Active Effects
+					{t('game.activeEffects.title')}
 					<Badge variant="secondary" className="ml-auto">
 						{effects.length}
 					</Badge>
@@ -183,7 +185,7 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 											{effect.requires_concentration && (
 												<Badge variant="outline" className="text-xs h-5">
 													<Zap className="h-3 w-3 mr-1" />
-													Concentration
+													{t('game.activeEffects.concentration')}
 												</Badge>
 											)}
 										</div>
@@ -197,14 +199,9 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 												variant="outline"
 												className={`text-xs ${getEffectBadgeColor(effect.effect_type)}`}
 											>
-												{effect.effect_type.toUpperCase()}
+												{t(`game.activeEffects.effectTypes.${effect.effect_type}`) || effect.effect_type.toUpperCase()}
+												{bonus}
 											</Badge>
-
-											{bonus && (
-												<Badge variant="outline" className="text-xs">
-													{bonus}
-												</Badge>
-											)}
 
 											<div className="flex items-center gap-1 text-xs text-muted-foreground">
 												<Clock className="h-3 w-3" />

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { SpellCard } from "./SpellCard";
@@ -46,6 +47,7 @@ interface SpellBrowserProps {
 }
 
 export function SpellBrowser({ onSpellSelect, selectedSpells, filterByClass }: SpellBrowserProps) {
+	const { t } = useTranslation();
 	const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 	const [spells, setSpells] = useState<Spell[]>([]);
 	const [totalSpells, setTotalSpells] = useState(0);
@@ -143,7 +145,7 @@ export function SpellBrowser({ onSpellSelect, selectedSpells, filterByClass }: S
 
 				{/* Results Count */}
 				<div className="text-sm text-muted-foreground mb-2">
-					{loading ? "Loading..." : `${totalSpells} spell${totalSpells !== 1 ? 's' : ''} found`}
+					{loading ? t('common.loading') : `${totalSpells} spell${totalSpells !== 1 ? 's' : ''} found`}
 				</div>
 
 				{/* Spells Grid */}

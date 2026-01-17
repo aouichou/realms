@@ -9,8 +9,10 @@ from typing import Optional
 
 from app.config import settings
 from app.services.ai_provider import AIProvider
+from app.services.anthropic_provider import AnthropicProvider
 from app.services.gemini_service import GeminiService
 from app.services.mistral_provider import MistralProvider
+from app.services.openai_provider import OpenAIProvider
 from app.services.provider_selector import provider_selector
 
 logger = logging.getLogger(__name__)
@@ -85,6 +87,22 @@ async def create_provider(name: str, config: dict) -> Optional[AIProvider]:
                 max_tokens=config.get("max_tokens", 2048),
                 temperature=config.get("temperature", 0.7),
                 rate_limit=config.get("rate_limit", 1.0),
+                priority=config["priority"],
+            )
+        elif name == "openai":
+            return OpenAIProvider(
+                api_key=config["api_key"],
+                model=config["model"],
+                max_tokens=config.get("max_tokens", 2048),
+                temperature=config.get("temperature", 0.7),
+                priority=config["priority"],
+            )
+        elif name == "anthropic":
+            return AnthropicProvider(
+                api_key=config["api_key"],
+                model=config["model"],
+                max_tokens=config.get("max_tokens", 2048),
+                temperature=config.get("temperature", 0.7),
                 priority=config["priority"],
             )
         else:

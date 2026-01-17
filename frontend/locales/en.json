@@ -24,5 +24,92 @@
       }
     },
     "footer": "Built for the Mistral AI Internship Application"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Sign in to continue your adventure",
+      "email": "Email",
+      "password": "Password",
+      "emailPlaceholder": "your@email.com",
+      "passwordPlaceholder": "••••••••",
+      "signIn": "Sign In",
+      "signingIn": "Signing in...",
+      "orContinueAs": "Or continue as",
+      "guestMode": "Guest Mode",
+      "noAccount": "Don't have an account?",
+      "registerHere": "Register here",
+      "welcomeBack": "Welcome back!",
+      "welcomeAdventurer": "Welcome, adventurer!",
+      "loginFailed": "Login failed",
+      "guestFailed": "Failed to create guest account"
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Register to save your progress",
+      "email": "Email",
+      "username": "Username",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "emailPlaceholder": "your@email.com",
+      "usernamePlaceholder": "adventurer",
+      "passwordPlaceholder": "••••••••",
+      "createAccount": "Create Account",
+      "creatingAccount": "Creating Account...",
+      "haveAccount": "Already have an account?",
+      "signInHere": "Sign in here",
+      "agreementText": "By registering, you agree to save your game progress and characters.",
+      "accountCreated": "Account created successfully!",
+      "passwordMismatch": "Passwords do not match",
+      "registerFailed": "Registration failed"
+    }
+  },
+  "demo": {
+    "title": "Mistral Realms",
+    "subtitle": "An AI-powered D&D adventure game",
+    "quickStart": {
+      "title": "Quick Start Demo",
+      "description": "Jump right into action",
+      "prebuiltCharacter": "Pre-built Level 2 Fighter character",
+      "instantGameplay": "Instant gameplay with no setup",
+      "aiStory": "AI-generated story & images",
+      "button": "Start Demo (30 sec)",
+      "estimatedTime": "30 sec"
+    },
+    "customCharacter": {
+      "title": "Create Your Hero",
+      "description": "Build your own character",
+      "chooseRace": "Choose your race",
+      "chooseClass": "Choose your class (12 options)",
+      "customizeStats": "Customize stats & background",
+      "button": "Create Character (5 min)",
+      "estimatedTime": "5 min"
+    },
+    "afterDemo": "After playing the demo, create your own character and use our",
+    "aiWizard": "AI Adventure Wizard",
+    "toGenerate": "to generate a custom adventure tailored to your hero!",
+    "haveAccount": "Already have an account?",
+    "loginHere": "Login here",
+    "creatingDemo": "Creating demo...",
+    "welcomeCreate": "Welcome! Create your character."
+  },
+  "game": {
+    "panels": {
+      "stats": "⚔️ Character Stats",
+      "inventory": "🎒 Inventory",
+      "combat": "⚔️ Combat",
+      "spells": "✨ Spells",
+      "checks": "🎲 Ability Checks",
+      "companion": "🐾 Companion",
+      "images": "🖼️ Image Gallery",
+      "dice": "🎲 Dice Roller"
+    },
+    "level": "Level",
+    "diceRoller": {
+      "notation": "Dice Notation",
+      "placeholder": "e.g., 1d20, 2d6+3",
+      "rollDice": "Roll Dice",
+      "rolls": "Rolls:"
+    }
   }
 }

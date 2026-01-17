@@ -2,6 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/lib/hooks/useTranslation';
 import { Save } from 'lucide-react';
 import { useState } from 'react';
 import { SaveGameModal } from './SaveGameModal';
@@ -13,6 +14,7 @@ interface SaveGameButtonProps {
 
 export function SaveGameButton({ sessionId, characterName }: SaveGameButtonProps) {
 	const [isModalOpen, setIsModalOpen] = useState(false);
+	const { t } = useTranslation();
 
 	return (
 		<>
@@ -23,7 +25,7 @@ export function SaveGameButton({ sessionId, characterName }: SaveGameButtonProps
 				className="gap-2"
 			>
 				<Save className="w-4 h-4" />
-				Save Game
+				{t('game.saveGame')}
 			</Button>
 
 			<SaveGameModal

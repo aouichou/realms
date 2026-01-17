@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { apiClient } from '@/lib/api-client';
-import { Scroll, Sword } from 'lucide-react';
+import { useTranslation } from '@/lib/hooks/useTranslation';
+import { CheckCircle2, Scroll, Sword } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface PresetAdventure {
@@ -34,6 +35,7 @@ export function StartAdventureModal({
 	const [isLoading, setIsLoading] = useState(false);
 	const [isOpen, setIsOpen] = useState(false);
 	const [selectedAdventure, setSelectedAdventure] = useState<string | null>(null);
+	const { t } = useTranslation();
 
 	useEffect(() => {
 		if (isOpen) {
@@ -83,16 +85,15 @@ export function StartAdventureModal({
 				     hover:bg-white/20 transition-all text-white font-body text-sm flex items-center justify-center gap-2"
 			>
 				<Scroll className="h-4 w-4" />
-				📜 Start Adventure
+				📜 {t('game.adventure.startButton')}
 			</button>
 
 			<Dialog open={isOpen} onOpenChange={setIsOpen}>
 				<DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle className="text-2xl">Choose Your Adventure</DialogTitle>
+						<DialogTitle className="text-2xl">{t('game.adventure.title')}</DialogTitle>
 						<DialogDescription>
-							Select a preset adventure to begin your journey. Adventures are recommended for
-							specific character levels.
+							{t('game.adventure.description')}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -100,10 +101,15 @@ export function StartAdventureModal({
 						{adventures.map((adventure) => (
 							<Card
 								key={adventure.id}
-								className={`cursor-pointer transition-all hover:border-primary ${selectedAdventure === adventure.id ? 'border-primary ring-2 ring-primary' : ''
+								className={`cursor-pointer transition-all relative ${selectedAdventure === adventure.id
+										? 'border-primary border-2 bg-primary/5 shadow-md'
+										: 'border-muted hover:border-primary/50 hover:shadow-sm'
 									}`}
 								onClick={() => setSelectedAdventure(adventure.id)}
 							>
+								{selectedAdventure === adventure.id && (
+									<CheckCircle2 className="absolute top-2 right-2 h-6 w-6 text-primary" />
+								)}
 								<CardHeader>
 									<div className="flex items-start justify-between">
 										<div className="space-y-1">
@@ -123,7 +129,7 @@ export function StartAdventureModal({
 													: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
 												}`}
 										>
-											Level {adventure.recommended_level}
+											{t('game.adventure.level')} {adventure.recommended_level}
 										</div>
 									</div>
 								</CardHeader>
@@ -136,13 +142,13 @@ export function StartAdventureModal({
 
 					<div className="flex justify-end gap-3 mt-6">
 						<Button variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
-							Cancel
+							{t('game.adventure.cancel')}
 						</Button>
 						<Button
 							onClick={() => selectedAdventure && startAdventure(selectedAdventure)}
 							disabled={!selectedAdventure || isLoading}
 						>
-							{isLoading ? 'Starting...' : 'Begin Adventure'}
+							{isLoading ? t('game.adventure.starting') : t('game.adventure.beginAdventure')}
 						</Button>
 					</div>
 				</DialogContent>

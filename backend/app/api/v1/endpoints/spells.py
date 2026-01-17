@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.db.base import get_db
 from app.db.models import Character, CharacterClass, CharacterSpell, Spell
 from app.observability.logger import get_logger
+from app.observability.tracing import trace_async
 from app.schemas.spell import (
     CastSpellRequest,
     CastSpellResponse,
@@ -81,6 +82,7 @@ def get_spell_slots_for_class(character_class: CharacterClass, level: int) -> di
 
 
 @router.get("", response_model=SpellListResponse)
+@trace_async("spells.list")
 async def list_spells(
     level: Optional[int] = Query(None, ge=0, le=9, description="Filter by spell level"),
     school: Optional[str] = Query(None, description="Filter by school of magic"),
@@ -163,6 +165,7 @@ async def list_spells(
 
 
 @router.get("/{spell_id}", response_model=SpellResponse)
+@trace_async("spells.roll_dice")
 async def get_spell(spell_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get a spell by ID
 
@@ -186,6 +189,7 @@ async def get_spell(spell_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("", response_model=SpellResponse, status_code=201)
+@trace_async("spells.create")
 async def create_spell(spell_data: SpellCreate, db: AsyncSession = Depends(get_db)):
     """Create a new spell
 
@@ -206,6 +210,7 @@ async def create_spell(spell_data: SpellCreate, db: AsyncSession = Depends(get_d
 
 
 @router.get("/character/{character_id}/spells", response_model=List[CharacterSpellResponse])
+@trace_async("spells.get_character_spells")
 async def get_character_spells(
     character_id: UUID,
     known_only: bool = Query(False, description="Show only known spells"),
@@ -249,6 +254,7 @@ async def get_character_spells(
 @router.post(
     "/character/{character_id}/spells", response_model=CharacterSpellResponse, status_code=201
 )
+@trace_async("spells.add_character_spell")
 async def add_spell_to_character(
     character_id: UUID, spell_data: CharacterSpellCreate, db: AsyncSession = Depends(get_db)
 ):
@@ -305,6 +311,7 @@ async def add_spell_to_character(
 
 
 @router.post("/character/{character_id}/prepare", response_model=List[CharacterSpellResponse])
+@trace_async("spells.prepare")
 async def prepare_spells(
     character_id: UUID, request: PrepareSpellsRequest, db: AsyncSession = Depends(get_db)
 ):
@@ -362,6 +369,7 @@ async def prepare_spells(
 
 
 @router.get("/character/{character_id}/slots", response_model=SpellSlotsResponse)
+@trace_async("spells.get_spell_slots")
 async def get_spell_slots(character_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get character's spell slots
 
@@ -511,6 +519,7 @@ def _calculate_spell_damage(spell: Spell, slot_level: int) -> tuple[Optional[str
 
 
 @router.post("/character/{character_id}/cast", response_model=CastSpellResponse)
+@trace_async("spells.cast")
 async def cast_spell(
     character_id: UUID, request: CastSpellRequest, db: AsyncSession = Depends(get_db)
 ):
@@ -675,6 +684,7 @@ def _roll_dice(dice_notation: str) -> int:
 
 
 @router.post("/character/{character_id}/rest", response_model=SpellSlotsResponse)
+@trace_async("spells.long_rest")
 async def long_rest(character_id: UUID, db: AsyncSession = Depends(get_db)):
     """Perform a long rest, restoring all spell slots
 
@@ -713,6 +723,7 @@ async def long_rest(character_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/character/{character_id}/concentration-check")
+@trace_async("spells.concentration_check")
 async def concentration_check(
     character_id: UUID,
     damage_taken: int = Query(..., ge=1, description="Damage taken that triggers the save"),

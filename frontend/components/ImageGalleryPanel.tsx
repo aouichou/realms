@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useTranslation } from '@/lib/hooks/useTranslation';
 import { Download, Expand } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
@@ -16,6 +17,7 @@ interface ImageGalleryPanelProps {
 }
 
 export function ImageGalleryPanel({ images }: ImageGalleryPanelProps) {
+	const { t } = useTranslation();
 	const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
 	const downloadImage = async (url: string, index: number) => {
@@ -39,8 +41,8 @@ export function ImageGalleryPanel({ images }: ImageGalleryPanelProps) {
 			<div className="flex flex-col items-center justify-center h-full text-white/60 space-y-4 p-8">
 				<div className="text-6xl">🖼️</div>
 				<p className="text-center font-body">
-					No scene images generated yet.<br />
-					Images will appear here as your adventure unfolds.
+					{t('game.imageGallery.noImages')}<br />
+					{t('game.imageGallery.imagesWillAppear')}
 				</p>
 			</div>
 		);
@@ -75,10 +77,10 @@ export function ImageGalleryPanel({ images }: ImageGalleryPanelProps) {
 			{/* Header */}
 			<div className="mb-4">
 				<h3 className="text-lg font-display text-white mb-2">
-					Scene Gallery
+					{t('game.imageGallery.title')}
 				</h3>
 				<p className="text-sm text-white/60 font-body">
-					{images.length} scene{images.length !== 1 ? 's' : ''} captured
+					{images.length === 1 ? t('game.imageGallery.sceneCaptured') : t('game.imageGallery.scenesCaptured').replace('{count}', images.length.toString())}
 				</p>
 			</div>
 
@@ -122,7 +124,7 @@ export function ImageGalleryPanel({ images }: ImageGalleryPanelProps) {
 							{/* Image Info */}
 							<div className="p-3 space-y-1">
 								<p className="text-xs text-white/80 font-body">
-									Scene {images.length - index}
+									{t('game.imageGallery.scene')} {images.length - index}
 								</p>
 								<p className="text-xs text-white/50 font-body">
 									{new Date(image.timestamp).toLocaleString()}

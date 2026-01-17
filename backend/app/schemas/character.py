@@ -176,6 +176,10 @@ class CharacterResponse(CharacterBase):
     flaw: Optional[str] = None
     # Character motivation
     motivation: Optional[str] = None
+    # D&D 5e Currency
+    gold: int = Field(default=0, description="Gold pieces")
+    silver: int = Field(default=0, description="Silver pieces")
+    copper: int = Field(default=0, description="Copper pieces")
     created_at: datetime
     updated_at: datetime
 

@@ -10,6 +10,7 @@ from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
@@ -67,6 +68,9 @@ def instrument_app(app) -> None:
 
     # HTTPX client instrumentation (for Mistral API calls)
     HTTPXClientInstrumentor().instrument()
+
+    # Redis instrumentation
+    RedisInstrumentor().instrument()
 
 
 def instrument_sqlalchemy(engine) -> None:

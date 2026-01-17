@@ -13,9 +13,11 @@ interface FetchOptions extends RequestInit {
  */
 export async function apiFetch(endpoint: string, options: FetchOptions = {}): Promise<Response> {
 	const token = localStorage.getItem('access_token');
+	const language = localStorage.getItem('dm_language') || 'en';
 
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
+		'Accept-Language': language,
 		...options.headers,
 	};
 

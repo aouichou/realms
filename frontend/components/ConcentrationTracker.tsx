@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { Shield, X, Zap } from "lucide-react";
 import { useState } from "react";
 
@@ -28,6 +29,7 @@ export function ConcentrationTracker({
 	constitutionModifier,
 	onConcentrationBroken,
 }: ConcentrationTrackerProps) {
+	const { t } = useTranslation();
 	const [activeConcentration, setActiveConcentration] = useState<ConcentrationSpell | null>(null);
 	const [showSavePrompt, setShowSavePrompt] = useState(false);
 	const [damageTaken, setDamageTaken] = useState(0);
@@ -84,7 +86,7 @@ export function ConcentrationTracker({
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						<Zap className="h-4 w-4 text-amber-500" />
-						<CardTitle className="text-sm">Concentrating</CardTitle>
+						<CardTitle className="text-sm">{t('concentrationTracker.concentrating')}</CardTitle>
 					</div>
 					<Button
 						variant="ghost"
@@ -101,14 +103,14 @@ export function ConcentrationTracker({
 					<div className="flex items-center gap-2 mb-1">
 						<span className="font-semibold">{activeConcentration.spellName}</span>
 						<Badge variant="outline" className="text-xs">
-							Level {activeConcentration.spellLevel}
+							{t('common.level')} {activeConcentration.spellLevel}
 						</Badge>
 					</div>
 					<p className="text-xs text-muted-foreground">
-						Duration: {activeConcentration.duration}
+						{t('concentrationTracker.duration')} {activeConcentration.duration}
 					</p>
 					<p className="text-xs text-muted-foreground">
-						Elapsed: {minutes}m {seconds}s
+						{t('concentrationTracker.elapsed')} {minutes}m {seconds}s
 					</p>
 				</div>
 
@@ -116,9 +118,12 @@ export function ConcentrationTracker({
 					<Alert>
 						<Shield className="h-4 w-4" />
 						<AlertDescription>
-							<p className="font-semibold mb-2">Concentration Save Required!</p>
+							<p className="font-semibold mb-2">{t('concentrationTracker.saveRequired')}</p>
 							<p className="text-xs mb-2">
-								Took {damageTaken} damage. DC {calculateConcentrationDC(damageTaken)} Constitution save required.
+								{t('concentrationTracker.damageTaken', {
+									damage: damageTaken.toString(),
+									dc: calculateConcentrationDC(damageTaken).toString(),
+								})}
 							</p>
 							<div className="flex gap-2">
 								<Button
@@ -127,20 +132,30 @@ export function ConcentrationTracker({
 										const result = rollConcentrationSave();
 										alert(
 											result.success
-												? `Success! Rolled ${result.roll} + ${constitutionModifier} = ${result.total} (DC ${result.dc})`
-												: `Failed! Rolled ${result.roll} + ${constitutionModifier} = ${result.total} (DC ${result.dc}). Concentration broken!`
+												? t('concentrationTracker.successMessage', {
+													roll: result.roll.toString(),
+													modifier: constitutionModifier.toString(),
+													total: result.total.toString(),
+													dc: result.dc.toString(),
+												})
+												: t('concentrationTracker.failMessage', {
+													roll: result.roll.toString(),
+													modifier: constitutionModifier.toString(),
+													total: result.total.toString(),
+													dc: result.dc.toString(),
+												})
 										);
 										setShowSavePrompt(false);
 									}}
 								>
-									Roll Save
+									{t('concentrationTracker.rollSave')}
 								</Button>
 								<Button
 									size="sm"
 									variant="outline"
 									onClick={() => setShowSavePrompt(false)}
 								>
-									Cancel
+									{t('common.cancel')}
 								</Button>
 							</div>
 						</AlertDescription>
@@ -149,7 +164,7 @@ export function ConcentrationTracker({
 
 				<Alert>
 					<AlertDescription className="text-xs">
-						If you take damage, make a Constitution save (DC = 10 or half damage, whichever is higher) or lose concentration.
+						{t('concentrationTracker.concentrationInfo')}
 					</AlertDescription>
 				</Alert>
 			</CardContent>

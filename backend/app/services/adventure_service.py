@@ -50,10 +50,13 @@ class AdventureService:
         # Create a new game session
         session = GameSession(
             character_id=character_id,
-            setting=adventure.setting,
-            initial_location=adventure.initial_location,
+            current_location=adventure.initial_location,
             is_active=True,
-            chat_history=[],
+            state_snapshot={
+                "setting": adventure.setting,
+                "adventure_id": adventure_id,
+                "quest_initialized": True,
+            },
         )
         self.db.add(session)
         await self.db.flush()

@@ -9,6 +9,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { apiClient } from "@/lib/api-client";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { ArrowRight, Scroll, Sparkles, Sword } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -46,6 +47,7 @@ export default function AdventureSelectionPage() {
 	const params = useParams();
 	const router = useRouter();
 	const { showToast } = useToast();
+	const { t } = useTranslation();
 	const characterId = params.characterId as string;
 
 	const [character, setCharacter] = useState<Character | null>(null);
@@ -110,15 +112,15 @@ export default function AdventureSelectionPage() {
 
 			if (response.ok) {
 				const data = await response.json();
-				showToast("Adventure started!", "success");
+				showToast(t('adventure.select.adventureStarted'), "success");
 				// Redirect to game page with session data
 				router.push(`/game/${characterId}?session=${data.session_id}`);
 			} else {
-				showToast("Failed to start adventure", "error");
+				showToast(t('adventure.select.startFailed'), "error");
 			}
 		} catch (error) {
 			console.error("Error starting adventure:", error);
-			showToast("Failed to start adventure", "error");
+			showToast(t('adventure.select.startFailed'), "error");
 		} finally {
 			setIsLoading(false);
 		}
@@ -139,15 +141,15 @@ export default function AdventureSelectionPage() {
 
 			if (response.ok) {
 				const data = await response.json();
-				showToast("Custom adventure starting!", "success");
+				showToast(t('adventure.select.customStarting'), "success");
 				// Redirect to game page with session data
 				router.push(`/game/${characterId}?session=${data.session_id}`);
 			} else {
-				showToast("Failed to start adventure", "error");
+				showToast(t('adventure.select.startFailed'), "error");
 			}
 		} catch (error) {
 			console.error("Error starting custom adventure:", error);
-			showToast("Failed to start adventure", "error");
+			showToast(t('adventure.select.startFailed'), "error");
 		} finally {
 			setIsLoading(false);
 		}
@@ -189,14 +191,14 @@ export default function AdventureSelectionPage() {
 				{/* Header */}
 				<div className="text-center mb-8">
 					<h1 className="font-display text-5xl text-primary-900 mb-2">
-						Choose Your Adventure
+						{t('adventure.select.title')}
 					</h1>
 					<p className="text-muted-foreground font-body text-lg">
-						Welcome, <span className="font-semibold text-primary-600">{character.name}</span> the{" "}
+						{t('adventure.select.welcome')}, <span className="font-semibold text-primary-600">{character.name}</span> the{" "}
 						<span className="font-semibold">{character.race} {character.character_class}</span>
 					</p>
 					<p className="text-muted-foreground mt-2">
-						Select a preset adventure or create your own custom story
+						{t('adventure.select.subtitle')}
 					</p>
 				</div>
 
@@ -205,11 +207,11 @@ export default function AdventureSelectionPage() {
 					<TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
 						<TabsTrigger value="preset" className="flex items-center gap-2">
 							<Scroll className="h-4 w-4" />
-							Preset Adventures
+							{t('adventure.select.presetTab')}
 						</TabsTrigger>
 						<TabsTrigger value="custom" className="flex items-center gap-2">
 							<Sparkles className="h-4 w-4" />
-							Custom Adventure
+							{t('adventure.select.customTab')}
 						</TabsTrigger>
 					</TabsList>
 
@@ -242,7 +244,7 @@ export default function AdventureSelectionPage() {
 													variant={isAppropriateLevel ? "default" : "destructive"}
 													className="ml-2"
 												>
-													Level {adventure.recommended_level}
+													{t('adventure.select.levelLabel')} {adventure.recommended_level}
 												</Badge>
 											</div>
 										</CardHeader>
@@ -252,7 +254,7 @@ export default function AdventureSelectionPage() {
 											</p>
 											{!isAppropriateLevel && (
 												<p className="text-xs text-amber-600 dark:text-amber-400">
-													⚠️ This adventure may be challenging for your level
+													{t('adventure.select.challengingWarning')}
 												</p>
 											)}
 										</CardContent>
@@ -273,7 +275,7 @@ export default function AdventureSelectionPage() {
 									<LoadingSpinner />
 								) : (
 									<>
-										Begin Adventure
+										{t('adventure.select.beginAdventure')}
 										<ArrowRight className="ml-2 h-5 w-5" />
 									</>
 								)}
@@ -284,7 +286,7 @@ export default function AdventureSelectionPage() {
 					{/* Custom Adventure Tab */}
 					<TabsContent value="custom">					{customAdventures.length > 0 && (
 						<div className="mb-8">
-							<h2 className="text-2xl font-display text-primary-900 mb-4">Your Custom Adventures</h2>
+							<h2 className="text-2xl font-display text-primary-900 mb-4">{t('adventure.select.customTitle')}</h2>
 							<div className="grid gap-4 md:grid-cols-2">
 								{customAdventures.map((adventure) => (
 									<Card
@@ -295,7 +297,7 @@ export default function AdventureSelectionPage() {
 										<CardHeader>
 											<CardTitle className="text-xl">{adventure.title}</CardTitle>
 											<CardDescription className="text-xs">
-												Created {new Date(adventure.created_at).toLocaleDateString()}
+												{t('adventure.select.created')} {new Date(adventure.created_at).toLocaleDateString()}
 											</CardDescription>
 										</CardHeader>
 										<CardContent>
@@ -317,21 +319,20 @@ export default function AdventureSelectionPage() {
 							<CardHeader>
 								<CardTitle className="flex items-center gap-2 text-2xl">
 									<Sparkles className="h-6 w-6 text-amber-500" />
-									AI-Generated Custom Adventure
+									{t('adventure.select.aiGeneratedTitle')}
 								</CardTitle>
 								<CardDescription>
-									Answer 3 questions and let our AI Dungeon Master create a unique adventure
-									tailored specifically for you
+									{t('adventure.select.aiGeneratedDescription')}
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">
 								<div className="bg-muted p-4 rounded-lg">
-									<h3 className="font-semibold mb-2">How it works:</h3>
+									<h3 className="font-semibold mb-2">{t('adventure.select.howItWorksTitle')}</h3>
 									<ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-										<li>Choose your adventure setting (8 options)</li>
-										<li>Select your primary goal (8 objectives)</li>
-										<li>Pick the story tone (5 moods)</li>
-										<li>AI generates a complete 3-5 scene adventure with NPCs, encounters, and loot</li>
+										<li>{t('adventure.select.howItWorks1')}</li>
+										<li>{t('adventure.select.howItWorks2')}</li>
+										<li>{t('adventure.select.howItWorks3')}</li>
+										<li>{t('adventure.select.howItWorks4')}</li>
 									</ol>
 								</div>
 
@@ -342,7 +343,7 @@ export default function AdventureSelectionPage() {
 										className="w-full"
 									>
 										<Sparkles className="mr-2 h-5 w-5" />
-										Create Custom Adventure
+										{t('adventure.select.createCustom')}
 									</Button>
 									<Button
 										variant="outline"
@@ -350,7 +351,7 @@ export default function AdventureSelectionPage() {
 										onClick={() => setActiveTab("preset")}
 										className="w-full"
 									>
-										Back to Preset Adventures
+										{t('adventure.select.backToPreset')}
 									</Button>
 								</div>
 							</CardContent>

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
 import { authService } from '@/lib/auth';
+import { useTranslation } from '@/lib/hooks/useTranslation';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -13,6 +14,7 @@ import { useState } from 'react';
 export default function LoginPage() {
 	const router = useRouter();
 	const { showToast } = useToast();
+	const { t } = useTranslation();
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
@@ -23,10 +25,10 @@ export default function LoginPage() {
 
 		try {
 			await authService.login(email, password);
-			showToast('Welcome back!', 'success');
+			showToast(t('auth.login.welcomeBack'), 'success');
 			router.push('/character/select');
 		} catch (error: any) {
-			showToast(error.message || 'Login failed', 'error');
+			showToast(error.message || t('auth.login.loginFailed'), 'error');
 		} finally {
 			setIsLoading(false);
 		}
@@ -37,10 +39,10 @@ export default function LoginPage() {
 
 		try {
 			await authService.createGuest();
-			showToast('Welcome, adventurer!', 'success');
+			showToast(t('auth.login.welcomeAdventurer'), 'success');
 			router.push('/character/create');
 		} catch (error: any) {
-			showToast(error.message || 'Failed to create guest account', 'error');
+			showToast(error.message || t('auth.login.guestFailed'), 'error');
 		} finally {
 			setIsLoading(false);
 		}
@@ -50,19 +52,19 @@ export default function LoginPage() {
 		<div className="min-h-screen flex items-center justify-center bg-linear-to-br from-neutral-900 via-neutral-800 to-neutral-900 p-4">
 			<Card className="w-full max-w-md">
 				<CardHeader className="space-y-2 text-center">
-					<CardTitle className="font-display text-3xl">Welcome Back</CardTitle>
+					<CardTitle className="font-display text-3xl">{t('auth.login.title')}</CardTitle>
 					<CardDescription className="font-body">
-						Sign in to continue your adventure
+						{t('auth.login.subtitle')}
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<form onSubmit={handleLogin} className="space-y-4">
 						<div className="space-y-2">
-							<Label htmlFor="email">Email</Label>
+							<Label htmlFor="email">{t('auth.login.email')}</Label>
 							<Input
 								id="email"
 								type="email"
-								placeholder="your@email.com"
+								placeholder={t('auth.login.emailPlaceholder')}
 								value={email}
 								onChange={(e) => setEmail(e.target.value)}
 								required
@@ -70,11 +72,11 @@ export default function LoginPage() {
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="password">Password</Label>
+							<Label htmlFor="password">{t('auth.login.password')}</Label>
 							<Input
 								id="password"
 								type="password"
-								placeholder="••••••••"
+								placeholder={t('auth.login.passwordPlaceholder')}
 								value={password}
 								onChange={(e) => setPassword(e.target.value)}
 								required
@@ -87,7 +89,7 @@ export default function LoginPage() {
 							className="w-full font-body"
 							disabled={isLoading}
 						>
-							{isLoading ? 'Signing in...' : 'Sign In'}
+							{isLoading ? t('auth.login.signingIn') : t('auth.login.signIn')}
 						</Button>
 					</form>
 
@@ -97,7 +99,7 @@ export default function LoginPage() {
 						</div>
 						<div className="relative flex justify-center text-xs uppercase">
 							<span className="bg-background px-2 text-muted-foreground">
-								Or continue as
+								{t('auth.login.orContinueAs')}
 							</span>
 						</div>
 					</div>
@@ -108,16 +110,16 @@ export default function LoginPage() {
 						onClick={handleGuestMode}
 						disabled={isLoading}
 					>
-						Guest Mode
+						{t('auth.login.guestMode')}
 					</Button>
 
 					<p className="text-center text-sm text-muted-foreground font-body">
-						Don't have an account?{' '}
+						{t('auth.login.noAccount')}{' '}
 						<Link
 							href="/auth/register"
 							className="text-primary hover:underline font-medium"
 						>
-							Register here
+							{t('auth.login.registerHere')}
 						</Link>
 					</p>
 				</CardContent>

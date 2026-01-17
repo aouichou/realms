@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import Character, CharacterQuest, Quest, QuestState
 from app.observability.logger import get_logger, log_context
+from app.observability.tracing import trace_async
 from app.schemas.dm_response import DMResponse, PlayerActionRequest, RollRequest
 from app.schemas.message import (
     ConversationHistoryResponse,
@@ -96,6 +97,7 @@ def _is_significant_scene(narration: str, player_action: str) -> bool:
 
 
 @router.post("/messages", response_model=MessageResponse, status_code=201)
+@trace_async("conversations.create_message")
 async def create_message(
     message_data: MessageCreate,
     save_to_redis: bool = Query(True, description="Also save to Redis"),
@@ -127,6 +129,7 @@ async def create_message(
 
 
 @router.post("/start", response_model=DMResponse)
+@trace_async("conversations.start_conversation")
 async def start_conversation(
     request: dict,
     db: AsyncSession = Depends(get_db),
@@ -197,6 +200,7 @@ async def start_conversation(
 
 
 @router.post("/action", response_model=DMResponse)
+@trace_async("conversations.send_player_action")
 async def send_player_action(
     request: PlayerActionRequest,
     db: AsyncSession = Depends(get_db),
@@ -386,12 +390,16 @@ async def send_player_action(
         logger.info(f"Pruned {tokens_removed} tokens from conversation history")
 
     # Get DM response
+    from app.i18n import get_language
+
+    language = get_language()
     dm_engine = DMEngine()
     result = await dm_engine.narrate(
         user_action=action_text,
         conversation_history=conversation_history,
         character_context=character_context,
         memory_context=combined_context,
+        language=language,
     )
 
     # Parse for dice roll tags
@@ -627,6 +635,7 @@ async def send_player_action(
 
 
 @router.get("/{session_id}", response_model=ConversationHistoryResponse)
+@trace_async("conversations.get_history")
 async def get_conversation_history(
     session_id: UUID,
     limit: Optional[int] = Query(100, ge=1, le=1000, description="Max messages"),
@@ -685,6 +694,7 @@ async def get_conversation_history(
 
 
 @router.get("/{session_id}/recent", response_model=list[MessageResponse])
+@trace_async("conversations.get_recent")
 async def get_recent_messages(
     session_id: UUID,
     count: int = Query(20, ge=1, le=100, description="Number of recent messages"),
@@ -705,6 +715,7 @@ async def get_recent_messages(
 
 
 @router.delete("/{session_id}", status_code=204)
+@trace_async("conversations.delete_history")
 async def delete_conversation_history(
     session_id: UUID,
     include_redis: bool = Query(True, description="Also clear Redis cache"),

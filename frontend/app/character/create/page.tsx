@@ -13,6 +13,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { apiClient } from '@/lib/api-client';
+import { useTranslation } from '@/lib/hooks/useTranslation';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -64,6 +65,7 @@ const POINT_BUY_MAX = 27; // Standard D&D 5e point buy
 export default function CharacterCreation() {
 	const router = useRouter();
 	const { showToast } = useToast();
+	const { t } = useTranslation();
 	const [currentStep, setCurrentStep] = useState(1);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [name, setName] = useState('');
@@ -128,21 +130,21 @@ export default function CharacterCreation() {
 
 	const validateForm = (): boolean => {
 		if (!name.trim()) {
-			setNameError('Character name is required');
-			showToast('Please enter a character name', 'error');
+			setNameError(t('characterCreation.basicInfo.errorNameRequired'));
+			showToast(t('characterCreation.toasts.enterName'), 'error');
 			return false;
 		}
 		if (name.trim().length < 2) {
-			setNameError('Name must be at least 2 characters');
-			showToast('Name is too short', 'error');
+			setNameError(t('characterCreation.basicInfo.errorNameTooShort'));
+			showToast(t('characterCreation.toasts.nameTooShort'), 'error');
 			return false;
 		}
 		if (!selectedClass) {
-			showToast('Please select a class', 'error');
+			showToast(t('characterCreation.toasts.selectClass'), 'error');
 			return false;
 		}
 		if (!selectedRace) {
-			showToast('Please select a race', 'error');
+			showToast(t('characterCreation.toasts.selectRace'), 'error');
 			return false;
 		}
 		setNameError('');
@@ -159,7 +161,7 @@ export default function CharacterCreation() {
 		// Get authentication token
 		const token = localStorage.getItem('access_token');
 		if (!token) {
-			showToast('Not authenticated. Please log in or play as guest.', 'error');
+			showToast(t('characterCreation.toasts.notAuthenticated'), 'error');
 			setIsSubmitting(false);
 			router.push('/');
 			return;
@@ -179,19 +181,19 @@ export default function CharacterCreation() {
 			if (response.ok) {
 				const character = await response.json();
 				setCharacterId(character.id);
-				showToast(`${character.name} created successfully!`, 'success');
+				showToast(t('characterCreation.toasts.createSuccess').replace('{name}', character.name), 'success');
 				// Move to skill selection step
 				setCurrentStep(2);
 			} else {
 				const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-				const errorMsg = errorData.detail || errorData.message || 'Failed to create character';
+				const errorMsg = errorData.detail || errorData.message || t('characterCreation.toasts.createFailed');
 				showToast(errorMsg, 'error');
 			}
 		} catch (error) {
 			console.error('Error creating character:', error);
 			const errorMsg = error instanceof Error && error.message.includes('fetch')
-				? 'Cannot connect to server. Please check your connection.'
-				: 'An error occurred while creating your character.';
+				? t('characterCreation.toasts.connectionError')
+				: t('characterCreation.toasts.createError');
 			showToast(errorMsg, 'error');
 		} finally {
 			setIsSubmitting(false);
@@ -206,15 +208,15 @@ export default function CharacterCreation() {
 
 			if (response.ok) {
 				setSkillProficiencies(skills);
-				showToast('Skills saved successfully!', 'success');
+				showToast(t('characterCreation.toasts.skillsSuccess'), 'success');
 				// Move to background selection
 				setCurrentStep(3);
 			} else {
-				showToast('Failed to save skills', 'error');
+				showToast(t('characterCreation.toasts.skillsFailed'), 'error');
 			}
 		} catch (error) {
 			console.error('Error saving skills:', error);
-			showToast('Error saving skills', 'error');
+			showToast(t('characterCreation.toasts.skillsError'), 'error');
 		}
 	};
 
@@ -239,15 +241,15 @@ export default function CharacterCreation() {
 				setBackgroundName(background.name);
 				setBackgroundDescription(background.description);
 				setBackgroundSkills(background.skillProficiencies);
-				showToast('Background saved successfully!', 'success');
+				showToast(t('characterCreation.toasts.backgroundSuccess'), 'success');
 				// Move to personality selection
 				setCurrentStep(4);
 			} else {
-				showToast('Failed to save background', 'error');
+				showToast(t('characterCreation.toasts.backgroundFailed'), 'error');
 			}
 		} catch (error) {
 			console.error('Error saving background:', error);
-			showToast('Error saving background', 'error');
+			showToast(t('characterCreation.toasts.backgroundError'), 'error');
 		}
 	};
 	const handlePersonalityComplete = async (personality: {
@@ -272,15 +274,15 @@ export default function CharacterCreation() {
 				setIdeal(personality.ideal);
 				setBond(personality.bond);
 				setFlaw(personality.flaw);
-				showToast('Personality saved successfully!', 'success');
+				showToast(t('characterCreation.toasts.personalitySuccess'), 'success');
 				// Move to motivation selection (step 6)
 				setCurrentStep(6);
 			} else {
-				showToast('Failed to save personality', 'error');
+				showToast(t('characterCreation.toasts.personalityFailed'), 'error');
 			}
 		} catch (error) {
 			console.error('Error saving personality:', error);
-			showToast('Error saving personality', 'error');
+			showToast(t('characterCreation.toasts.personalityError'), 'error');
 		}
 	};
 
@@ -295,7 +297,7 @@ export default function CharacterCreation() {
 
 			if (response.ok) {
 				setMotivation(selectedMotivation);
-				showToast('Motivation saved successfully!', 'success');
+				showToast(t('characterCreation.toasts.motivationSuccess'), 'success');
 				// Move to spell selection if spellcaster, otherwise finish
 				if (['bard', 'cleric', 'druid', 'sorcerer', 'warlock', 'wizard'].includes(selectedClass)) {
 					setCurrentStep(5);
@@ -304,11 +306,11 @@ export default function CharacterCreation() {
 					setTimeout(() => router.push(`/game/${characterId}`), 1000);
 				}
 			} else {
-				showToast('Failed to save motivation', 'error');
+				showToast(t('characterCreation.toasts.motivationFailed'), 'error');
 			}
 		} catch (error) {
 			console.error('Error saving motivation:', error);
-			showToast('Error saving motivation', 'error');
+			showToast(t('characterCreation.toasts.motivationError'), 'error');
 		}
 	};
 
@@ -333,15 +335,15 @@ export default function CharacterCreation() {
 						})
 					)
 				);
-				showToast('Spells saved successfully!', 'success');
+				showToast(t('characterCreation.toasts.spellsSuccess'), 'success');
 			} catch (spellError) {
 				console.error('Error adding spells:', spellError);
-				showToast('Error saving spells', 'error');
+				showToast(t('characterCreation.toasts.spellsError'), 'error');
 			}
 		}
 
 		// Navigate to adventure selection page
-		showToast('Character created! Now choose your adventure.', 'success');
+		showToast(t('characterCreation.toasts.characterCreated'), 'success');
 		setTimeout(() => router.push(`/adventure/select/${characterId}`), 1000);
 	};
 
@@ -349,10 +351,10 @@ export default function CharacterCreation() {
 		<div className="min-h-screen bg-background p-8">
 			<div className="max-w-4xl mx-auto">
 				<h1 className="font-display text-5xl text-primary-900 mb-2 text-center">
-					Create Your Hero
+					{t('characterCreation.title')}
 				</h1>
 				<p className="text-center text-muted-foreground mb-8 font-body">
-					Forge your legend in the Mistral Realms
+					{t('characterCreation.subtitle')}
 				</p>
 
 				{/* Step Indicator */}
@@ -409,12 +411,12 @@ export default function CharacterCreation() {
 							{/* Basic Info */}
 							<Card>
 								<CardHeader>
-									<CardTitle className="font-display">Character Details</CardTitle>
-									<CardDescription>The essentials of your hero</CardDescription>
+									<CardTitle className="font-display">{t('characterCreation.basicInfo.cardTitle')}</CardTitle>
+									<CardDescription>{t('characterCreation.basicInfo.cardDescription')}</CardDescription>
 								</CardHeader>
 								<CardContent className="space-y-4">
 									<div className="space-y-2">
-										<Label htmlFor="name">Character Name</Label>
+										<Label htmlFor="name">{t('characterCreation.basicInfo.characterName')}</Label>
 										<Input
 											id="name"
 											value={name}
@@ -422,7 +424,7 @@ export default function CharacterCreation() {
 												setName(e.target.value);
 												if (nameError) setNameError('');
 											}}
-											placeholder="Enter your character's name"
+											placeholder={t('characterCreation.basicInfo.namePlaceholder')}
 											className={nameError ? 'border-red-500 focus:ring-red-500' : ''}
 											required
 										/>
@@ -432,10 +434,10 @@ export default function CharacterCreation() {
 									</div>
 
 									<div className="space-y-2">
-										<Label htmlFor="race">Race</Label>
+										<Label htmlFor="race">{t('characterCreation.basicInfo.race')}</Label>
 										<Select value={selectedRace} onValueChange={setSelectedRace} required>
 											<SelectTrigger id="race">
-												<SelectValue placeholder="Select a race" />
+												<SelectValue placeholder={t('characterCreation.basicInfo.selectRace')} />
 											</SelectTrigger>
 											<SelectContent>
 												{DND_RACES.map((race) => (
@@ -448,10 +450,10 @@ export default function CharacterCreation() {
 									</div>
 
 									<div className="space-y-2">
-										<Label htmlFor="class">Class</Label>
+										<Label htmlFor="class">{t('characterCreation.basicInfo.class')}</Label>
 										<Select value={selectedClass} onValueChange={setSelectedClass} required>
 											<SelectTrigger id="class">
-												<SelectValue placeholder="Select a class" />
+												<SelectValue placeholder={t('characterCreation.basicInfo.selectClass')} />
 											</SelectTrigger>
 											<SelectContent>
 												{DND_CLASSES.map((cls) => (
@@ -464,7 +466,7 @@ export default function CharacterCreation() {
 									</div>
 
 									<div className="space-y-2">
-										<Label htmlFor="level">Level</Label>
+										<Label htmlFor="level">{t('characterCreation.basicInfo.level')}</Label>
 										<Input
 											id="level"
 											type="number"
@@ -480,18 +482,20 @@ export default function CharacterCreation() {
 							{/* Ability Scores */}
 							<Card>
 								<CardHeader>
-									<CardTitle className="font-display">Ability Scores (Point Buy)</CardTitle>
+									<CardTitle className="font-display">{t('characterCreation.abilityScores.cardTitle')}</CardTitle>
 									<CardDescription>
-										{POINT_BUY_MAX - calculatePointsSpent()} of {POINT_BUY_MAX} points remaining
-										<span className="block text-xs mt-1">Scores range from 8 to 15 (before racial modifiers)</span>
+										{t('characterCreation.abilityScores.pointsRemaining')
+											.replace('{points}', String(POINT_BUY_MAX - calculatePointsSpent()))
+											.replace('{max}', String(POINT_BUY_MAX))}
+										<span className="block text-xs mt-1">{t('characterCreation.abilityScores.scoreRangeHint')}</span>
 									</CardDescription>
 								</CardHeader>
 								<CardContent>
 									<div className="grid grid-cols-2 gap-4">
 										{Object.entries(abilities).map(([ability, score]) => (
 											<div key={ability} className="space-y-2">
-												<Label htmlFor={ability} className="capitalize">
-													{ability}
+												<Label htmlFor={ability}>
+													{t(`characterCreation.abilityScores.${ability}`)}
 												</Label>
 												<div className="flex gap-2 items-center">
 													<Input
@@ -517,22 +521,25 @@ export default function CharacterCreation() {
 						{/* Character Preview */}
 						<Card className="mt-6">
 							<CardHeader>
-								<CardTitle className="font-display">Character Preview</CardTitle>
+								<CardTitle className="font-display">{t('characterCreation.preview.cardTitle')}</CardTitle>
 							</CardHeader>
 							<CardContent>
 								<div className="flex items-center justify-between">
 									<div>
 										<p className="text-lg font-body">
-											<span className="font-semibold">{name || 'Unnamed Hero'}</span>
+											<span className="font-semibold">{name || t('characterCreation.preview.unnamedHero')}</span>
 											{selectedRace && selectedClass && (
 												<span className="text-muted-foreground">
-													{' '}- Level {level} {selectedRace.charAt(0).toUpperCase() + selectedRace.slice(1)} {DND_CLASSES.find(c => c.id === selectedClass)?.name}
+													{' '}- {t('characterCreation.preview.levelRaceClass')
+														.replace('{level}', String(level))
+														.replace('{race}', selectedRace.charAt(0).toUpperCase() + selectedRace.slice(1))
+														.replace('{class}', DND_CLASSES.find(c => c.id === selectedClass)?.name || '')}
 												</span>
 											)}
 										</p>
 										{selectedClass && (
 											<p className="text-sm text-muted-foreground mt-1">
-												Hit Points: <span className="font-bold text-success-500">{calculateHP()}</span>
+												{t('characterCreation.preview.hitPoints')}: <span className="font-bold text-success-500">{calculateHP()}</span>
 											</p>
 										)}
 									</div>
@@ -545,10 +552,10 @@ export default function CharacterCreation() {
 										{isSubmitting ? (
 											<span className="flex items-center gap-2">
 												<LoadingSpinner size="sm" />
-												Creating...
+												{t('characterCreation.preview.creating')}
 											</span>
 										) : (
-											'Next: Select Skills'
+											t('characterCreation.preview.nextButton')
 										)}
 									</Button>
 								</div>
@@ -608,10 +615,10 @@ export default function CharacterCreation() {
 						/>
 						<div className="flex justify-between mt-6">
 							<Button onClick={() => setCurrentStep(6)} variant="outline">
-								Back
+								{t('characterCreation.spells.back')}
 							</Button>
 							<Button onClick={handleSpellsComplete}>
-								Complete Character Creation
+								{t('characterCreation.spells.complete')}
 							</Button>
 						</div>
 					</div>

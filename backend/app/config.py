@@ -47,6 +47,24 @@ class Settings(BaseSettings):
         description="Thinking level for Gemini 3 models (minimal, low, medium, high) - high recommended for D&D DMing",
     )
 
+    # OpenAI API
+    openai_api_key: str = Field(default="", description="OpenAI API key")
+    openai_model: str = Field(
+        default="gpt-3.5-turbo",
+        description="Default OpenAI model (gpt-3.5-turbo recommended for cost/performance balance)",
+    )
+    openai_max_tokens: int = Field(default=2048, description="Maximum tokens per request")
+    openai_temperature: float = Field(default=0.7, description="Model temperature")
+
+    # Anthropic API
+    anthropic_api_key: str = Field(default="", description="Anthropic API key")
+    anthropic_model: str = Field(
+        default="claude-3-haiku-20240307",
+        description="Default Anthropic model (claude-3-haiku for cost efficiency)",
+    )
+    anthropic_max_tokens: int = Field(default=2048, description="Maximum tokens per request")
+    anthropic_temperature: float = Field(default=0.7, description="Model temperature")
+
     # Rate Limiting
     rate_limit_per_second: int = Field(default=1, description="Requests per second limit")
     rate_limit_burst: int = Field(default=3, description="Burst capacity for rate limiting")
@@ -140,6 +158,22 @@ class Settings(BaseSettings):
                 "temperature": self.mistral_temperature,
                 "rate_limit": self.rate_limit_per_second,
                 "priority": 2,  # Fallback
+            },
+            "openai": {
+                "enabled": bool(self.openai_api_key),
+                "api_key": self.openai_api_key,
+                "model": self.openai_model,
+                "max_tokens": self.openai_max_tokens,
+                "temperature": self.openai_temperature,
+                "priority": 3,  # Secondary fallback
+            },
+            "anthropic": {
+                "enabled": bool(self.anthropic_api_key),
+                "api_key": self.anthropic_api_key,
+                "model": self.anthropic_model,
+                "max_tokens": self.anthropic_max_tokens,
+                "temperature": self.anthropic_temperature,
+                "priority": 4,  # Tertiary fallback
             },
         }
 
