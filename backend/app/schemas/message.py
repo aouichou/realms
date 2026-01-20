@@ -14,6 +14,7 @@ class MessageCreate(BaseModel):
     role: str = Field(..., description="Message role: user, assistant, or system")
     content: str = Field(..., min_length=1)
     tokens_used: Optional[int] = Field(None, ge=0)
+    scene_image_url: Optional[str] = None
 
 
 class MessageResponse(BaseModel):
@@ -24,6 +25,7 @@ class MessageResponse(BaseModel):
     role: str
     content: str
     tokens_used: Optional[int]
+    scene_image_url: Optional[str] = None
     created_at: datetime
 
     class Config:

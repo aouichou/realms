@@ -105,3 +105,29 @@ async def list_saves(
         List of saves
     """
     return await SaveService.list_saves(db, current_user.id)
+
+
+@router.delete("/save/{session_id}")
+@trace_async("game.delete_save")
+async def delete_save(
+    session_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a saved game
+
+    Args:
+        session_id: Session ID to delete
+        current_user: Authenticated user
+        db: Database session
+
+    Returns:
+        Success status
+
+    Raises:
+        HTTPException: 404 if save not found
+    """
+    deleted = await SaveService.delete_save(db, session_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Save not found")
+    return {"success": True, "message": "Save deleted successfully"}

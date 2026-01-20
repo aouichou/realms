@@ -63,6 +63,7 @@ export function ImageGalleryPanel({ images }: ImageGalleryPanelProps) {
 							width={1200}
 							height={800}
 							className="rounded-lg object-contain max-h-[90vh]"
+							unoptimized
 						/>
 						<button
 							onClick={() => setSelectedImage(null)}
@@ -98,6 +99,7 @@ export function ImageGalleryPanel({ images }: ImageGalleryPanelProps) {
 									alt={`Scene ${index + 1}`}
 									fill
 									className="object-cover"
+									unoptimized
 								/>
 
 								{/* Overlay Actions */}

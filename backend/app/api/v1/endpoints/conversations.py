@@ -173,13 +173,27 @@ async def start_conversation(
     # Check if this session was created from a custom adventure
     # by checking the adventure_select page which passes the adventure in the redirect
     # For now, we'll create a generic opening based on location
-    opening_narration = (
-        f"Welcome, {character.name}!\n\n"
-        f"You find yourself at {session.current_location or 'the beginning of your journey'}. "
-        f"As a level {character.level} {character.race.value} {character.character_class.value}, "
-        f"you are ready for whatever challenges lie ahead.\n\n"
-        f"What would you like to do?"
-    )
+    # Get language from request headers
+    from app.i18n import get_language
+
+    language = get_language()
+
+    if language == "fr":
+        opening_narration = (
+            f"Bienvenue, {character.name} !\n\n"
+            f"Vous vous trouvez à {session.current_location or 'le début de votre voyage'}. "
+            f"En tant que {character.race.value} {character.character_class.value} de niveau {character.level}, "
+            f"vous êtes prêt pour tous les défis qui vous attendent.\n\n"
+            f"Que voulez-vous faire ?"
+        )
+    else:
+        opening_narration = (
+            f"Welcome, {character.name}!\n\n"
+            f"You find yourself at {session.current_location or 'the beginning of your journey'}. "
+            f"As a level {character.level} {character.race.value} {character.character_class.value}, "
+            f"you are ready for whatever challenges lie ahead.\n\n"
+            f"What would you like to do?"
+        )
 
     # Save the opening message
     dm_msg = MessageCreate(
@@ -187,6 +201,7 @@ async def start_conversation(
         role="assistant",
         content=opening_narration,
         tokens_used=0,
+        scene_image_url=None,
     )
     await ConversationService.create_message(db, dm_msg)
 
@@ -485,47 +500,7 @@ async def send_player_action(
     if result.get("roll_request"):
         response_data["roll_request"] = result["roll_request"]
 
-    # Save to conversation history if session provided
-    if session_id:
-        # Save player message
-        player_msg = MessageCreate(
-            session_id=session_id,
-            role="user",
-            content=request.action,
-            tokens_used=0,
-        )
-        await ConversationService.create_message(db, player_msg)
-
-        # Save DM response
-        dm_msg = MessageCreate(
-            session_id=session_id,
-            role="assistant",
-            content=result["narration"],
-            tokens_used=result["tokens_used"],
-        )
-        await ConversationService.create_message(db, dm_msg)
-
-        # Capture dialogue memory
-        try:
-            # Extract NPC names from narration (basic heuristic)
-            npcs = []
-            for line in result["narration"].split("\n"):
-                if ":" in line:
-                    potential_npc = line.split(":")[0].strip()
-                    if potential_npc and len(potential_npc) < 30:
-                        npcs.append(potential_npc)
-
-            # Capture the interaction
-            await MemoryCaptureService.capture_dialogue(
-                db=db,
-                session_id=session_id,
-                npc_name=npcs[0] if npcs else "Unknown",
-                dialogue=f"{action_text}\n{result['narration'][:500]}",
-            )
-        except Exception as e:
-            logger.warning(f"Failed to capture dialogue memory: {e}")
-
-    # Generate scene image for significant moments
+    # Generate scene image for significant moments (BEFORE saving messages)
     scene_image_url = None
     if _is_significant_scene(result["narration"], request.action):
         try:
@@ -555,6 +530,47 @@ async def send_player_action(
         except Exception as e:
             logger.error(f"Failed to generate scene image: {e}")
             # Image generation is optional, don't fail the request
+
+    # Save to conversation history if session provided
+    if session_id:
+        # Save player message
+        player_msg = MessageCreate(
+            session_id=session_id,
+            role="user",
+            content=request.action,
+            tokens_used=0,
+        )
+        await ConversationService.create_message(db, player_msg)
+
+        # Save DM response with scene image URL
+        dm_msg = MessageCreate(
+            session_id=session_id,
+            role="assistant",
+            content=result["narration"],
+            tokens_used=result["tokens_used"],
+            scene_image_url=scene_image_url,  # Now this is defined
+        )
+        await ConversationService.create_message(db, dm_msg)
+
+        # Capture dialogue memory
+        try:
+            # Extract NPC names from narration (basic heuristic)
+            npcs = []
+            for line in result["narration"].split("\n"):
+                if ":" in line:
+                    potential_npc = line.split(":")[0].strip()
+                    if potential_npc and len(potential_npc) < 30:
+                        npcs.append(potential_npc)
+
+            # Capture the interaction
+            await MemoryCaptureService.capture_dialogue(
+                db=db,
+                session_id=session_id,
+                npc_name=npcs[0] if npcs else "Unknown",
+                dialogue=f"{action_text}\n{result['narration'][:500]}",
+            )
+        except Exception as e:
+            logger.warning(f"Failed to capture dialogue memory: {e}")
 
     # Generate companion response if appropriate
     companion_response = None

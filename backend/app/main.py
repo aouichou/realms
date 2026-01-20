@@ -189,7 +189,7 @@ app.include_router(metrics.router)
 app.include_router(api_router, prefix="/api/v1")
 
 # Mount static files for generated images
-MEDIA_DIR = Path(__file__).parent.parent.parent / "media"
+MEDIA_DIR = Path(__file__).parent.parent / "media"
 if MEDIA_DIR.exists():
     app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 else:

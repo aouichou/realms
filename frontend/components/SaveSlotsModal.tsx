@@ -11,8 +11,9 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
+import { apiFetch } from '@/lib/api-client';
 import { useTranslation } from '@/lib/hooks/useTranslation';
-import { Loader2, Play, Save } from 'lucide-react';
+import { Loader2, Play, Save, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -37,6 +38,7 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 	const [saves, setSaves] = useState<SaveData[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
+	const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
 	const { showToast } = useToast();
 	const router = useRouter();
 	const { t } = useTranslation();
@@ -50,9 +52,7 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 	const loadSaves = async () => {
 		setIsLoading(true);
 		try {
-			const response = await fetch('/api/v1/game/saves', {
-				credentials: 'include',
-			});
+			const response = await apiFetch('/api/v1/game/saves');
 
 			if (!response.ok) {
 				throw new Error('Failed to load saves');
@@ -68,14 +68,11 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 		}
 	};
 
-	const handleLoad = async (sessionId: string, saveName: string) => {
+	const handleLoad = async (sessionId: string, saveName: string, characterId: string) => {
 		setLoadingSessionId(sessionId);
 
 		try {
-			const response = await fetch(`/api/v1/game/load/${sessionId}`, {
-				method: 'POST',
-				credentials: 'include',
-			});
+			const response = await apiFetch(`/api/v1/game/load/${sessionId}`);
 
 			if (!response.ok) {
 				throw new Error('Failed to load game');
@@ -84,12 +81,39 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 			showToast(t('game.load.loadingMessage').replace('{saveName}', saveName), 'info');
 
 			// Navigate to game page
-			router.push(`/game?session_id=${sessionId}`);
+			router.push(`/game/${characterId}?session=${sessionId}`);
 			onClose();
 		} catch (error) {
 			console.error('Load error:', error);
 			showToast(t('game.load.errorLoadGame'), 'error');
 			setLoadingSessionId(null);
+		}
+	};
+
+	const handleDelete = async (sessionId: string, saveName: string) => {
+		if (!confirm(`Are you sure you want to delete "${saveName}"? This action cannot be undone.`)) {
+			return;
+		}
+
+		setDeletingSessionId(sessionId);
+
+		try {
+			const response = await apiFetch(`/api/v1/game/save/${sessionId}`, {
+				method: 'DELETE',
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to delete save');
+			}
+
+			showToast('Save deleted successfully', 'success');
+			// Reload saves list
+			await loadSaves();
+		} catch (error) {
+			console.error('Delete error:', error);
+			showToast('Failed to delete save', 'error');
+		} finally {
+			setDeletingSessionId(null);
 		}
 	};
 
@@ -132,23 +156,38 @@ export function SaveSlotsModal({ isOpen, onClose }: SaveSlotsModalProps) {
 												{save.character_name} • {formatDate(save.timestamp)}
 											</CardDescription>
 										</div>
-										<Button
-											size="sm"
-											onClick={() => handleLoad(save.session_id, save.save_name)}
-											disabled={loadingSessionId !== null}
-										>
-											{loadingSessionId === save.session_id ? (
-												<>
-													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-													{t('game.load.loading')}
-												</>
-											) : (
-												<>
-													<Play className="mr-2 h-4 w-4" />
-													{t('game.load.loadButton')}
-												</>
-											)}
-										</Button>
+										<div className="flex gap-2">
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => handleDelete(save.session_id, save.save_name)}
+												disabled={loadingSessionId !== null || deletingSessionId !== null}
+												title="Delete save"
+											>
+												{deletingSessionId === save.session_id ? (
+													<Loader2 className="h-4 w-4 animate-spin" />
+												) : (
+													<Trash2 className="h-4 w-4" />
+												)}
+											</Button>
+											<Button
+												size="sm"
+												onClick={() => handleLoad(save.session_id, save.save_name, save.character_id)}
+												disabled={loadingSessionId !== null || deletingSessionId !== null}
+											>
+												{loadingSessionId === save.session_id ? (
+													<>
+														<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+														{t('game.load.loading')}
+													</>
+												) : (
+													<>
+														<Play className="mr-2 h-4 w-4" />
+														{t('game.load.loadButton')}
+													</>
+												)}
+											</Button>
+										</div>
 									</div>
 								</CardHeader>
 								{save.game_data?.location && (

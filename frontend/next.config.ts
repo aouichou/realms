@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
 	turbopack: {},
 
 	images: {
+		unoptimized: true, // Disable image optimization for localhost development
 		domains: ['localhost'],
 		remotePatterns: [
 			{

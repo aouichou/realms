@@ -29,7 +29,8 @@ export function SceneImage({ imageUrl, alt = "Scene illustration" }: SceneImageP
 					fill
 					className={`object-cover transition-all duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'
 						}`}
-					onLoadingComplete={() => setIsLoading(false)}
+					onLoad={() => setIsLoading(false)}
+					unoptimized
 					priority
 				/>
 
@@ -60,6 +61,7 @@ export function SceneImage({ imageUrl, alt = "Scene illustration" }: SceneImageP
 							alt={alt}
 							fill
 							className="object-contain"
+							unoptimized
 							priority
 						/>
 					</div>

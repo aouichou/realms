@@ -49,6 +49,7 @@ class AdventureService:
 
         # Create a new game session
         session = GameSession(
+            user_id=character.user_id,  # Set user_id from character
             character_id=character_id,
             current_location=adventure.initial_location,
             is_active=True,
@@ -471,6 +472,7 @@ Make encounters appropriate for level {level} characters. Include specific D&D 5
 
         # Create a new game session
         session = GameSession(
+            user_id=character.user_id,  # Set user_id from character
             character_id=character_id,
             current_location=initial_location,
             is_active=True,

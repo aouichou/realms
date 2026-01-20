@@ -31,6 +31,7 @@ class ConversationService:
             role=message_data.role,
             content=message_data.content,
             tokens_used=message_data.tokens_used,
+            scene_image_url=message_data.scene_image_url,
         )
 
         db.add(message)

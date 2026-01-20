@@ -10,6 +10,7 @@ from app.middleware.auth import get_current_user
 from app.schemas.auth import (
     ClaimGuestAccount,
     GuestTokenResponse,
+    RefreshTokenRequest,
     TokenResponse,
     UserCreate,
     UserLogin,
@@ -146,11 +147,11 @@ async def claim_guest(claim_data: ClaimGuestAccount, db: AsyncSession = Depends(
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_data: dict, db: AsyncSession = Depends(get_db)):
+async def refresh_token(refresh_data: RefreshTokenRequest, db: AsyncSession = Depends(get_db)):
     """Refresh access token using refresh token
 
     Args:
-        refresh_data: JSON with refresh_token field
+        refresh_data: Refresh token request data
         db: Database session
 
     Returns:
@@ -162,15 +163,9 @@ async def refresh_token(refresh_data: dict, db: AsyncSession = Depends(get_db)):
     from app.core.security import decode_token
     from app.services.auth_service import get_user_by_id
 
-    refresh_token = refresh_data.get("refresh_token")
-    if not refresh_token:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Refresh token is required"
-        )
-
     try:
         # Decode and validate refresh token
-        payload = decode_token(refresh_token)
+        payload = decode_token(refresh_data.refresh_token)
 
         # Check token type
         token_type = payload.get("type")
@@ -190,7 +185,7 @@ async def refresh_token(refresh_data: dict, db: AsyncSession = Depends(get_db)):
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-        # Generate new tokens
+        # Generate new tokens (token rotation)
         access_token = create_access_token(data={"sub": str(user.id)})
         new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
 

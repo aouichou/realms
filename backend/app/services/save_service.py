@@ -147,3 +147,22 @@ class SaveService:
                     saves.append(json.loads(save_data))
 
         return sorted(saves, key=lambda x: x["timestamp"], reverse=True)
+
+    @staticmethod
+    async def delete_save(db: AsyncSession, session_id: UUID) -> bool:
+        """Delete a saved game
+
+        Args:
+            db: Database session
+            session_id: Game session ID to delete
+
+        Returns:
+            True if save was deleted, False if not found
+        """
+        save_key = f"save:{session_id}"
+        if not session_service.redis:
+            return False
+
+        # Delete from Redis
+        deleted = await session_service.redis.delete(save_key)  # type: ignore[misc]
+        return deleted > 0

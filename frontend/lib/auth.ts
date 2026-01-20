@@ -213,6 +213,48 @@ export const authService = {
 	},
 
 	/**
+	 * Refresh access token using refresh token
+	 */
+	async refreshToken(): Promise<AuthTokens | null> {
+		const refreshToken = localStorage.getItem('refresh_token');
+
+		if (!refreshToken) {
+			return null;
+		}
+
+		try {
+			const response = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ refresh_token: refreshToken }),
+			});
+
+			if (!response.ok) {
+				// Refresh token is invalid or expired
+				this.logout();
+				return null;
+			}
+
+			const data = await response.json();
+
+			// Store new tokens
+			localStorage.setItem('access_token', data.access_token);
+			if (data.refresh_token) {
+				localStorage.setItem('refresh_token', data.refresh_token);
+			}
+
+			return {
+				access_token: data.access_token,
+				refresh_token: data.refresh_token,
+			};
+		} catch (error) {
+			console.error('Failed to refresh token:', error);
+			this.logout();
+			return null;
+		}
+	},
+
+	/**
 	 * Logout (clear all auth data)
 	 */
 	logout(): void {

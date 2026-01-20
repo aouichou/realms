@@ -45,11 +45,11 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/app:/app/app:ro
-      - ./backend/tests:/app/tests:ro
-      - ./backend/alembic:/app/alembic:ro
-      - ./backend/scripts:/app/scripts:ro
-      - ./backend/data:/app/data:ro
+      - ./backend/app:/app/app:rw
+      - ./backend/tests:/app/tests:rw
+      - ./backend/alembic:/app/alembic:rw
+      - ./backend/scripts:/app/scripts:rw
+      - ./backend/data:/app/data:rw
       - ./backend/media:/app/media  # For generated images and other media files
     environment:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}

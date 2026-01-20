@@ -37,6 +37,12 @@ class ClaimGuestAccount(BaseModel):
     password: str = Field(..., min_length=8, max_length=100)
 
 
+class RefreshTokenRequest(BaseModel):
+    """Schema for refresh token request"""
+
+    refresh_token: str
+
+
 class UserResponse(BaseModel):
     """Schema for user response"""
 
