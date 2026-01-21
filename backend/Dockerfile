@@ -1,6 +1,6 @@
 # Multi-stage build for optimized production image
 # Stage 1: Builder - Install dependencies
-FROM python:3.13-slim as builder
+FROM python:3.13-slim AS builder
 
 # Set working directory
 WORKDIR /build
