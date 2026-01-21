@@ -6,7 +6,7 @@ An immersive Dungeons & Dragons experience powered by Mistral AI, featuring real
 
 > Built for the Mistral AI Internship Application
 
-## 🎮 Features
+## Features
 
 ### Core Gameplay
 - **AI Dungeon Master**: Real-time narration powered by Mistral AI with streaming responses
@@ -41,7 +41,7 @@ An immersive Dungeons & Dragons experience powered by Mistral AI, featuring real
 - **REST API**: Complete OpenAPI documentation with FastAPI
 - **Containerized**: Full Docker support with multi-stage builds
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -87,7 +87,7 @@ docker-compose -f docker-compose.dev.yml up --build
 2. Click "Start Your Adventure"
 3. Describe your action and watch the AI respond!
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 mistral-realms/
@@ -140,7 +140,7 @@ mistral-realms/
 └── docker-compose.dev.yml      # Development orchestration
 ```
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Backend
 - **Framework**: FastAPI (Python 3.13)
@@ -164,7 +164,7 @@ mistral-realms/
 - **Networking**: Bridge network for service communication
 - **Security**: JWT authentication, password hashing, CORS protection
 
-## 📚 Documentation
+## Documentation
 
 - [Backend Documentation](./backend/README.md)
 - [Frontend Documentation](./frontend/README.md)
@@ -172,7 +172,7 @@ mistral-realms/
 - [API Documentation](./docs/API.md)
 - [Mistral Integration](./docs/MISTRAL-INTEGRATION.md)
 
-## 🧪 Development
+## Development
 
 ### Local Development (without Docker)
 
@@ -232,7 +232,7 @@ docker-compose down -v
 docker-compose up --build --force-recreate
 ```
 
-## 📝 Environment Variables
+## Environment Variables
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
@@ -268,7 +268,7 @@ openssl rand -hex 32
 JWT_SECRET_KEY=your_generated_secret
 ```
 
-## 🎯 Project Status
+## Project Status
 
 This project demonstrates advanced AI integration, full-stack development, and production-ready practices for the Mistral AI internship application.
 
@@ -342,15 +342,15 @@ This project demonstrates advanced AI integration, full-stack development, and p
 - Input validation with Pydantic
 - SQL injection prevention via parameterized queries
 
-## 📄 License
+## License
 
 This project is built as part of a Mistral AI internship application.
 
-## 🤝 Contributing
+## Contributing
 
 This is an application project, but feedback is welcome! Feel free to open issues for suggestions.
 
-## 📧 Contact
+## Contact
 
 Built by [Amine Ouichou](https://github.com/aouichou)
 
