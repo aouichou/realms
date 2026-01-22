@@ -118,21 +118,25 @@ class RollRequest:
         roll_type: Type of roll (attack, save, check, etc.)
         dice_notation: Dice expression (e.g., "d20+5", "2d6")
         ability: Ability score for checks/saves (optional)
+        skill: Skill name for checks (optional)
         dc: Difficulty Class for checks/saves (optional)
         advantage: Roll with advantage (roll twice, take higher)
         disadvantage: Roll with disadvantage (roll twice, take lower)
         description: Human-readable description of the roll
         raw_tag: Original tag text from DM narration
+        is_player_roll: Whether this roll should be made by the player (vs auto-executed)
     """
 
     roll_type: RollType
     dice_notation: str
     ability: Optional[Ability] = None
+    skill: Optional[str] = None
     dc: Optional[int] = None
     advantage: bool = False
     disadvantage: bool = False
     description: str = ""
     raw_tag: str = ""
+    is_player_roll: bool = True
 
 
 class RollParser:
@@ -179,6 +183,7 @@ class RollParser:
             roll_request = cls._parse_roll_details(roll_type_str, details, raw_tag)
 
             if roll_request:
+                roll_request.is_player_roll = cls._determine_if_player_roll(roll_request, narration)
                 roll_requests.append(roll_request)
                 # Remove the tag from narration
                 cleaned_narration = cleaned_narration.replace(raw_tag, "")
@@ -261,6 +266,7 @@ class RollParser:
         # Generate description - use the original skill name if it's more descriptive than the ability
         # For example: "Perception check" is better than "WIS check"
         roll_name = "saving throw" if roll_type == RollType.SAVE else "check"
+        skill = None
 
         # Check if the input was a skill name (not just an ability abbreviation)
         if ability_str in ["str", "dex", "con", "int", "wis", "cha"]:
@@ -280,6 +286,7 @@ class RollParser:
             # Skill name or alternative - capitalize it nicely
             skill_name = ability_str.replace("_", " ").replace("-", " ").title()
             description = f"{skill_name} {roll_name}"
+            skill = ability_str
 
         if dc:
             description += f" (DC {dc})"
@@ -288,6 +295,7 @@ class RollParser:
             roll_type=roll_type,
             dice_notation="d20",  # Ability rolls always use d20
             ability=ability,
+            skill=skill,
             dc=dc,
             advantage=advantage,
             disadvantage=disadvantage,
@@ -336,3 +344,104 @@ class RollParser:
             True if roll tags are present
         """
         return bool(cls.ROLL_TAG_PATTERN.search(narration))
+
+    @classmethod
+    def _determine_if_player_roll(cls, roll_request: RollRequest, narration: str) -> bool:
+        """
+        Determine if a roll should be made by the player or auto-executed by the system.
+
+        Player rolls:
+        - Attacks (player attacking)
+        - Checks (player attempting skills)
+        - Initiative (player's initiative)
+
+        NPC/DM rolls (auto-execute):
+        - Saves (NPCs saving against player spells/effects)
+        - Attacks where NPC is clearly the attacker
+        - Damage from NPC sources
+        """
+        narration_lower = narration.lower()
+
+        if roll_request.roll_type == RollType.INITIATIVE:
+            return True
+
+        if roll_request.roll_type == RollType.CHECK:
+            return True
+
+        if roll_request.roll_type == RollType.SAVE:
+            player_save_indicators = [
+                "you must",
+                "you need to",
+                "make a",
+                "roll a",
+                "you resist",
+                "you attempt to",
+                "try to resist",
+            ]
+            npc_save_indicators = [
+                "they must",
+                "he must",
+                "she must",
+                "it must",
+                "the goblin",
+                "the orc",
+                "the guard",
+                "the bandit",
+                "your target",
+                "creature must",
+                "enemy must",
+            ]
+
+            if any(indicator in narration_lower for indicator in npc_save_indicators):
+                return False
+
+            if any(indicator in narration_lower for indicator in player_save_indicators):
+                return True
+
+            return False
+
+        if roll_request.roll_type == RollType.ATTACK:
+            player_attack_indicators = [
+                "you swing",
+                "you strike",
+                "you attack",
+                "you shoot",
+                "you fire",
+                "you throw",
+                "your blade",
+                "your sword",
+                "your arrow",
+                "your spell",
+            ]
+            npc_attack_indicators = [
+                "attacks you",
+                "swings at you",
+                "strikes at you",
+                "lunges at you",
+                "the goblin attacks",
+                "the orc swings",
+                "it attacks",
+                "they attack",
+            ]
+
+            if any(indicator in narration_lower for indicator in npc_attack_indicators):
+                return False
+
+            if any(indicator in narration_lower for indicator in player_attack_indicators):
+                return True
+
+            return True
+
+        if roll_request.roll_type == RollType.DAMAGE:
+            npc_damage_indicators = [
+                "takes damage",
+                "you take",
+                "hits you",
+            ]
+
+            if any(indicator in narration_lower for indicator in npc_damage_indicators):
+                return False
+
+            return True
+
+        return True

@@ -1,4 +1,5 @@
 import { Message } from "@/lib/api";
+import ReactMarkdown from "react-markdown";
 
 interface ChatMessageProps {
 	message: Message;
@@ -25,12 +26,39 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
 						</span>
 					)}
 					<div className="flex-1">
-						<p className="whitespace-pre-wrap wrap-break-word">
-							{message.content}
+						<div className="whitespace-pre-wrap wrap-break-word">
+							{isUser ? (
+								message.content
+							) : (
+								<ReactMarkdown
+									components={{
+										h3: ({ children }) => (
+											<h3 className="text-lg font-semibold text-gray-100 mt-3 mb-2">
+												{children}
+											</h3>
+										),
+										strong: ({ children }) => (
+											<strong className="font-semibold text-gray-100">{children}</strong>
+										),
+										em: ({ children }) => (
+											<em className="italic text-gray-200">{children}</em>
+										),
+										ul: ({ children }) => (
+											<ul className="list-disc list-inside space-y-1">{children}</ul>
+										),
+										ol: ({ children }) => (
+											<ol className="list-decimal list-inside space-y-1">{children}</ol>
+										),
+										li: ({ children }) => <li className="ml-4">{children}</li>,
+									}}
+								>
+									{message.content}
+								</ReactMarkdown>
+							)}
 							{isStreaming && (
 								<span className="inline-block w-2 h-4 ml-1 bg-current animate-pulse" />
 							)}
-						</p>
+						</div>
 					</div>
 				</div>
 				<div className="mt-2 text-xs opacity-60">

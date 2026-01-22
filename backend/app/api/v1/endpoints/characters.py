@@ -3,10 +3,11 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
-from app.db.models import User
+from app.db.models import GameSession, User
 from app.middleware.auth import get_current_active_user
 from app.observability.tracing import trace_async
 from app.schemas.character import (
@@ -128,16 +129,40 @@ async def update_character(
 
 @router.delete("/{character_id}", status_code=204)
 @trace_async("characters.delete")
-async def delete_character(character_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_character(
+    character_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Delete a character.
 
     Args:
         character_id: Character UUID
+        current_user: Authenticated user
         db: Database session
 
     Raises:
         HTTPException: 404 if character not found
+        HTTPException: 403 if character does not belong to user
+        HTTPException: 409 if character has an active session
     """
+    character = await CharacterService.get_character(db, character_id)
+    if not character:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    if character.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this character")
+
+    active_session_result = await db.execute(
+        select(GameSession).where(
+            GameSession.character_id == character_id,
+            GameSession.is_active.is_(True),
+        )
+    )
+    active_session = active_session_result.scalar_one_or_none()
+    if active_session:
+        raise HTTPException(status_code=409, detail="Cannot delete character with active session")
+
     deleted = await CharacterService.delete_character(db, character_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Character not found")

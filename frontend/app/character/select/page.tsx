@@ -23,6 +23,7 @@ export default function CharacterSelectPage() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [showLoadModal, setShowLoadModal] = useState(false);
+	const [deletingId, setDeletingId] = useState<string | null>(null);
 
 	useEffect(() => {
 		fetchCharacters();
@@ -63,6 +64,44 @@ export default function CharacterSelectPage() {
 	const selectCharacter = (characterId: string) => {
 		localStorage.setItem('selected_character_id', characterId);
 		router.push('/adventure');
+	};
+
+	const deleteCharacter = async (characterId: string, characterName: string) => {
+		if (!window.confirm(`Are you sure you want to delete ${characterName}?`)) {
+			return;
+		}
+
+		try {
+			setDeletingId(characterId);
+			const token = localStorage.getItem('access_token');
+			if (!token) {
+				router.push('/auth/login');
+				return;
+			}
+
+			const response = await fetch(`http://localhost:8000/api/v1/characters/${characterId}`, {
+				method: 'DELETE',
+				headers: {
+					'Authorization': `Bearer ${token}`,
+				},
+			});
+
+			if (response.status === 401) {
+				router.push('/auth/login');
+				return;
+			}
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(errorText || 'Failed to delete character');
+			}
+
+			setCharacters(prev => prev.filter(character => character.id !== characterId));
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Failed to delete character');
+		} finally {
+			setDeletingId(null);
+		}
 	};
 
 	if (loading) {
@@ -134,10 +173,29 @@ export default function CharacterSelectPage() {
 									className="bg-white border-2 border-neutral-200 rounded-lg p-6 cursor-pointer transition-all hover:border-accent-600 hover:shadow-lg hover:scale-105"
 								>
 									<div className="flex items-center justify-between mb-4">
-										<h3 className="text-2xl font-display text-primary-900">{character.name}</h3>
-										<span className="text-sm font-body text-neutral-500 bg-neutral-100 px-3 py-1 rounded-full">
-											{t('character.select.level')} {character.level}
-										</span>
+										<div>
+											<h3 className="text-2xl font-display text-primary-900">{character.name}</h3>
+										</div>
+										<div className="flex items-center gap-2">
+											<span className="text-sm font-body text-neutral-500 bg-neutral-100 px-3 py-1 rounded-full">
+												{t('character.select.level')} {character.level}
+											</span>
+											<button
+												onClick={(event) => {
+													event.stopPropagation();
+													void deleteCharacter(character.id, character.name);
+												}}
+												className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-red-200 text-red-600 hover:bg-red-50"
+												disabled={deletingId === character.id}
+												title={t('character.select.delete') || 'Delete character'}
+											>
+												{deletingId === character.id ? (
+													<span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-red-600"></span>
+												) : (
+													<span>🗑️</span>
+												)}
+											</button>
+										</div>
 									</div>
 									<div className="space-y-2 font-body text-sm">
 										<p className="text-neutral-700">

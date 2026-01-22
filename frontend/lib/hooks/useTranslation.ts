@@ -524,6 +524,7 @@ const translations: Record<Language, any> = {
 				race: "Race",
 				class: "Class",
 				hp: "HP",
+				delete: "Delete character",
 				error: "Failed to fetch characters",
 				retry: "Retry"
 			}
@@ -1075,6 +1076,7 @@ const translations: Record<Language, any> = {
 				race: "Race",
 				class: "Classe",
 				hp: "PV",
+				delete: "Supprimer le personnage",
 				error: "Échec du chargement des personnages",
 				retry: "Réessayer"
 			}

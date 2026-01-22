@@ -8,6 +8,7 @@ import { useTranslation } from '@/lib/hooks/useTranslation';
 import Image from 'next/image';
 import { useParams, useSearchParams } from 'next/navigation';
 import { lazy, useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 // Lazy load heavy components for better initial load
 const AbilityCheckPanel = lazy(() => import('@/components/AbilityCheckPanel').then(mod => ({ default: mod.AbilityCheckPanel })));
@@ -38,6 +39,9 @@ interface Message {
 		skill?: string;
 		dc?: number;
 		dice?: string;
+		advantage?: boolean;
+		disadvantage?: boolean;
+		description?: string;
 		target?: string;
 		reason?: string;
 	};
@@ -64,6 +68,20 @@ interface Character {
 
 type PanelType = 'stats' | 'inventory' | 'dice' | 'combat' | 'spells' | 'checks' | 'companion' | 'images' | null;
 
+const ABILITY_ABBREVIATIONS: Record<string, string> = {
+	str: 'strength',
+	dex: 'dexterity',
+	con: 'constitution',
+	int: 'intelligence',
+	wis: 'wisdom',
+	cha: 'charisma',
+};
+
+const formatSkillLabel = (skill?: string) => {
+	if (!skill) return undefined;
+	return skill.replace(/[_-]/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+};
+
 export default function GamePage() {
 	const params = useParams();
 	const { t } = useTranslation();
@@ -80,6 +98,7 @@ export default function GamePage() {
 	const [diceNotation, setDiceNotation] = useState('1d20');
 	const [lastDiceResult, setLastDiceResult] = useState<any>(null);
 	const [pendingRollRequest, setPendingRollRequest] = useState<Message['roll_request'] | null>(null);
+	const [pendingRollQueue, setPendingRollQueue] = useState<Message['roll_request'][]>([]);
 	const [questCompleteData, setQuestCompleteData] = useState<{ questId: string; title: string; rewards: any } | null>(null);
 	const [showQuestCompleteModal, setShowQuestCompleteModal] = useState(false);
 	const [isStartingSession, setIsStartingSession] = useState(false);
@@ -218,11 +237,16 @@ export default function GamePage() {
 				};
 				setMessages(prev => [...prev, dmMessage]);
 
-				// Store pending roll request if DM asks for a roll
-				if (data.roll_request) {
+				// Store pending roll requests if DM asks for rolls
+				if (data.roll_requests && data.roll_requests.length > 0) {
+					setPendingRollQueue(data.roll_requests);
+					setPendingRollRequest(data.roll_requests[0]);
+				} else if (data.roll_request) {
+					setPendingRollQueue([]);
 					setPendingRollRequest(data.roll_request);
 				} else if (rollResult) {
 					// Clear pending request after sending result
+					setPendingRollQueue([]);
 					setPendingRollRequest(null);
 				}
 
@@ -252,11 +276,61 @@ export default function GamePage() {
 		}
 	};
 
+	const buildDiceRollResult = (rollType: string, result: any) => {
+		const rolls = Array.isArray(result.individual_rolls)
+			? result.individual_rolls.filter((r: any) => !r.dropped).map((r: any) => r.roll)
+			: [];
+		const rollTotal = rolls.reduce((sum: number, value: number) => sum + value, 0);
+
+		return {
+			type: rollType,
+			total: result.total,
+			roll: rolls.length > 0 ? rollTotal : result.total - (result.modifier || 0),
+			modifier: result.modifier || 0,
+			rolls,
+		};
+	};
+
+	const executeSaveRoll = async () => {
+		if (!pendingRollRequest?.ability) return;
+
+		const abilityKey = pendingRollRequest.ability.toLowerCase();
+		const ability = ABILITY_ABBREVIATIONS[abilityKey] || abilityKey;
+
+		try {
+			const response = await apiClient.post('/api/v1/dice/check', {
+				character_id: characterId,
+				ability,
+				skill: null,
+				dc: pendingRollRequest.dc || null,
+				advantage: pendingRollRequest.advantage || false,
+				disadvantage: pendingRollRequest.disadvantage || false,
+				reason: pendingRollRequest.description || null,
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				await handleRollComplete({
+					type: 'save',
+					ability,
+					total: data.total,
+					roll: data.roll,
+					modifier: data.ability_modifier,
+					success: data.success,
+					dc: data.dc,
+				});
+			}
+		} catch (error) {
+			console.error('Error rolling save:', error);
+		}
+	};
+
 	const handleRollComplete = async (rollResult: any) => {
 		if (!pendingRollRequest) return;
 
 		// Auto-send roll result to DM
-		const rollMessage = `I rolled a ${rollResult.total} (${rollResult.roll} + ${rollResult.modifier}) for ${rollResult.skill || rollResult.ability}${rollResult.success !== undefined ? ` and ${rollResult.success ? 'succeeded' : 'failed'}` : ''}`;
+		const rollTarget = rollResult.skill || rollResult.ability || pendingRollRequest.description || pendingRollRequest.type;
+		const rollMessage = `I rolled a ${rollResult.total} (${rollResult.roll} + ${rollResult.modifier}) for ${rollTarget}${rollResult.success !== undefined ? ` and ${rollResult.success ? 'succeeded' : 'failed'}` : ''}`;
 
 		setInputValue(rollMessage);
 		setIsLoading(true);
@@ -290,12 +364,23 @@ export default function GamePage() {
 				};
 				setMessages(prev => [...prev, dmMessage]);
 
-				// Clear pending request after result sent
-				setPendingRollRequest(null);
+				// Clear or advance pending request after result sent
+				if (pendingRollQueue.length > 1) {
+					const [, ...remaining] = pendingRollQueue;
+					setPendingRollQueue(remaining);
+					setPendingRollRequest(remaining[0] || null);
+				} else {
+					setPendingRollQueue([]);
+					setPendingRollRequest(null);
+				}
 				setInputValue('');
 
-				// Store new roll request if DM asks for another
-				if (data.roll_request) {
+				// Store new roll request(s) if DM asks for another
+				if (data.roll_requests && data.roll_requests.length > 0) {
+					setPendingRollQueue(data.roll_requests);
+					setPendingRollRequest(data.roll_requests[0]);
+				} else if (data.roll_request) {
+					setPendingRollQueue([]);
 					setPendingRollRequest(data.roll_request);
 				}
 			}
@@ -308,11 +393,26 @@ export default function GamePage() {
 
 	const rollDice = async () => {
 		try {
-			const response = await apiClient.post('/api/v1/dice/roll', { dice: diceNotation });
+			const notation = pendingRollRequest?.dice || diceNotation;
+			const rollType = pendingRollRequest?.advantage
+				? 'advantage'
+				: pendingRollRequest?.disadvantage
+					? 'disadvantage'
+					: 'normal';
+
+			const response = await apiClient.post('/api/v1/dice/roll', {
+				dice: notation,
+				roll_type: rollType,
+				reason: pendingRollRequest?.description || null,
+			});
 
 			if (response.ok) {
 				const result = await response.json();
 				setLastDiceResult(result);
+
+				if (pendingRollRequest) {
+					await handleRollComplete(buildDiceRollResult(pendingRollRequest.type, result));
+				}
 			}
 		} catch (error) {
 			console.error('Error rolling dice:', error);
@@ -616,9 +716,36 @@ export default function GamePage() {
 										<SceneImage imageUrl={message.scene_image_url} alt="Scene illustration" />
 									)}
 
-									<p className="text-narrative text-white font-body leading-relaxed whitespace-pre-line">
-										{message.content}
-									</p>
+									<div className="text-narrative text-white font-body leading-relaxed whitespace-pre-line">
+										{message.role === 'assistant' ? (
+											<ReactMarkdown
+												components={{
+													h3: ({ children }) => (
+														<h3 className="text-xl font-display text-white mt-3 mb-2">{children}</h3>
+													),
+													strong: ({ children }) => (
+														<strong className="font-semibold text-white">{children}</strong>
+													),
+													em: ({ children }) => (
+														<em className="italic text-white/90">{children}</em>
+													),
+													ul: ({ children }) => (
+														<ul className="list-disc list-inside space-y-1">{children}</ul>
+													),
+													ol: ({ children }) => (
+														<ol className="list-decimal list-inside space-y-1">{children}</ol>
+													),
+													li: ({ children }) => (
+														<li className="ml-4">{children}</li>
+													),
+												}}
+											>
+												{message.content}
+											</ReactMarkdown>
+										) : (
+											message.content
+										)}
+									</div>
 								</div>
 							))}
 							<div ref={messagesEndRef} />
@@ -635,10 +762,10 @@ export default function GamePage() {
 										The DM requests a roll:
 									</p>
 									<p className="text-sm font-body text-white/90">
-										{pendingRollRequest.type === 'ability' && (
+										{(pendingRollRequest.type === 'check' || pendingRollRequest.type === 'ability') && (
 											<>
 												{pendingRollRequest.ability}
-												{pendingRollRequest.skill && ` (${pendingRollRequest.skill})`}
+												{formatSkillLabel(pendingRollRequest.skill) && ` (${formatSkillLabel(pendingRollRequest.skill)})`}
 												{pendingRollRequest.dc && ` check (DC ${pendingRollRequest.dc})`}
 											</>
 										)}
@@ -649,22 +776,40 @@ export default function GamePage() {
 											</>
 										)}
 										{pendingRollRequest.type === 'attack' && (
-											<>Attack roll {pendingRollRequest.target && `against ${pendingRollRequest.target}`}</>
+											<>Attack roll {pendingRollRequest.dice || 'd20'}</>
+										)}
+										{pendingRollRequest.type === 'initiative' && (
+											<>Initiative roll</>
 										)}
 										{pendingRollRequest.type === 'custom' && (
 											<>{pendingRollRequest.dice} {pendingRollRequest.reason && `- ${pendingRollRequest.reason}`}</>
 										)}
 									</p>
-									{pendingRollRequest.reason && pendingRollRequest.type !== 'custom' && (
+									{pendingRollRequest.description && (
 										<p className="text-xs font-body text-white/70 mt-1">
-											{pendingRollRequest.reason}
+											{pendingRollRequest.description}
 										</p>
 									)}
 								</div>
 								<Button
 									variant="outline"
 									size="sm"
-									onClick={() => setOpenPanel(pendingRollRequest.type === 'ability' || pendingRollRequest.type === 'save' ? 'checks' : 'dice')}
+									onClick={() => {
+										if (pendingRollRequest.type === 'check' || pendingRollRequest.type === 'ability') {
+											setOpenPanel('checks');
+											return;
+										}
+
+										if (pendingRollRequest.type === 'save') {
+											void executeSaveRoll();
+											return;
+										}
+
+										if (pendingRollRequest.dice) {
+											setDiceNotation(pendingRollRequest.dice);
+										}
+										setOpenPanel('dice');
+									}}
 									className="border-accent-400/30 text-accent-400 hover:bg-accent-400/20 font-body"
 								>
 									Roll Now

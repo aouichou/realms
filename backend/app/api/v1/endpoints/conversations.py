@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import Character, CharacterQuest, Quest, QuestState
 from app.observability.logger import get_logger, log_context
-from app.observability.tracing import trace_async
+from app.observability.tracing import get_tracer, trace_async
 from app.schemas.dm_response import DMResponse, PlayerActionRequest, RollRequest
 from app.schemas.message import (
     ConversationHistoryResponse,
@@ -388,12 +388,19 @@ async def send_player_action(
         },
     )
 
+    player_roll_request = None
+    player_roll_requests = []
+
     if RollParser.has_roll_tags(narration):
         logger.info(
             "Roll tags detected in DM narration",
             extra={"extra_data": {"session_id": str(session_id), "narration": narration}},
         )
-        cleaned_narration, roll_requests = RollParser.parse_narration(narration)
+        tracer = get_tracer()
+        with tracer.start_as_current_span("rolls.parse_tags") as span:
+            span.set_attribute("rolls.has_tags", True)
+            span.set_attribute("session_id", str(session_id))
+            cleaned_narration, roll_requests = RollParser.parse_narration(narration)
         result["narration"] = cleaned_narration
         logger.info(
             "Parsed roll requests",
@@ -401,13 +408,40 @@ async def send_player_action(
                 "extra_data": {
                     "count": len(roll_requests),
                     "types": [r.roll_type.value for r in roll_requests],
+                    "player_rolls": sum(1 for r in roll_requests if r.is_player_roll),
+                    "npc_rolls": sum(1 for r in roll_requests if not r.is_player_roll),
                 }
             },
         )
 
-        # Execute rolls automatically
+        # Execute NPC rolls automatically, collect player roll requests
         for roll_request in roll_requests:
+            if roll_request.is_player_roll:
+                logger.info(
+                    f"Player roll detected: {roll_request.roll_type.value} - {roll_request.description}",
+                    extra={"extra_data": {"roll_request": roll_request.__dict__}},
+                )
+                player_roll_requests.append(
+                    {
+                        "type": roll_request.roll_type.value,
+                        "dice": roll_request.dice_notation,
+                        "ability": roll_request.ability.value if roll_request.ability else None,
+                        "skill": roll_request.skill,
+                        "dc": roll_request.dc,
+                        "advantage": roll_request.advantage,
+                        "disadvantage": roll_request.disadvantage,
+                        "description": roll_request.description,
+                    }
+                )
+                if player_roll_request is None:
+                    player_roll_request = player_roll_requests[0]
+                continue
+
             try:
+                logger.info(
+                    f"Auto-executing NPC roll: {roll_request.roll_type.value} - {roll_request.description}",
+                    extra={"extra_data": {"roll_request": roll_request.__dict__}},
+                )
                 roll_result = RollExecutor.execute_roll(
                     dice_notation=roll_request.dice_notation,
                     roll_type=roll_request.roll_type,
@@ -419,7 +453,6 @@ async def send_player_action(
                     description=roll_request.description,
                 )
 
-                # Format roll result for frontend
                 roll_requests_data.append(
                     {
                         "type": roll_request.roll_type.value,
@@ -437,20 +470,21 @@ async def send_player_action(
                     }
                 )
             except Exception as e:
-                logger.error(f"Failed to execute roll: {e}")
+                logger.error(f"Failed to execute NPC roll: {e}")
                 # Continue without this roll rather than failing entire request
 
     # Build result with roll data
     response_data = {
         "narration": result["narration"],
         "tokens_used": result["tokens_used"],
-        "roll_request": None,
+        "roll_request": player_roll_request,
+        "roll_requests": player_roll_requests if player_roll_requests else None,
         "quest_complete": result.get("quest_complete"),
         "rolls": roll_requests_data if roll_requests_data else None,
     }
 
     # Check for legacy roll request format (keep for backward compatibility)
-    if result.get("roll_request"):
+    if result.get("roll_request") and player_roll_request is None:
         response_data["roll_request"] = result["roll_request"]
 
     # Generate scene image for significant moments (BEFORE saving messages)
@@ -599,12 +633,15 @@ async def send_player_action(
 
     # Build response
     roll_request = None
-    if result.get("roll_request"):
-        roll_request = RollRequest(**result["roll_request"])
+    if response_data.get("roll_request"):
+        roll_request = RollRequest(**response_data["roll_request"])
 
     return DMResponse(
         response=result["narration"],
         roll_request=roll_request,
+        roll_requests=[RollRequest(**req) for req in response_data["roll_requests"]]
+        if response_data.get("roll_requests")
+        else None,
         quest_complete_id=result.get("quest_complete_id"),
         scene_image_url=scene_image_url,
         tokens_used=result["tokens_used"],
