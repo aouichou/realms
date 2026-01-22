@@ -121,7 +121,9 @@ async def process_round_end(
 @router.post("/character/{character_id}/rest")
 async def process_rest(
     character_id: UUID,
-    rest_type: str = Query(..., regex="^(short|long)$", description="Type of rest: short or long"),
+    rest_type: str = Query(
+        ..., pattern="^(short|long)$", description="Type of rest: short or long"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """
