@@ -298,12 +298,12 @@ export default function CharacterCreation() {
 			if (response.ok) {
 				setMotivation(selectedMotivation);
 				showToast(t('characterCreation.toasts.motivationSuccess'), 'success');
-				// Move to spell selection if spellcaster, otherwise finish
+				// Move to spell selection if spellcaster, otherwise redirect to adventure selection
 				if (['bard', 'cleric', 'druid', 'sorcerer', 'warlock', 'wizard'].includes(selectedClass)) {
 					setCurrentStep(5);
 				} else {
-					// Navigate to game
-					setTimeout(() => router.push(`/game/${characterId}`), 1000);
+					// Navigate to adventure selection page (not directly to game)
+					setTimeout(() => router.push(`/adventure/select/${characterId}`), 1000);
 				}
 			} else {
 				showToast(t('characterCreation.toasts.motivationFailed'), 'error');
