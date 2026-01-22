@@ -20,6 +20,7 @@ from app.schemas.message import (
 from app.services.context_window_manager import get_context_manager
 from app.services.conversation_service import ConversationService
 from app.services.dm_engine import DMEngine
+from app.services.image_detection_service import get_image_detection_service
 from app.services.memory_capture import MemoryCaptureService
 from app.services.redis_service import session_service
 from app.services.roll_executor import RollExecutor
@@ -31,69 +32,8 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
-def _is_significant_scene(narration: str, player_action: str) -> bool:
-    """Determine if scene warrants image generation
-
-    Generate images for:
-    - Combat starts
-    - New locations entered
-    - Boss/important NPC encounters
-    - Quest milestones
-    - Dramatic moments
-    """
-    combined = (narration + " " + player_action).lower()
-
-    significant_keywords = [
-        # Combat
-        "combat begins",
-        "roll initiative",
-        "attacks you",
-        "draws weapon",
-        "battle erupts",
-        # Locations - More comprehensive
-        "you enter",
-        "you arrive at",
-        "you step into",
-        "you find yourself in",
-        "burst in",
-        "sprint toward",
-        "door leads into",
-        "before you lies",
-        "chamber",
-        "throne room",
-        "dungeon",
-        "temple",
-        "cavern",
-        "shop",
-        "tavern",
-        "market",
-        "town square",
-        "alleyway",
-        "forest",
-        "ruins",
-        # NPCs/Enemies
-        "dragon",
-        "towering before you",
-        "emerges from",
-        "boss",
-        "appears suddenly",
-        "looms over",
-        # Dramatic moments
-        "explosion",
-        "magical energy",
-        "portal opens",
-        "ancient artifact",
-        "treasure hoard",
-    ]
-
-    is_significant = any(keyword in combined for keyword in significant_keywords)
-
-    # Debug logging
-    if is_significant:
-        matched = [kw for kw in significant_keywords if kw in combined]
-        logger.info(f"Significant scene detected! Matched keywords: {matched}")
-
-    return is_significant
+# Initialize image detection service (lazy-loaded singleton)
+image_detection_service = get_image_detection_service()
 
 
 @router.post("/messages", response_model=MessageResponse, status_code=201)
@@ -275,6 +215,19 @@ async def send_player_action(
                             }
                         },
                     )
+
+                    # GAME-DESIGN.md: Store summary as memory with vector embedding
+                    if summary_context and session_id:
+                        try:
+                            await MemoryCaptureService.capture_summary(
+                                db=db,
+                                session_id=session_id,
+                                summary=summary_context,
+                                message_count=len(all_messages),
+                            )
+                        except Exception as mem_err:
+                            logger.warning(f"Failed to capture summary memory: {mem_err}")
+
                 except Exception as e:
                     logger.warning(
                         "Failed to summarize conversation", extra={"extra_data": {"error": str(e)}}
@@ -501,10 +454,20 @@ async def send_player_action(
         response_data["roll_request"] = result["roll_request"]
 
     # Generate scene image for significant moments (BEFORE saving messages)
+    # Uses semantic similarity detection - works in any language (French, English, etc.)
     scene_image_url = None
-    if _is_significant_scene(result["narration"], request.action):
+    is_significant, similarity_score, matched_template = (
+        image_detection_service.is_significant_scene(
+            narration=result["narration"], player_action=request.action
+        )
+    )
+
+    if is_significant:
         try:
-            logger.info("Significant scene detected, generating image...")
+            logger.info(
+                f"Generating image for significant scene "
+                f"(similarity: {similarity_score:.3f}, template: '{matched_template}')"
+            )
             from app.services.image_service import image_service
 
             # Build character context for image

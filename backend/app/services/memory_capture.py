@@ -1,5 +1,6 @@
 """Memory capture hooks for automatic event recording"""
 
+import re
 from typing import List, Optional
 from uuid import UUID
 
@@ -104,6 +105,139 @@ class MemoryCaptureService:
 
         except Exception as e:
             logger.error("Failed to capture dialogue memory: %s", e)
+
+    @staticmethod
+    async def capture_summary(
+        db: AsyncSession,
+        session_id: UUID,
+        summary: str,
+        message_count: int,
+        importance: Optional[int] = None,
+    ):
+        """Capture conversation summary as memory (GAME-DESIGN.md: Auto-Summarization)
+
+        Stores AI-generated summary with vector embedding every 10+ messages.
+        Extracts and tags NPCs, locations, and items from the summary.
+
+        Args:
+            db: Database session
+            session_id: Game session ID
+            summary: AI-generated summary text
+            message_count: Number of messages summarized
+            importance: Optional importance override (default: 8 for summaries)
+        """
+        try:
+            # Extract entities from summary
+            npcs = MemoryCaptureService._extract_npcs(summary)
+            locations = MemoryCaptureService._extract_locations(summary)
+            items = MemoryCaptureService._extract_items(summary)
+
+            # Summaries are important context
+            if importance is None:
+                importance = 8
+
+            content = f"Summary of {message_count} messages: {summary}"
+
+            await MemoryService.store_memory(
+                db=db,
+                session_id=session_id,
+                event_type=EventType.SUMMARY,
+                content=content,
+                importance=importance,
+                tags=["summary", f"messages_{message_count}"],
+                npcs_involved=npcs,
+                locations=locations,
+                items_involved=items,
+            )
+
+            logger.info(
+                "Captured summary memory for session %s (entities: %d NPCs, %d locations, %d items)",
+                session_id,
+                len(npcs),
+                len(locations),
+                len(items),
+            )
+
+        except Exception as e:
+            logger.error("Failed to capture summary memory: %s", e)
+
+    @staticmethod
+    def _extract_npcs(text: str) -> List[str]:
+        """Extract NPC names from text using heuristics
+
+        Args:
+            text: Text to analyze
+
+        Returns:
+            List of potential NPC names
+        """
+        npcs = []
+
+        # Pattern 1: "NPC_NAME said/asked/told/replied"
+        dialogue_pattern = r"\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(?:said|asked|told|replied|mentioned|explained|warned)"
+        npcs.extend(re.findall(dialogue_pattern, text))
+
+        # Pattern 2: "met NPC_NAME" or "spoke with NPC_NAME"
+        meeting_pattern = (
+            r"(?:met|spoke with|talked to|encountered)\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)"
+        )
+        npcs.extend(re.findall(meeting_pattern, text))
+
+        # Pattern 3: Common NPC titles
+        title_pattern = r"(?:the\s+)?([A-Z][a-z]+)\s+(?:Mayor|Captain|Guard|Merchant|Innkeeper|Blacksmith|Priest|Wizard)"
+        npcs.extend(re.findall(title_pattern, text))
+
+        # Deduplicate and limit
+        unique_npcs = list(dict.fromkeys(npcs))  # Preserve order
+        return unique_npcs[:10]  # Max 10 NPCs
+
+    @staticmethod
+    def _extract_locations(text: str) -> List[str]:
+        """Extract location names from text
+
+        Args:
+            text: Text to analyze
+
+        Returns:
+            List of location names
+        """
+        locations = []
+
+        # Pattern 1: "in/at/to LOCATION_NAME"
+        location_pattern = r"(?:in|at|to|from|entered|left|arrived at)\s+(?:the\s+)?([A-Z][a-z]+(?:\s[A-Z][a-z]+)?(?:\s[A-Z][a-z]+)?)"
+        locations.extend(re.findall(location_pattern, text))
+
+        # Pattern 2: Common location words
+        place_pattern = r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(?:Cave|Forest|Castle|Village|Town|City|Temple|Tavern|Inn|Mountain|River)"
+        locations.extend(re.findall(place_pattern, text))
+
+        # Deduplicate and limit
+        unique_locations = list(dict.fromkeys(locations))
+        return unique_locations[:8]  # Max 8 locations
+
+    @staticmethod
+    def _extract_items(text: str) -> List[str]:
+        """Extract item names from text
+
+        Args:
+            text: Text to analyze
+
+        Returns:
+            List of item names
+        """
+        items = []
+
+        # Pattern 1: "found/acquired/obtained ITEM"
+        acquisition_pattern = r"(?:found|acquired|obtained|received|picked up|looted)\s+(?:a|an|the)?\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)"
+        items.extend(re.findall(acquisition_pattern, text))
+
+        # Pattern 2: Common item types
+        item_pattern = r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(?:Sword|Shield|Potion|Scroll|Ring|Amulet|Key|Map|Book|Gem)"
+        items.extend(re.findall(item_pattern, text))
+
+        # Deduplicate and limit
+        unique_items = list(dict.fromkeys(items))
+        return unique_items[:10]  # Max 10 items
 
     @staticmethod
     async def capture_discovery(
