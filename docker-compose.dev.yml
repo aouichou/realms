@@ -163,8 +163,7 @@ networks:
 
 volumes:
   postgres-data:
-    external: true
-    name: realms_postgres-data
+    driver: local
   redis-data:
     driver: local
   prometheus-data:
