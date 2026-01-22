@@ -170,7 +170,34 @@ When the player has completed all objectives of their current quest, recognize t
 Include this EXACT tag to trigger reward distribution:
 [QUEST_COMPLETE: quest_id="<quest_id>"]
 
-You will be told the quest_id in the character context. After completing a quest, narrate the victory and what comes next.""",
+You will be told the quest_id in the character context. After completing a quest, narrate the victory and what comes next.
+
+═══════════════════════════════════════════════════════════
+🎯 D&D 5E CORE RULES - ALWAYS REMEMBER THESE
+═══════════════════════════════════════════════════════════
+
+YOU ARE THE DUNGEON MASTER. You enforce D&D 5th Edition rules STRICTLY.
+
+KEY RULES YOU MUST NEVER FORGET:
+1. Attacks require [ROLL:attack:d20+MOD] tags
+2. Spell saving throws require [ROLL:save:ability:DCX] tags
+3. Skill checks require [ROLL:check:skill:DCX] tags when outcome is uncertain
+4. Ability checks use the SIX abilities: STR, DEX, CON, INT, WIS, CHA
+5. Difficulty Classes: Easy=10, Moderate=15, Hard=20, Very Hard=25
+6. Combat uses initiative order, actions/bonus actions/movement/reactions
+7. Spellcasters have limited spell slots - track them!
+8. Concentration spells drop if caster takes damage or casts another concentration spell
+9. Death saves at 0 HP: 3 successes = stable, 3 failures = dead
+10. Advantage = roll twice take higher, Disadvantage = roll twice take lower
+
+IF YOU HAVEN'T CALLED FOR A ROLL IN THE LAST 5 RESPONSES:
+Check if the current action needs one! You may be forgetting the roll tags.
+
+IF THE NARRATIVE FEELS TOO EASY OR SMOOTH:
+Remember: D&D has challenges, danger, and uncertain outcomes. Use rolls!
+
+═══════════════════════════════════════════════════════════
+""",
         "fr": """Vous êtes un Maître du Donjon expert menant une aventure de D&D 5ème édition. Vous êtes l'arbitre des règles et le narrateur.
 
 ⚠️⚠️⚠️ CRITIQUE: LES BALISES DE JETS DE DÉS SONT OBLIGATOIRES ⚠️⚠️⚠️
@@ -299,7 +326,34 @@ Lorsque le joueur a terminé tous les objectifs de sa quête actuelle, reconnais
 Incluez cette balise EXACTE pour déclencher la distribution des récompenses:
 [QUEST_COMPLETE: quest_id="<quest_id>"]
 
-L'identifiant de quête vous sera fourni dans le contexte du personnage. Après avoir terminé une quête, racontez la victoire et ce qui vient ensuite.""",
+L'identifiant de quête vous sera fourni dans le contexte du personnage. Après avoir terminé une quête, racontez la victoire et ce qui vient ensuite.
+
+═══════════════════════════════════════════════════════════
+🎯 D&D 5E CORE RULES - ALWAYS REMEMBER THESE
+═══════════════════════════════════════════════════════════
+
+YOU ARE THE DUNGEON MASTER. You enforce D&D 5th Edition rules STRICTLY.
+
+KEY RULES YOU MUST NEVER FORGET:
+1. Attacks require [ROLL:attack:d20+MOD] tags
+2. Spell saving throws require [ROLL:save:ability:DCX] tags
+3. Skill checks require [ROLL:check:skill:DCX] tags when outcome is uncertain
+4. Ability checks use the SIX abilities: STR, DEX, CON, INT, WIS, CHA
+5. Difficulty Classes: Easy=10, Moderate=15, Hard=20, Very Hard=25
+6. Combat uses initiative order, actions/bonus actions/movement/reactions
+7. Spellcasters have limited spell slots - track them!
+8. Concentration spells drop if caster takes damage or casts another concentration spell
+9. Death saves at 0 HP: 3 successes = stable, 3 failures = dead
+10. Advantage = roll twice take higher, Disadvantage = roll twice take lower
+
+IF YOU HAVEN'T CALLED FOR A ROLL IN THE LAST 5 RESPONSES:
+Check if the current action needs one! You may be forgetting the roll tags.
+
+IF THE NARRATIVE FEELS TOO EASY OR SMOOTH:
+Remember: D&D has challenges, danger, and uncertain outcomes. Use rolls!
+
+═══════════════════════════════════════════════════════════
+""",
     }
 
     def __init__(self):
@@ -540,6 +594,33 @@ L'identifiant de quête vous sera fourni dans le contexte du personnage. Après 
         if memory_context:
             memory_msg = f"RELEVANT PAST EVENTS:\n{memory_context}"
             messages.append({"role": "system", "content": memory_msg})
+
+        # Check conversation length and inject rule reminder if getting long
+        history_length = len(conversation_history) if conversation_history else 0
+
+        # Periodic rule reminder every 10 exchanges to maintain rule adherence
+        if history_length > 0 and history_length % 10 == 0:
+            rule_reminder = """
+⚠️ RULE REMINDER: You are the D&D 5E Dungeon Master. Remember:
+• Uncertain actions require [ROLL:...] tags
+• Combat = initiative, attacks need rolls
+• Spells with saves require [ROLL:save:ability:DCX]
+• Set appropriate DCs (Easy=10, Moderate=15, Hard=20)
+• Track spell slots and resources
+• Maintain D&D 5E mechanics throughout
+"""
+            messages.append({"role": "system", "content": rule_reminder})
+            logger.info(f"Injected rule reminder at message count: {history_length}")
+
+        # Warn if approaching context limit (suggest session reset)
+        if history_length >= 25:
+            context_warning = """
+⚠️ CONTEXT WARNING: Conversation is becoming very long ({count} messages).
+Consider finding a natural break point to end this session.
+Long conversations may degrade quality. Suggest resting or reaching a milestone.
+""".format(count=history_length)
+            messages.append({"role": "system", "content": context_warning})
+            logger.warning(f"Long conversation detected: {history_length} messages")
 
         # Add conversation history
         if conversation_history:
