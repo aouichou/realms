@@ -49,6 +49,9 @@ prometheus-client==0.21.1
 # Internationalization
 babel==2.16.0
 
+# Semantic Similarity for Image Detection
+-r requirements-transformers.txt
+
 # Development & Testing
 pytest==9.0.2
 pytest-asyncio==1.3.0
