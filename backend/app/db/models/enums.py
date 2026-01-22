@@ -116,6 +116,7 @@ class EventType(str, PyEnum):
     NPC_INTERACTION = "npc_interaction"
     LOOT = "loot"
     LOCATION = "location"
+    SUMMARY = "summary"  # AI-generated conversation summary
     OTHER = "other"
 
 
