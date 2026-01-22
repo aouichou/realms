@@ -12,7 +12,9 @@ from app.observability.logger import get_logger
 from app.observability.metrics import metrics
 from app.observability.tracing import trace_async
 from app.services.ai_provider import ProviderUnavailableError, RateLimitError
+from app.services.message_summarizer import MessageSummarizer
 from app.services.provider_selector import provider_selector
+from app.services.token_counter import TokenCounter
 
 logger = get_logger(__name__)
 
@@ -359,6 +361,7 @@ Remember: D&D has challenges, danger, and uncertain outcomes. Use rolls!
     def __init__(self):
         """Initialize DM Engine"""
         self.provider_selector = provider_selector
+        self.summarizer = MessageSummarizer()
         logger.info("DM Engine initialized with multilingual support and multi-provider AI")
 
     def get_system_prompt(self, language: str = "en") -> str:
@@ -554,7 +557,7 @@ Remember: D&D has challenges, danger, and uncertain outcomes. Use rolls!
 
         return description
 
-    def _build_messages(
+    async def _build_messages(
         self,
         user_message: str,
         conversation_history: Optional[List[Dict[str, str]]] = None,
@@ -624,10 +627,36 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
 
         # Add conversation history
         if conversation_history:
+            # RL-108: Summarize old messages if conversation is long
+            # This helps prevent context overflow and DM forgetting details
+            conversation_history = await self.summarizer.summarize_if_needed(
+                messages=conversation_history, current_context=memory_context or ""
+            )
             messages.extend(conversation_history)
 
         # Add current user message
         messages.append({"role": "user", "content": user_message})
+
+        # ═══════════════════════════════════════════════════════════
+        # RL-109: Context Window Management with Token Counting
+        # ═══════════════════════════════════════════════════════════
+
+        # Log token statistics
+        token_stats = TokenCounter.get_token_stats(messages)
+        logger.info(
+            f"Context stats: {token_stats['message_count']} messages, "
+            f"{token_stats['total_tokens']} tokens "
+            f"({token_stats['percent_of_4k_context']}% of 4K context)"
+        )
+
+        # Check if messages fit in context window
+        if not TokenCounter.fits_in_context(messages):
+            logger.warning(
+                f"Context window exceeded! "
+                f"{token_stats['total_tokens']} tokens > 3000 limit. "
+                f"Truncating..."
+            )
+            messages = TokenCounter.truncate_to_fit(messages)
 
         return messages
 
@@ -694,7 +723,7 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
         """
         start_time = time.time()
         try:
-            messages = self._build_messages(
+            messages = await self._build_messages(
                 user_action,
                 conversation_history,
                 character_context,
@@ -807,7 +836,7 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
             MistralAPIError: If API call fails
         """
         try:
-            messages = self._build_messages(
+            messages = await self._build_messages(
                 user_action,
                 conversation_history,
                 character_context,
