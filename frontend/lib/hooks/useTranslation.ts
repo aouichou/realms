@@ -525,6 +525,7 @@ const translations: Record<Language, any> = {
 				class: "Class",
 				hp: "HP",
 				delete: "Delete character",
+				confirmDelete: "Are you sure you want to delete {name}? This action cannot be undone.",
 				error: "Failed to fetch characters",
 				retry: "Retry"
 			}
@@ -1077,6 +1078,7 @@ const translations: Record<Language, any> = {
 				class: "Classe",
 				hp: "PV",
 				delete: "Supprimer le personnage",
+				confirmDelete: "Êtes-vous sûr de vouloir supprimer {name} ? Cette action est irréversible.",
 				error: "Échec du chargement des personnages",
 				retry: "Réessayer"
 			}

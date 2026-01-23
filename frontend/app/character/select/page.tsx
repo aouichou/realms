@@ -67,7 +67,8 @@ export default function CharacterSelectPage() {
 	};
 
 	const deleteCharacter = async (characterId: string, characterName: string) => {
-		if (!window.confirm(`Are you sure you want to delete ${characterName}?`)) {
+		const confirmMessage = t('character.select.confirmDelete').replace('{name}', characterName);
+		if (!window.confirm(confirmMessage)) {
 			return;
 		}
 

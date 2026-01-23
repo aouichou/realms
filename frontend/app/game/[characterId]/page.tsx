@@ -97,7 +97,26 @@ export default function GamePage() {
 	const [openPanel, setOpenPanel] = useState<PanelType>(null);
 	const [diceNotation, setDiceNotation] = useState('1d20');
 	const [lastDiceResult, setLastDiceResult] = useState<any>(null);
+	/**
+	 * Current roll request being processed by the player.
+	 * When null, no roll is pending.
+	 */
 	const [pendingRollRequest, setPendingRollRequest] = useState<Message['roll_request'] | null>(null);
+
+	/**
+	 * Queue of roll requests from the DM that need to be processed sequentially.
+	 * The DM can request multiple rolls in one response (e.g., "Make a Stealth check and a Perception check").
+	 * This queue ensures rolls are processed one at a time:
+	 * 1. First roll is shown to player for input
+	 * 2. After player submits result, queue advances to next roll
+	 * 3. Queue clears when all rolls are complete
+	 *
+	 * Example flow:
+	 * - DM: "Roll Stealth (DC 15) and Perception (DC 12)"
+	 * - Queue: [stealth_roll, perception_roll]
+	 * - Player rolls stealth → queue: [perception_roll]
+	 * - Player rolls perception → queue: []
+	 */
 	const [pendingRollQueue, setPendingRollQueue] = useState<Message['roll_request'][]>([]);
 	const [questCompleteData, setQuestCompleteData] = useState<{ questId: string; title: string; rewards: any } | null>(null);
 	const [showQuestCompleteModal, setShowQuestCompleteModal] = useState(false);

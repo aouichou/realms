@@ -138,10 +138,10 @@ class Character(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
-
-    # Relationships
-    user = relationship("User", back_populates="characters")
-    player_sessions = relationship(
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True, default=None, index=True, comment="Soft delete timestamp"
+    )
+    game_sessions = relationship(
         "GameSession",
         back_populates="character",
         foreign_keys="GameSession.character_id",

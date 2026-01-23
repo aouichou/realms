@@ -1,6 +1,7 @@
 """Character service for business logic."""
 
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -153,22 +154,29 @@ class CharacterService:
 
     @staticmethod
     async def get_character(db: AsyncSession, character_id: UUID) -> Optional[Character]:
-        """Get a character by ID."""
-        result = await db.execute(select(Character).where(Character.id == character_id))
+        """Get a character by ID (excludes soft-deleted characters)."""
+        result = await db.execute(
+            select(Character).where(Character.id == character_id, Character.deleted_at.is_(None))
+        )
         return result.scalar_one_or_none()
 
     @staticmethod
     async def get_user_characters(
         db: AsyncSession, user_id: UUID, skip: int = 0, limit: int = 100
     ) -> tuple[list[Character], int]:
-        """Get all characters for a user with pagination."""
-        # Get total count
-        count_result = await db.execute(select(Character).where(Character.user_id == user_id))
+        """Get all characters for a user with pagination (excludes soft-deleted)."""
+        # Get total count (exclude soft-deleted)
+        count_result = await db.execute(
+            select(Character).where(Character.user_id == user_id, Character.deleted_at.is_(None))
+        )
         total = len(count_result.all())
 
-        # Get paginated results
+        # Get paginated results (exclude soft-deleted)
         result = await db.execute(
-            select(Character).where(Character.user_id == user_id).offset(skip).limit(limit)
+            select(Character)
+            .where(Character.user_id == user_id, Character.deleted_at.is_(None))
+            .offset(skip)
+            .limit(limit)
         )
         characters = result.scalars().all()
         return list(characters), total
@@ -192,12 +200,17 @@ class CharacterService:
 
     @staticmethod
     async def delete_character(db: AsyncSession, character_id: UUID) -> bool:
-        """Delete a character."""
+        """Soft delete a character by setting deleted_at timestamp.
+
+        Soft delete maintains referential integrity and provides audit trail.
+        Character data is retained but excluded from normal queries.
+        """
         character = await CharacterService.get_character(db, character_id)
         if not character:
             return False
 
-        await db.delete(character)
+        # Soft delete: set timestamp instead of removing record
+        character.deleted_at = datetime.now(timezone.utc)
         await db.commit()
         return True
 
