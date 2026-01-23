@@ -38,6 +38,7 @@ pip-delete-this-directory.txt
 htmlcov/
 .mypy_cache/
 .ruff_cache/
+backend/logs/
 
 # ===================================
 # Frontend (Next.js/TypeScript)
