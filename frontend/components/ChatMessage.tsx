@@ -1,12 +1,14 @@
 import { Message } from "@/lib/api";
 import ReactMarkdown from "react-markdown";
+import { TypewriterText } from "./TypewriterText";
 
 interface ChatMessageProps {
 	message: Message;
 	isStreaming?: boolean;
+	enableTypewriter?: boolean; // Enable typewriter effect for DM messages
 }
 
-export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
+export function ChatMessage({ message, isStreaming, enableTypewriter = false }: ChatMessageProps) {
 	const isUser = message.role === "user";
 
 	return (
@@ -29,6 +31,44 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
 						<div className="whitespace-pre-wrap wrap-break-word">
 							{isUser ? (
 								message.content
+							) : enableTypewriter ? (
+								<TypewriterText
+									text={message.content}
+									speed={75}
+									skipAnimation={isStreaming}
+								>
+									{(displayedText, isComplete) => (
+										<>
+											<ReactMarkdown
+												components={{
+													h3: ({ children }) => (
+														<h3 className="text-lg font-semibold text-gray-100 mt-3 mb-2">
+															{children}
+														</h3>
+													),
+													strong: ({ children }) => (
+														<strong className="font-semibold text-gray-100">{children}</strong>
+													),
+													em: ({ children }) => (
+														<em className="italic text-gray-200">{children}</em>
+													),
+													ul: ({ children }) => (
+														<ul className="list-disc list-inside space-y-1">{children}</ul>
+													),
+													ol: ({ children }) => (
+														<ol className="list-decimal list-inside space-y-1">{children}</ol>
+													),
+													li: ({ children }) => <li className="ml-4">{children}</li>,
+												}}
+											>
+												{displayedText}
+											</ReactMarkdown>
+											{!isComplete && (
+												<span className="inline-block w-1 h-4 ml-0.5 bg-purple-400 animate-pulse" />
+											)}
+										</>
+									)}
+								</TypewriterText>
 							) : (
 								<ReactMarkdown
 									components={{

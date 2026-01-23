@@ -9,6 +9,7 @@ import Image from 'next/image';
 import { useParams, useSearchParams } from 'next/navigation';
 import { lazy, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { TypewriterText } from '@/components/TypewriterText';
 
 // Lazy load heavy components for better initial load
 const AbilityCheckPanel = lazy(() => import('@/components/AbilityCheckPanel').then(mod => ({ default: mod.AbilityCheckPanel })));
@@ -737,30 +738,39 @@ export default function GamePage() {
 
 									<div className="text-narrative text-white font-body leading-relaxed whitespace-pre-line">
 										{message.role === 'assistant' ? (
-											<ReactMarkdown
-												components={{
-													h3: ({ children }) => (
-														<h3 className="text-xl font-display text-white mt-3 mb-2">{children}</h3>
-													),
-													strong: ({ children }) => (
-														<strong className="font-semibold text-white">{children}</strong>
-													),
-													em: ({ children }) => (
-														<em className="italic text-white/90">{children}</em>
-													),
-													ul: ({ children }) => (
-														<ul className="list-disc list-inside space-y-1">{children}</ul>
-													),
-													ol: ({ children }) => (
-														<ol className="list-decimal list-inside space-y-1">{children}</ol>
-													),
-													li: ({ children }) => (
-														<li className="ml-4">{children}</li>
-													),
-												}}
-											>
-												{message.content}
-											</ReactMarkdown>
+											<TypewriterText text={message.content} speed={75}>
+												{(displayedText, isComplete) => (
+													<>
+														<ReactMarkdown
+															components={{
+																h3: ({ children }) => (
+																	<h3 className="text-xl font-display text-white mt-3 mb-2">{children}</h3>
+																),
+																strong: ({ children }) => (
+																	<strong className="font-semibold text-white">{children}</strong>
+																),
+																em: ({ children }) => (
+																	<em className="italic text-white/90">{children}</em>
+																),
+																ul: ({ children }) => (
+																	<ul className="list-disc list-inside space-y-1">{children}</ul>
+																),
+																ol: ({ children }) => (
+																	<ol className="list-decimal list-inside space-y-1">{children}</ol>
+																),
+																li: ({ children }) => (
+																	<li className="ml-4">{children}</li>
+																),
+															}}
+														>
+															{displayedText}
+														</ReactMarkdown>
+														{!isComplete && (
+															<span className="inline-block w-1 h-4 ml-0.5 bg-purple-400 animate-pulse" />
+														)}
+													</>
+												)}
+											</TypewriterText>
 										) : (
 											message.content
 										)}
