@@ -29,7 +29,7 @@ class ImageDetectionService:
 
     # Multilingual model: supports 50+ languages, ~420MB
     MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
-    SIMILARITY_THRESHOLD = 0.60  # Scenes scoring above this get images
+    SIMILARITY_THRESHOLD = 0.35  # Lowered from 0.45 for better detection
 
     # OPTIMIZATION: Threads for CPU inference (adjust based on container resources)
     # Default to 2 threads for typical container limits, or use all cores if available
@@ -45,6 +45,11 @@ class ImageDetectionService:
         "The adventurers enter a new location or building",
         "Arriving at a significant place like a tavern, temple, or dungeon",
         "Stepping into a chamber, throne room, or important area",
+        # Investigation & Discovery
+        "Investigating clues, tracks, or examining an abandoned cart or scene",
+        "Discovering mysterious tracks, footprints, or signs of passage",
+        "Examining a crime scene, wreckage, or suspicious area",
+        "Finding a hidden note, message, or important clue",
         # Boss encounters / Important NPCs
         "A dragon or powerful enemy appears before the party",
         "An important character emerges or is discovered",
@@ -160,6 +165,14 @@ class ImageDetectionService:
                 matched_template = self.SCENE_TEMPLATES[best_match_idx]
 
                 is_significant = max_similarity >= self.SIMILARITY_THRESHOLD
+
+                # Log all attempts for debugging
+                logger.info(
+                    f"Image detection: similarity={max_similarity:.3f}, "
+                    f"threshold={self.SIMILARITY_THRESHOLD}, "
+                    f"significant={is_significant}, "
+                    f"template='{matched_template}'"
+                )
 
                 # Detailed logging
                 if is_significant:

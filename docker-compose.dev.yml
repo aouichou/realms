@@ -51,6 +51,7 @@ services:
       - ./backend/scripts:/app/scripts:rw
       - ./backend/data:/app/data:rw
       - ./backend/media:/app/media  # For generated images and other media files
+      - ./backend/logs:/app/logs  # For error logs and other application logs
     environment:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
@@ -94,6 +95,8 @@ services:
       - ./frontend/components:/app/components
       - ./frontend/lib:/app/lib
       - ./frontend/public:/app/public
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/package-lock.json:/app/package-lock.json
       - /app/node_modules
       - /app/.next
     environment:

@@ -94,6 +94,12 @@
     "welcomeCreate": "Bienvenue ! Créez votre personnage."
   },
   "game": {
+    "startScreen": {
+      "title": "Prêt à Commencer Votre Aventure ?",
+      "description": "Cliquez ci-dessous pour commencer votre session avec le MJ IA",
+      "startButton": "Commencer l'Aventure",
+      "starting": "Démarrage..."
+    },
     "panels": {
       "stats": "⚔️ Statistiques du personnage",
       "inventory": "🎒 Inventaire",
@@ -110,6 +116,7 @@
       "placeholder": "ex: 1d20, 2d6+3",
       "rollDice": "Lancer les dés",
       "rolls": "Lancers :"
-    }
+    },
+    "dmThinking": "Le MJ réfléchit..."
   }
 }

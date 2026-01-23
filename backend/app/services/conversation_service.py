@@ -35,7 +35,7 @@ class ConversationService:
         )
 
         db.add(message)
-        await db.commit()
+        await db.flush()  # Flush to get ID but don't commit - let endpoint handle commit
         await db.refresh(message)
         return message
 

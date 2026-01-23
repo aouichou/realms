@@ -55,20 +55,20 @@ export default function RegisterPage() {
 		<div className="min-h-screen flex items-center justify-center bg-linear-to-br from-neutral-900 via-neutral-800 to-neutral-900 p-4">
 			<Card className="w-full max-w-md">
 				<CardHeader className="space-y-2 text-center">
-				<CardTitle className="font-display text-3xl">{t('auth.register.title')}</CardTitle>
-				<CardDescription className="font-body">
-					{t('auth.register.subtitle')}
+					<CardTitle className="font-display text-3xl">{t('auth.register.title')}</CardTitle>
+					<CardDescription className="font-body">
+						{t('auth.register.subtitle')}
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<form onSubmit={handleRegister} className="space-y-4">
 						<div className="space-y-2">
-						<Label htmlFor="email">{t('auth.register.email')}</Label>
-						<Input
-							id="email"
-							name="email"
-							type="email"
-							placeholder={t('auth.register.emailPlaceholder')}
+							<Label htmlFor="email">{t('auth.register.email')}</Label>
+							<Input
+								id="email"
+								name="email"
+								type="email"
+								placeholder={t('auth.register.emailPlaceholder')}
 								value={formData.email}
 								onChange={handleChange}
 								required
@@ -76,12 +76,12 @@ export default function RegisterPage() {
 						</div>
 
 						<div className="space-y-2">
-						<Label htmlFor="username">{t('auth.register.username')}</Label>
-						<Input
-							id="username"
-							name="username"
-							type="text"
-							placeholder={t('auth.register.usernamePlaceholder')}
+							<Label htmlFor="username">{t('auth.register.username')}</Label>
+							<Input
+								id="username"
+								name="username"
+								type="text"
+								placeholder={t('auth.register.usernamePlaceholder')}
 								value={formData.username}
 								onChange={handleChange}
 								required
@@ -91,12 +91,12 @@ export default function RegisterPage() {
 						</div>
 
 						<div className="space-y-2">
-						<Label htmlFor="password">{t('auth.register.password')}</Label>
-						<Input
-							id="password"
-							name="password"
-							type="password"
-							placeholder={t('auth.register.passwordPlaceholder')}
+							<Label htmlFor="password">{t('auth.register.password')}</Label>
+							<Input
+								id="password"
+								name="password"
+								type="password"
+								placeholder={t('auth.register.passwordPlaceholder')}
 								value={formData.password}
 								onChange={handleChange}
 								required
@@ -105,12 +105,12 @@ export default function RegisterPage() {
 						</div>
 
 						<div className="space-y-2">
-						<Label htmlFor="confirmPassword">{t('auth.register.confirmPassword')}</Label>
-						<Input
-							id="confirmPassword"
-							name="confirmPassword"
-							type="password"
-							placeholder={t('auth.register.passwordPlaceholder')}
+							<Label htmlFor="confirmPassword">{t('auth.register.confirmPassword')}</Label>
+							<Input
+								id="confirmPassword"
+								name="confirmPassword"
+								type="password"
+								placeholder={t('auth.register.passwordPlaceholder')}
 								value={formData.confirmPassword}
 								onChange={handleChange}
 								required
@@ -128,16 +128,17 @@ export default function RegisterPage() {
 					</form>
 
 					<p className="text-center text-sm text-muted-foreground font-body">
-					{t('auth.register.haveAccount')}{' '}
-					<Link
-						href="/auth/login"
-						className="text-primary hover:underline font-medium"
-					>
-						{t('auth.register.signInHere')}
+						{t('auth.register.haveAccount')}{' '}
+						<Link
+							href="/auth/login"
+							className="text-primary hover:underline font-medium"
+						>
+							{t('auth.register.signInHere')}
+						</Link>
 					</p>
 
 					<p className="text-center text-xs text-muted-foreground font-body">
-					{t('auth.register.agreementText')}
+						{t('auth.register.agreementText')}
 					</p>
 				</CardContent>
 			</Card>

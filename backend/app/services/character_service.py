@@ -210,7 +210,7 @@ class CharacterService:
             return False
 
         # Soft delete: set timestamp instead of removing record
-        character.deleted_at = datetime.now(timezone.utc)
+        character.deleted_at = datetime.utcnow()
         await db.commit()
         return True
 

@@ -141,6 +141,9 @@ class Character(Base):
     deleted_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, nullable=True, default=None, index=True, comment="Soft delete timestamp"
     )
+
+    # Relationships
+    user = relationship("User", back_populates="characters")
     game_sessions = relationship(
         "GameSession",
         back_populates="character",
@@ -157,9 +160,10 @@ class Character(Base):
     conditions = relationship(
         "CharacterCondition", back_populates="character", cascade="all, delete-orphan"
     )
-    active_effects = relationship(
-        "ActiveEffect", back_populates="character", cascade="all, delete-orphan"
-    )
+    # TODO: Uncomment when active_effects is fully implemented
+    # active_effects = relationship(
+    #     "ActiveEffect", back_populates="character", cascade="all, delete-orphan"
+    # )
 
     # Indexes
     __table_args__ = (Index("ix_characters_user_type", "user_id", "character_type"),)

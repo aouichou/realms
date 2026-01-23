@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.v1.router import api_router
 from app.config import settings
 from app.db.base import close_db, engine
+from app.middleware.error_logger import ErrorLoggerMiddleware
 from app.middleware.language import LanguageMiddleware
 from app.middleware.observability import ObservabilityMiddleware
 from app.middleware.performance import PerformanceMiddleware
@@ -114,6 +115,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Error logging middleware (captures errors to file - must be early in chain)
+app.add_middleware(ErrorLoggerMiddleware)
 
 # Language detection middleware (sets language context)
 app.add_middleware(LanguageMiddleware)

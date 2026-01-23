@@ -1,15 +1,19 @@
 """Alembic environment configuration"""
 
 # Import app config and models
+import asyncio
+import logging
 import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+
+logger = logging.getLogger("alembic.env")
 
 # Add app to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -70,6 +74,29 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
+async def post_migration_seed(connectable):
+    """Run seeding after migrations if tables are empty"""
+    logger.info("Checking if database needs seeding...")
+
+    async with connectable.connect() as connection:
+        # Check if spells table is empty
+        result = await connection.execute(text("SELECT COUNT(*) FROM spells"))
+        spell_count = result.scalar()
+
+        if spell_count == 0:
+            logger.info("Spells table is empty, running seed_database.py...")
+            # Import and run seeder
+            from scripts.seed_database import seed_all
+
+            try:
+                await seed_all(force=False)
+                logger.info("✅ Database seeding completed")
+            except Exception as e:
+                logger.error(f"❌ Seeding failed: {e}")
+        else:
+            logger.info(f"Database already seeded ({spell_count} spells)")
+
+
 async def run_async_migrations() -> None:
     """Run migrations in async mode"""
     connectable = async_engine_from_config(
@@ -80,6 +107,12 @@ async def run_async_migrations() -> None:
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
+
+    # Run post-migration seeding
+    try:
+        await post_migration_seed(connectable)
+    except Exception as e:
+        logger.warning(f"Post-migration seeding skipped: {e}")
 
     await connectable.dispose()
 

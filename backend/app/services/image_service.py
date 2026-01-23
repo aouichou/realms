@@ -161,8 +161,10 @@ class ImageService:
             if existing_image:
                 # Update reuse stats
                 existing_image.reuse_count += 1  # type: ignore[assignment]
-                existing_image.last_used_at = datetime.now(timezone.utc)  # type: ignore[assignment]
-                await db.commit()
+                existing_image.last_used_at = datetime.utcnow()  # type: ignore[assignment]
+                await (
+                    db.flush()
+                )  # Flush to persist changes but don't commit - let endpoint handle commit
 
                 # Convert relative path to full URL
                 full_url = f"{API_BASE_URL}{existing_image.image_path}"
@@ -281,7 +283,9 @@ Style Requirements:
                         reuse_count=0,
                     )
                     db.add(generated_image)
-                    await db.commit()
+                    await (
+                        db.flush()
+                    )  # Flush to persist but don't commit - let endpoint handle commit
 
                     # Cache in Redis (store full URL)
                     if session_service.redis:

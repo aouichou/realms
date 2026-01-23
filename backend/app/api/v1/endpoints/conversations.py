@@ -169,6 +169,9 @@ async def send_player_action(
     Returns:
         DM response with optional roll request
     """
+    logger.info(
+        f"=== ACTION ENDPOINT START === session={request.session_id}, character={request.character_id}"
+    )
     # Set logging context for this request
     with log_context(
         session_id=int(str(request.session_id).replace("-", "")[:8], 16),
@@ -178,9 +181,24 @@ async def send_player_action(
             "Player action received", extra={"extra_data": {"action_length": len(request.action)}}
         )
 
+        # RL-148: Performance measurement - start timing
+        import time
+
+        perf_start_total = time.time()
+        perf_timings = {}
+
         # Get character for context
-        result = await db.execute(select(Character).where(Character.id == request.character_id))
-        character = result.scalar_one_or_none()
+        logger.info(f"Fetching character {request.character_id}")
+        perf_start_db = time.time()
+        try:
+            result = await db.execute(select(Character).where(Character.id == request.character_id))
+            character = result.scalar_one_or_none()
+            logger.info(f"Character fetched: {character is not None}")
+        except Exception as e:
+            logger.error(f"ERROR fetching character: {type(e).__name__}: {e}")
+            raise
+        perf_timings["character_fetch"] = time.time() - perf_start_db
+
         if not character:
             raise HTTPException(status_code=404, detail="Character not found")
 
@@ -190,9 +208,15 @@ async def send_player_action(
         summary_context = None
 
         if session_id:
-            recent_messages = await ConversationService.get_recent_messages(
-                db, session_id, count=20
-            )
+            logger.info(f"Getting recent messages for session {session_id}")
+            try:
+                recent_messages = await ConversationService.get_recent_messages(
+                    db, session_id, count=20
+                )
+                logger.info(f"Got {len(recent_messages)} recent messages")
+            except Exception as e:
+                logger.error(f"ERROR getting recent messages: {type(e).__name__}: {e}")
+                raise
             all_messages = [
                 {"role": msg.role.value, "content": msg.content} for msg in recent_messages
             ]
@@ -273,26 +297,38 @@ async def send_player_action(
         # Count prepared spells
         from app.db.models import CharacterSpell
 
-        prepared_spells_result = await db.execute(
-            select(CharacterSpell).where(
-                CharacterSpell.character_id == character.id,
-                CharacterSpell.is_prepared,
+        logger.info(f"Querying prepared spells for character {character.id}")
+        try:
+            prepared_spells_result = await db.execute(
+                select(CharacterSpell).where(
+                    CharacterSpell.character_id == character.id,
+                    CharacterSpell.is_prepared,
+                )
             )
-        )
-        prepared_spells = prepared_spells_result.scalars().all()
+            prepared_spells = prepared_spells_result.scalars().all()
+            logger.info(f"Found {len(prepared_spells)} prepared spells")
+        except Exception as e:
+            logger.error(f"ERROR querying prepared spells: {type(e).__name__}: {e}")
+            raise
         character_context["prepared_spells_count"] = len(prepared_spells)
 
     # Add active quest info if any
-    active_quest_result = await db.execute(
-        select(Quest)
-        .join(CharacterQuest, CharacterQuest.quest_id == Quest.id)
-        .where(
-            CharacterQuest.character_id == request.character_id,
-            Quest.state == QuestState.IN_PROGRESS,
+    logger.info(f"Querying active quest for character {request.character_id}")
+    try:
+        active_quest_result = await db.execute(
+            select(Quest)
+            .join(CharacterQuest, CharacterQuest.quest_id == Quest.id)
+            .where(
+                CharacterQuest.character_id == request.character_id,
+                Quest.state == QuestState.IN_PROGRESS,
+            )
+            .limit(1)
         )
-        .limit(1)
-    )
-    active_quest = active_quest_result.scalar_one_or_none()
+        active_quest = active_quest_result.scalar_one_or_none()
+        logger.info(f"Active quest found: {active_quest is not None}")
+    except Exception as e:
+        logger.error(f"ERROR querying active quest: {type(e).__name__}: {e}")
+        raise
     if active_quest:
         character_context["active_quest_id"] = str(active_quest.id)
         character_context["active_quest_title"] = active_quest.title
@@ -310,6 +346,7 @@ async def send_player_action(
     # Fetch relevant memories for context (RAG pattern)
     memory_context = None
     if session_id:
+        perf_start_memory = time.time()
         try:
             from app.services.memory_service import MemoryService
 
@@ -319,6 +356,7 @@ async def send_player_action(
         except Exception as e:
             # Memory system is optional, don't fail if it errors
             logger.warning(f"Failed to fetch memory context: {e}")
+        perf_timings["memory_fetch"] = time.time() - perf_start_memory
 
     # Combine summary and memory contexts
     combined_context = None
@@ -357,6 +395,11 @@ async def send_player_action(
         )
         logger.info(f"Pruned {tokens_removed} tokens from conversation history")
 
+    # RL-148: Performance measurement - DM narration timing
+    import time
+
+    perf_start_dm = time.time()
+
     # Get DM response
     from app.i18n import get_language
 
@@ -368,6 +411,20 @@ async def send_player_action(
         character_context=character_context,
         memory_context=combined_context,
         language=language,
+    )
+
+    perf_dm_duration = time.time() - perf_start_dm
+    logger.info(
+        f"DM narration completed in {perf_dm_duration:.2f}s",
+        extra={
+            "extra_data": {
+                "dm_duration_seconds": perf_dm_duration,
+                "narration_length": len(result["narration"]),
+                "chars_per_second": len(result["narration"]) / perf_dm_duration
+                if perf_dm_duration > 0
+                else 0,
+            }
+        },
     )
 
     # Parse for dice roll tags
@@ -490,11 +547,23 @@ async def send_player_action(
     # Generate scene image for significant moments (BEFORE saving messages)
     # Uses semantic similarity detection - works in any language (French, English, etc.)
     scene_image_url = None
-    is_significant, similarity_score, matched_template = (
-        image_detection_service.is_significant_scene(
-            narration=result["narration"], player_action=request.action
+
+    logger.info("Checking scene significance for image generation")
+    try:
+        is_significant, similarity_score, matched_template = (
+            image_detection_service.is_significant_scene(
+                narration=result["narration"], player_action=request.action
+            )
         )
-    )
+        logger.info(
+            f"Scene significance check complete: is_significant={is_significant}, "
+            f"similarity={similarity_score:.3f}, template='{matched_template}'"
+        )
+    except Exception as img_detect_err:
+        logger.error(f"Image detection failed: {img_detect_err}", exc_info=True)
+        is_significant = False
+        similarity_score = 0.0
+        matched_template = None
 
     if is_significant:
         try:
@@ -527,17 +596,30 @@ async def send_player_action(
         except Exception as e:
             logger.error(f"Failed to generate scene image: {e}")
             # Image generation is optional, don't fail the request
+            # Rollback the failed transaction to allow subsequent operations
+            try:
+                await db.rollback()
+                logger.info("Transaction rolled back after image generation failure")
+            except Exception as rb_err:
+                logger.error(f"Failed to rollback after image error: {rb_err}")
 
     # Save to conversation history if session provided
     if session_id:
-        # Save player message
-        player_msg = MessageCreate(
-            session_id=session_id,
-            role="user",
-            content=request.action,
-            tokens_used=0,
-        )
-        await ConversationService.create_message(db, player_msg)
+        logger.info(f"About to save player message for session {session_id}")
+        try:
+            # Save player message
+            player_msg = MessageCreate(
+                session_id=session_id,
+                role="user",
+                content=request.action,
+                tokens_used=0,
+            )
+            logger.info(f"Player message object created: {player_msg}")
+            await ConversationService.create_message(db, player_msg)
+            logger.info("Player message saved successfully")
+        except Exception as e:
+            logger.error(f"FAILED to save player message: {type(e).__name__}: {e}")
+            raise
 
         # Save DM response with scene image URL
         dm_msg = MessageCreate(
@@ -635,6 +717,26 @@ async def send_player_action(
     roll_request = None
     if response_data.get("roll_request"):
         roll_request = RollRequest(**response_data["roll_request"])
+
+    # RL-148: Final performance summary
+    perf_total_duration = time.time() - perf_start_total
+    logger.info(
+        f"✅ Total request completed in {perf_total_duration:.2f}s",
+        extra={
+            "extra_data": {
+                "total_duration_seconds": perf_total_duration,
+                "timings": {
+                    "character_fetch": perf_timings.get("character_fetch", 0),
+                    "memory_fetch": perf_timings.get("memory_fetch", 0),
+                    "dm_narration": perf_dm_duration,
+                    "other": perf_total_duration - sum(perf_timings.values()) - perf_dm_duration,
+                },
+                "dm_percentage": (perf_dm_duration / perf_total_duration * 100)
+                if perf_total_duration > 0
+                else 0,
+            }
+        },
+    )
 
     return DMResponse(
         response=result["narration"],

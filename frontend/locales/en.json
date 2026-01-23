@@ -94,6 +94,12 @@
     "welcomeCreate": "Welcome! Create your character."
   },
   "game": {
+    "startScreen": {
+      "title": "Ready to Begin Your Adventure?",
+      "description": "Click below to start your session with the AI Dungeon Master",
+      "startButton": "Start Adventure",
+      "starting": "Starting..."
+    },
     "panels": {
       "stats": "⚔️ Character Stats",
       "inventory": "🎒 Inventory",
@@ -110,6 +116,7 @@
       "placeholder": "e.g., 1d20, 2d6+3",
       "rollDice": "Roll Dice",
       "rolls": "Rolls:"
-    }
+    },
+    "dmThinking": "The DM is thinking..."
   }
 }

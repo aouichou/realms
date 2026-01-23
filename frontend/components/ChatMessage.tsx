@@ -1,4 +1,4 @@
-import { Message } from "@/lib/api";
+ import { Message } from "@/lib/api";
 import ReactMarkdown from "react-markdown";
 import { TypewriterText } from "./TypewriterText";
 
@@ -34,10 +34,10 @@ export function ChatMessage({ message, isStreaming, enableTypewriter = false }: 
 							) : enableTypewriter ? (
 								<TypewriterText
 									text={message.content}
-									speed={75}
+									speed={120}
 									skipAnimation={isStreaming}
 								>
-									{(displayedText, isComplete) => (
+									{(displayedText, isComplete, showCursor) => (
 										<>
 											<ReactMarkdown
 												components={{
@@ -63,7 +63,7 @@ export function ChatMessage({ message, isStreaming, enableTypewriter = false }: 
 											>
 												{displayedText}
 											</ReactMarkdown>
-											{!isComplete && (
+											{showCursor && (
 												<span className="inline-block w-1 h-4 ml-0.5 bg-purple-400 animate-pulse" />
 											)}
 										</>

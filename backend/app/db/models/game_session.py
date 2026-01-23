@@ -53,7 +53,7 @@ class GameSession(Base):
     # Relationships
     user = relationship("User", back_populates="game_sessions")
     character = relationship(
-        "Character", back_populates="player_sessions", foreign_keys=[character_id]
+        "Character", back_populates="game_sessions", foreign_keys=[character_id]
     )
     companion = relationship(
         "Character", back_populates="companion_sessions", foreign_keys=[companion_id]

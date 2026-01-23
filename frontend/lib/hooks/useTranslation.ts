@@ -123,6 +123,7 @@ const translations: Record<Language, any> = {
 				startButton: "Start Session",
 				starting: "Starting..."
 			},
+			dmThinking: "The DM is thinking...",
 			saveGame: "Save Game",
 			inventory: {
 				title: "Inventory",
@@ -676,6 +677,7 @@ const translations: Record<Language, any> = {
 				startButton: "Démarrer la session",
 				starting: "Démarrage..."
 			},
+			dmThinking: "Le MJ réfléchit...",
 			saveGame: "Sauvegarder",
 			inventory: {
 				title: "Inventaire",

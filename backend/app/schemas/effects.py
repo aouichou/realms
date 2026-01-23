@@ -122,7 +122,8 @@ class ActiveEffect(Base):
     )
 
     # Relationships
-    character: Mapped["Character"] = relationship("Character", back_populates="active_effects")
+    # TODO: Uncomment when active_effects is fully implemented
+    # character: Mapped["Character"] = relationship("Character", back_populates="active_effects")
 
     def __repr__(self) -> str:
         return f"<ActiveEffect(id={self.id}, name={self.name}, type={self.effect_type}, char={self.character_id})>"

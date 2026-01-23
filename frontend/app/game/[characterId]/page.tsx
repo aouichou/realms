@@ -1,5 +1,6 @@
 'use client';
 
+import { TypewriterText } from '@/components/TypewriterText';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,6 @@ import Image from 'next/image';
 import { useParams, useSearchParams } from 'next/navigation';
 import { lazy, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { TypewriterText } from '@/components/TypewriterText';
 
 // Lazy load heavy components for better initial load
 const AbilityCheckPanel = lazy(() => import('@/components/AbilityCheckPanel').then(mod => ({ default: mod.AbilityCheckPanel })));
@@ -738,8 +738,8 @@ export default function GamePage() {
 
 									<div className="text-narrative text-white font-body leading-relaxed whitespace-pre-line">
 										{message.role === 'assistant' ? (
-											<TypewriterText text={message.content} speed={75}>
-												{(displayedText, isComplete) => (
+											<TypewriterText text={message.content} speed={120}>
+												{(displayedText, isComplete, showCursor) => (
 													<>
 														<ReactMarkdown
 															components={{
@@ -765,7 +765,7 @@ export default function GamePage() {
 														>
 															{displayedText}
 														</ReactMarkdown>
-														{!isComplete && (
+														{showCursor && (
 															<span className="inline-block w-1 h-4 ml-0.5 bg-purple-400 animate-pulse" />
 														)}
 													</>
@@ -777,6 +777,27 @@ export default function GamePage() {
 									</div>
 								</div>
 							))}
+							{/* Show "DM is thinking..." message while loading */}
+							{isLoading && (
+								<div className="p-3 md:p-4 rounded-lg backdrop-blur-md bg-white/10 border border-white/20 mr-6 md:mr-12">
+									<div className="flex items-center gap-2 mb-2">
+										<span className="font-display text-sm text-white">Dungeon Master</span>
+										<span className="text-xs font-body font-bold tracking-wide bg-accent-400 text-primary-900 px-2 py-0.5 rounded">
+											AI
+										</span>
+									</div>
+									<div className="text-narrative text-white/80 font-body leading-relaxed flex items-center gap-2">
+										<span className="italic">
+											{t('game.dmThinking')}
+										</span>
+										<span className="inline-flex gap-1">
+											<span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+											<span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+											<span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+										</span>
+									</div>
+								</div>
+							)}
 							<div ref={messagesEndRef} />
 						</div>
 					)}
