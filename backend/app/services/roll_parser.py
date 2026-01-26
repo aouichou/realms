@@ -445,3 +445,131 @@ class RollParser:
             return True
 
         return True
+
+
+def detect_roll_request_from_narration(dm_response: str) -> Optional[dict]:
+    """
+    Detect roll requests from natural language in DM narration.
+
+    This is a fallback for when the DM doesn't use [ROLL:...] tags.
+    Parses common phrasings that indicate a roll is needed.
+
+    Args:
+        dm_response: The DM's narrative text
+
+    Returns:
+        Dictionary with roll request info, or None if no roll detected
+        Format: {
+            "requires_roll": True,
+            "roll_type": "check|save|attack|initiative",
+            "ability": "dex|str|etc",
+            "skill": "stealth|perception|etc",
+            "dc": 15,
+            "detected_text": "make a Stealth check",
+            "context": "...surrounding text..."
+        }
+    """
+    patterns = [
+        # Ability checks: "make a [ability/skill] check"
+        (r"make (?:a |an )?(\w+(?:\s+\w+)?) (?:check|roll)", "check", lambda m: m.group(1).lower()),
+        # Saving throws: "make a [ability] saving throw" or "[ability] save"
+        (r"make (?:a |an )?(\w+) (?:saving throw|save)", "save", lambda m: m.group(1).lower()),
+        (
+            r"(\w+) (?:saving throw|save) (?:DC|against DC) ?(\d+)",
+            "save",
+            lambda m: m.group(1).lower(),
+        ),
+        # Generic "roll for [ability/skill]"
+        (r"roll (?:for |a |an )?(?:your )?(\w+(?:\s+\w+)?)", "check", lambda m: m.group(1).lower()),
+        # Attack rolls
+        (r"roll (?:to hit|an attack|for attack)", "attack", lambda m: None),
+        (r"make an attack roll", "attack", lambda m: None),
+        # Initiative
+        (r"roll initiative", "initiative", lambda m: None),
+        # Stealth checks (very common)
+        (
+            r"(?:try to |attempt to )?(?:sneak|hide|move quietly|move silently)",
+            "check",
+            lambda m: "stealth",
+        ),
+        # Perception checks
+        (r"(?:look around|search|notice|spot|observe)", "check", lambda m: "perception"),
+        # Investigation checks
+        (r"(?:investigate|examine|inspect) (?:the |for )", "check", lambda m: "investigation"),
+    ]
+
+    dm_lower = dm_response.lower()
+
+    for pattern, roll_type, ability_extractor in patterns:
+        match = re.search(pattern, dm_lower, re.IGNORECASE)
+        if match:
+            detected_text = match.group(0)
+            context_start = max(0, match.start() - 50)
+            context_end = min(len(dm_response), match.end() + 50)
+            context = dm_response[context_start:context_end]
+
+            # Extract ability/skill
+            ability_or_skill = ability_extractor(match) if ability_extractor(match) else None
+
+            # Try to map to canonical ability
+            ability = None
+            skill = None
+            if ability_or_skill:
+                # Clean up the ability/skill string
+                ability_or_skill = ability_or_skill.strip().replace("-", " ").replace("_", " ")
+
+                # Check if it's in our ability mapping
+                if ability_or_skill in ABILITY_MAPPING:
+                    ability = ABILITY_MAPPING[ability_or_skill].value
+                    # If it's a skill, also set skill name
+                    if ability_or_skill not in [
+                        "str",
+                        "dex",
+                        "con",
+                        "int",
+                        "wis",
+                        "cha",
+                        "strength",
+                        "dexterity",
+                        "constitution",
+                        "intelligence",
+                        "wisdom",
+                        "charisma",
+                    ]:
+                        skill = ability_or_skill
+                else:
+                    # Unknown, default to wisdom for checks
+                    ability = "wis" if roll_type == "check" else None
+
+            # Try to extract DC from context
+            dc = None
+            dc_match = re.search(r"DC[\s:]?(\d+)", dm_response, re.IGNORECASE)
+            if dc_match:
+                dc = int(dc_match.group(1))
+            else:
+                # Infer DC based on difficulty words
+                if "easy" in dm_lower:
+                    dc = 10
+                elif "moderate" in dm_lower or "medium" in dm_lower:
+                    dc = 15
+                elif "hard" in dm_lower or "difficult" in dm_lower:
+                    dc = 20
+                elif "very hard" in dm_lower or "extremely difficult" in dm_lower:
+                    dc = 25
+                else:
+                    # Default DCs by roll type
+                    dc = 12  # Moderate default
+
+            result = {
+                "requires_roll": True,
+                "roll_type": roll_type,
+                "ability": ability,
+                "skill": skill,
+                "dc": dc,
+                "detected_text": detected_text,
+                "context": context.strip(),
+            }
+
+            return result
+
+    return None

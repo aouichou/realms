@@ -24,8 +24,10 @@ from app.services.image_detection_service import get_image_detection_service
 from app.services.memory_capture import MemoryCaptureService
 from app.services.redis_service import session_service
 from app.services.roll_executor import RollExecutor
-from app.services.roll_parser import RollParser
+from app.services.roll_parser import RollParser, detect_roll_request_from_narration
 from app.services.summarization_service import SummarizationService
+from app.utils.character_stats import build_character_stats_context
+from app.utils.spell_detector import consume_spell_slot, detect_spell_cast
 
 logger = get_logger(__name__)
 
@@ -272,6 +274,10 @@ async def send_player_action(
             "hp_max": character.hp_max,
         }
 
+        # RL-126: Add detailed character stats for game mechanics
+        stats_context = build_character_stats_context(character)
+        character_context["stats"] = stats_context
+
         # Add background and personality for richer roleplay
         if character.background:
             character_context["background"] = character.background
@@ -405,12 +411,17 @@ async def send_player_action(
 
     language = get_language()
     dm_engine = DMEngine()
+
+    # RL-129: Pass character and db for tool calling
     result = await dm_engine.narrate(
         user_action=action_text,
         conversation_history=conversation_history,
         character_context=character_context,
         memory_context=combined_context,
         language=language,
+        character=character,
+        db=db,
+        use_tools=True,  # Enable Mistral tool calling
     )
 
     perf_dm_duration = time.time() - perf_start_dm
@@ -430,6 +441,59 @@ async def send_player_action(
     # Parse for dice roll tags
     narration = result["narration"]
     roll_requests_data = []
+
+    # RL-128: Auto-detect spell casting and consume spell slots
+    spell_warnings = []
+    try:
+        spell_name, spell_level, spell_warning, spell_suggestion = await detect_spell_cast(
+            player_action=request.action, character=character, db=db
+        )
+
+        # Handle spell suggestions (typos detected)
+        if spell_suggestion:
+            spell_warnings.append(spell_suggestion)
+            logger.info(f"Spell suggestion: {spell_suggestion}")
+
+        # Handle spell warnings (unknown spell or other issues)
+        if spell_warning:
+            spell_warnings.append(spell_warning)
+            logger.info(f"Spell warning: {spell_warning}")
+
+        if spell_name and spell_level is not None:
+            logger.info(
+                f"Spell cast detected: {spell_name} (Level {spell_level}) by {character.name}"
+            )
+
+            # Consume spell slot (cantrips return True without consuming)
+            slot_consumed, slot_warning = consume_spell_slot(character, spell_level)
+
+            if slot_warning:
+                spell_warnings.append(slot_warning)
+                logger.warning(f"Slot consumption warning: {slot_warning}")
+
+            if slot_consumed:
+                # Use flag_modified to mark JSONB field as changed
+                from sqlalchemy.orm.attributes import flag_modified
+
+                flag_modified(character, "spell_slots")
+                await db.flush()  # Persist to database
+                await db.commit()  # Commit the transaction
+
+                if spell_level > 0:
+                    remaining = (character.spell_slots or {}).get(str(spell_level), 0)
+                    logger.info(
+                        f"Spell slot consumed: Level {spell_level} for {spell_name}. "
+                        f"Remaining slots: {remaining}"
+                    )
+                else:
+                    logger.info(f"Cantrip cast: {spell_name} (no slot consumed)")
+            else:
+                logger.warning(
+                    f"Failed to consume spell slot for {spell_name} (Level {spell_level})"
+                )
+    except Exception as spell_err:
+        logger.warning(f"Spell detection failed: {spell_err}")
+        # Don't fail the request if spell detection errors
 
     # DEV LOG: Log full DM response for debugging
     logger.info(
@@ -530,6 +594,45 @@ async def send_player_action(
                 logger.error(f"Failed to execute NPC roll: {e}")
                 # Continue without this roll rather than failing entire request
 
+    # RL-127: Natural language roll detection (fallback if no tags found)
+    if not player_roll_requests:
+        logger.info("No [ROLL:...] tags found, attempting natural language detection")
+        detected_roll = detect_roll_request_from_narration(result["narration"])
+
+        if detected_roll:
+            logger.info(
+                "Natural language roll detected",
+                extra={
+                    "extra_data": {
+                        "roll_type": detected_roll["roll_type"],
+                        "ability": detected_roll.get("ability"),
+                        "skill": detected_roll.get("skill"),
+                        "dc": detected_roll.get("dc"),
+                        "detected_text": detected_roll["detected_text"],
+                    }
+                },
+            )
+
+            # Convert to player roll request format
+            nl_roll_request = {
+                "type": detected_roll["roll_type"],
+                "dice": "d20",  # Most D&D checks use d20
+                "ability": detected_roll.get("ability"),
+                "skill": detected_roll.get("skill"),
+                "dc": detected_roll.get("dc"),
+                "advantage": None,
+                "disadvantage": None,
+                "description": detected_roll["detected_text"],
+            }
+
+            player_roll_requests.append(nl_roll_request)
+            player_roll_request = nl_roll_request
+
+            logger.info(
+                f"Natural language roll request created: {detected_roll['roll_type']} "
+                f"({detected_roll.get('skill') or detected_roll.get('ability')})"
+            )
+
     # Build result with roll data
     response_data = {
         "narration": result["narration"],
@@ -538,6 +641,7 @@ async def send_player_action(
         "roll_requests": player_roll_requests if player_roll_requests else None,
         "quest_complete": result.get("quest_complete"),
         "rolls": roll_requests_data if roll_requests_data else None,
+        "warnings": spell_warnings if spell_warnings else None,
     }
 
     # Check for legacy roll request format (keep for backward compatibility)
@@ -749,6 +853,9 @@ async def send_player_action(
         tokens_used=result["tokens_used"],
         rolls=response_data.get("rolls"),
         companion_speech=companion_response,
+        warnings=response_data.get("warnings"),
+        tool_calls_made=result.get("tool_calls_made"),  # RL-129: Mistral tool calls
+        character_updates=result.get("character_updates"),  # RL-129: Character state changes
     )
 
 

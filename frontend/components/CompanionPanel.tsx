@@ -23,7 +23,6 @@ interface CompanionPanelProps {
 	gameContext: {
 		player_hp: number;
 		player_max_hp: number;
-		in_combat: boolean;
 		location: string;
 		enemies?: string;
 		enemy_count?: number;
@@ -84,7 +83,6 @@ const PERSONALITY_INFO = {
 };
 
 const TRIGGERS = [
-	{ value: "combat_start", label: "Combat Start" },
 	{ value: "player_low_hp", label: "Low HP" },
 	{ value: "exploration", label: "Exploration" },
 	{ value: "victory", label: "Victory" },
@@ -155,11 +153,6 @@ export function CompanionPanel({ characterId, gameContext, onSpeechGenerated }: 
 	useEffect(() => {
 		if (!autoRespond) return;
 
-		// Auto-trigger on combat start
-		if (gameContext.in_combat && messages.length === 0) {
-			generateSpeech("combat_start");
-		}
-
 		// Auto-trigger on low HP
 		const hpPercentage = (gameContext.player_hp / gameContext.player_max_hp) * 100;
 		if (hpPercentage < 30 && hpPercentage > 0) {
@@ -173,7 +166,7 @@ export function CompanionPanel({ characterId, gameContext, onSpeechGenerated }: 
 				generateSpeech("player_low_hp");
 			}
 		}
-	}, [gameContext.in_combat, gameContext.player_hp, autoRespond]);
+	}, [gameContext.player_hp, autoRespond]);
 
 	const generateSpeech = async (trigger?: string) => {
 		setIsGenerating(true);

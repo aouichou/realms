@@ -1,5 +1,7 @@
 'use client';
 
+import { SpellWarningContainer } from '@/components/SpellWarningContainer';
+import { ToolCallsBadgeContainer } from '@/components/ToolCallBadge';
 import { TypewriterText } from '@/components/TypewriterText';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,7 +16,6 @@ import ReactMarkdown from 'react-markdown';
 // Lazy load heavy components for better initial load
 const AbilityCheckPanel = lazy(() => import('@/components/AbilityCheckPanel').then(mod => ({ default: mod.AbilityCheckPanel })));
 const ActiveEffectsDisplay = lazy(() => import('@/components/ActiveEffectsDisplay').then(mod => ({ default: mod.ActiveEffectsDisplay })));
-const CombatTracker = lazy(() => import('@/components/CombatTracker').then(mod => ({ default: mod.CombatTracker })));
 const CompanionPanel = lazy(() => import('@/components/CompanionPanel').then(mod => ({ default: mod.CompanionPanel })));
 const EnhancedCharacterSheet = lazy(() => import('@/components/EnhancedCharacterSheet').then(mod => ({ default: mod.EnhancedCharacterSheet })));
 const ImageGalleryPanel = lazy(() => import('@/components/ImageGalleryPanel').then(mod => ({ default: mod.ImageGalleryPanel })));
@@ -34,6 +35,23 @@ interface Message {
 	timestamp: string;
 	scene_image_url?: string;
 	quest_complete_id?: string;
+	warnings?: string[];
+	tool_calls_made?: Array<{
+		name: string;
+		arguments: Record<string, any>;
+		result: Record<string, any>;
+	}>;
+	character_updates?: {
+		hp?: {
+			old: number;
+			new: number;
+			change: number;
+		};
+		spell_slots?: {
+			level: number;
+			remaining: number;
+		};
+	};
 	roll_request?: {
 		type: string;
 		ability?: string;
@@ -65,9 +83,10 @@ interface Character {
 	gold: number;
 	silver: number;
 	copper: number;
+	spell_slots?: Record<string, { max: number; remaining: number }>;
 }
 
-type PanelType = 'stats' | 'inventory' | 'dice' | 'combat' | 'spells' | 'checks' | 'companion' | 'images' | null;
+type PanelType = 'stats' | 'inventory' | 'dice' | 'spells' | 'checks' | 'companion' | 'images' | null;
 
 const ABILITY_ABBREVIATIONS: Record<string, string> = {
 	str: 'strength',
@@ -122,6 +141,7 @@ export default function GamePage() {
 	const [questCompleteData, setQuestCompleteData] = useState<{ questId: string; title: string; rewards: any } | null>(null);
 	const [showQuestCompleteModal, setShowQuestCompleteModal] = useState(false);
 	const [isStartingSession, setIsStartingSession] = useState(false);
+	const [spellWarnings, setSpellWarnings] = useState<Array<{ id: string; message: string; type: 'warning' | 'suggestion' | 'error' }>>([]);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -246,6 +266,48 @@ export default function GamePage() {
 
 			if (response.ok) {
 				const data = await response.json();
+
+				// RL-129: Handle character updates from tool calls
+				if (data.character_updates) {
+					setCharacter((prev) => {
+						if (!prev) return prev;
+						const updated = { ...prev };
+
+						// Update HP if changed
+						if (data.character_updates.hp) {
+							updated.hp_current = data.character_updates.hp.new;
+						}
+
+						// Update spell slots if changed
+						if (data.character_updates.spell_slots) {
+							const { level, remaining } = data.character_updates.spell_slots;
+							if (updated.spell_slots) {
+								updated.spell_slots[`level_${level}`] = {
+									...updated.spell_slots[`level_${level}`],
+									remaining,
+								};
+							}
+						}
+
+						return updated;
+					});
+				}
+
+				// Handle spell warnings
+				if (data.warnings && data.warnings.length > 0) {
+					const newWarnings = data.warnings.map((msg: string) => {
+						const type = msg.includes('Did you mean') ? 'suggestion' :
+							msg.includes('⚠️') ? 'warning' :
+								msg.includes("don't know") ? 'error' : 'warning';
+						return {
+							id: `${Date.now()}-${Math.random()}`,
+							message: msg,
+							type,
+						};
+					});
+					setSpellWarnings(prev => [...prev, ...newWarnings]);
+				}
+
 				const dmMessage: Message = {
 					id: Date.now() + 1,
 					role: 'assistant',
@@ -254,6 +316,9 @@ export default function GamePage() {
 					scene_image_url: data.scene_image_url,
 					roll_request: data.roll_request,
 					quest_complete_id: data.quest_complete_id,
+					warnings: data.warnings,
+					tool_calls_made: data.tool_calls_made,
+					character_updates: data.character_updates,
 				};
 				setMessages(prev => [...prev, dmMessage]);
 
@@ -374,6 +439,22 @@ export default function GamePage() {
 
 			if (response.ok) {
 				const data = await response.json();
+
+				// Handle spell warnings
+				if (data.warnings && data.warnings.length > 0) {
+					const newWarnings = data.warnings.map((msg: string) => {
+						const type = msg.includes('Did you mean') ? 'suggestion' :
+							msg.includes('⚠️') ? 'warning' :
+								msg.includes("don't know") ? 'error' : 'warning';
+						return {
+							id: `${Date.now()}-${Math.random()}`,
+							message: msg,
+							type,
+						};
+					});
+					setSpellWarnings(prev => [...prev, ...newWarnings]);
+				}
+
 				const dmMessage: Message = {
 					id: Date.now() + 1,
 					role: 'assistant',
@@ -381,6 +462,7 @@ export default function GamePage() {
 					timestamp: new Date().toISOString(),
 					scene_image_url: data.scene_image_url,
 					roll_request: data.roll_request,
+					warnings: data.warnings,
 				};
 				setMessages(prev => [...prev, dmMessage]);
 
@@ -538,6 +620,14 @@ export default function GamePage() {
 
 	return (
 		<div className="relative h-screen w-screen overflow-hidden bg-neutral-900">
+			{/* Spell Warnings Overlay */}
+			<SpellWarningContainer
+				warnings={spellWarnings}
+				onWarningDismissed={(id: string) => {
+					setSpellWarnings(prev => prev.filter(w => w.id !== id));
+				}}
+			/>
+
 			{/* Scene Background Image */}
 			{latestSceneImage && (
 				<div className="absolute inset-0 z-0">
@@ -597,15 +687,6 @@ export default function GamePage() {
                      hover:bg-white/20 transition-all text-white font-body text-sm"
 					>
 						{t('game.panels.dice')}
-					</button>
-
-					{/* Combat Button */}
-					<button
-						onClick={() => togglePanel('combat')}
-						className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
-                     hover:bg-white/20 transition-all text-white font-body text-sm"
-					>
-						{t('game.panels.combat')}
 					</button>
 
 					{/* Spells Button */}
@@ -730,6 +811,11 @@ export default function GamePage() {
 											</span>
 										)}
 									</div>
+
+									{/* RL-129: Tool calls badge (optional showcase) */}
+									{message.tool_calls_made && message.tool_calls_made.length > 0 && (
+										<ToolCallsBadgeContainer toolCalls={message.tool_calls_made} />
+									)}
 
 									{/* Scene Image (if present) */}
 									{message.scene_image_url && message.role === 'assistant' && (
@@ -889,14 +975,13 @@ export default function GamePage() {
 				{/* Right Panel - Expanded Content */}
 				{
 					openPanel && (
-						<div className={`p-6 bg-white/10 backdrop-blur-xl border-l border-white/20 overflow-y-auto ${openPanel === 'stats' || openPanel === 'inventory' || openPanel === 'combat' || openPanel === 'spells' || openPanel === 'checks' || openPanel === 'companion' ? 'w-200' : 'w-96'
+						<div className={`p-6 bg-white/10 backdrop-blur-xl border-l border-white/20 overflow-y-auto ${openPanel === 'stats' || openPanel === 'inventory' || openPanel === 'spells' || openPanel === 'checks' || openPanel === 'companion' ? 'w-200' : 'w-96'
 							}`}>
 							<div className="flex items-center justify-between mb-6">
 								<h2 className="font-display text-xl text-white">
 									{openPanel === 'stats' && '⚔️ Character Stats'}
 									{openPanel === 'inventory' && '🎒 Inventory'}
 									{openPanel === 'dice' && '🎲 Dice Roller'}
-									{openPanel === 'combat' && '⚔️ Combat'}
 									{openPanel === 'spells' && '✨ Spells'}
 									{openPanel === 'checks' && '🎲 Ability Checks'}
 									{openPanel === 'companion' && '🤖 AI Companion'}
@@ -943,20 +1028,6 @@ export default function GamePage() {
 								</div>
 							)}
 
-							{/* Combat Panel */}
-							{openPanel === 'combat' && sessionId && (
-								<div className="bg-neutral-900 rounded-lg">
-									<CombatTracker
-										sessionId={sessionId}
-										characterId={characterId}
-										onCombatEnd={() => {
-											// Refresh character stats after combat
-											loadCharacter();
-										}}
-									/>
-								</div>
-							)}
-
 							{/* Spells Panel */}
 							{openPanel === 'spells' && (
 								<div className="space-y-4 bg-neutral-900 rounded-lg p-4">
@@ -982,7 +1053,6 @@ export default function GamePage() {
 										gameContext={{
 											player_hp: character.hp_current,
 											player_max_hp: character.hp_max,
-											in_combat: false,
 											location: sessionId ? 'Adventure' : 'Village',
 											situation: messages.length > 0 ? messages[messages.length - 1].content : 'Ready for adventure',
 										}}

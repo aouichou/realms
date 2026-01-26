@@ -3,11 +3,16 @@ DM (Dungeon Master) Engine
 Handles D&D narrative generation with focused storytelling in multiple languages
 """
 
+import json
 import re
 import time
 from datetime import datetime
-from typing import AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config.dm_tools import GAME_MASTER_TOOLS
+from app.models.character import Character
 from app.observability.logger import get_logger
 from app.observability.metrics import metrics
 from app.observability.tracing import trace_async
@@ -15,6 +20,7 @@ from app.services.ai_provider import ProviderUnavailableError, RateLimitError
 from app.services.message_summarizer import MessageSummarizer
 from app.services.provider_selector import provider_selector
 from app.services.token_counter import TokenCounter
+from app.services.tool_executor import execute_tool
 
 logger = get_logger(__name__)
 
@@ -30,10 +36,27 @@ class DMEngine:
     SYSTEM_PROMPTS = {
         "en": """You are an expert Dungeon Master running a D&D 5th edition adventure. You are the rules arbiter and narrator.
 
-⚠️⚠️⚠️ CRITICAL: DICE ROLL TAGS ARE MANDATORY ⚠️⚠️⚠️
-YOU MUST INCLUDE ROLL TAGS OR THE GAME WILL NOT WORK!
+🎲 REQUESTING DICE ROLLS - YOU HAVE TWO OPTIONS:
 
-🎲 DICE ROLL DECISION LOGIC - READ THIS FIRST:
+**OPTION 1: NATURAL LANGUAGE (RECOMMENDED)**
+Simply ask the player to roll in natural, narrative language:
+- "Make a Stealth check." → System auto-detects Stealth check
+- "Roll for initiative!" → System auto-detects initiative
+- "Make a Dexterity saving throw against DC 15." → System auto-detects DEX save, DC 15
+- "You try to sneak past the guard." → System auto-detects Stealth check
+- "Search the room for clues." → System auto-detects Perception/Investigation
+
+The system uses intelligent pattern matching to detect rolls from your narrative.
+This is the PREFERRED method - just write naturally and ask for rolls conversationally.
+
+**OPTION 2: EXPLICIT TAGS (FOR PRECISION)**
+For complex scenarios or when you want exact control, use structured tags:
+- [ROLL:check:stealth:DC12] - Ability check
+- [ROLL:save:dex:DC15] - Saving throw
+- [ROLL:attack:d20+5] - Attack roll
+- [ROLL:initiative:d20+2] - Initiative
+
+Use tags when natural language might be ambiguous or for multiple simultaneous rolls.
 
 **WHEN TO CALL FOR A ROLL:**
 ALWAYS call for a roll when:
@@ -47,7 +70,7 @@ NEVER call for a roll when:
 - The player automatically succeeds/fails due to abilities or context
 
 **ROLL DECISION FLOW:**
-Player declares action → Determine if outcome is uncertain → Determine relevant ability/skill → Set appropriate DC → Narrate with embedded roll tag
+Player declares action → Determine if outcome is uncertain → Determine relevant ability/skill → Set appropriate DC → Ask for roll naturally or use tag
 
 **DC GUIDELINES:**
 - Very Easy: DC 5
@@ -57,46 +80,24 @@ Player declares action → Determine if outcome is uncertain → Determine relev
 - Very Hard: DC 25
 - Nearly Impossible: DC 30
 
-**MANDATORY ROLL TRIGGERS - YOU MUST CALL FOR ROLLS WHEN PLAYER:**
-1. Attacks any creature → [ROLL:attack:d20+MOD]
-2. Attempts to deceive, persuade, or intimidate → [ROLL:check:skill:DCX]
-3. Tries to move stealthily or hide → [ROLL:check:stealth:DCX]
-4. Searches for clues or traps → [ROLL:check:perception/investigation:DCX]
-5. Attempts to climb, jump, or swim in challenging conditions → [ROLL:check:athletics:DCX]
-6. Casts a spell requiring a saving throw → [ROLL:save:ability:DCX]
-7. Is targeted by an enemy spell or effect → [ROLL:save:ability:DCX]
-8. Tries to pick a lock or disable a device → [ROLL:check:thieves_tools/sleight_of_hand:DCX]
+**COMMON ROLL SCENARIOS:**
+1. Attacks any creature → "You swing at the goblin!" or [ROLL:attack:d20+MOD]
+2. Attempts to deceive, persuade, or intimidate → "Make a Persuasion check." or [ROLL:check:persuasion:DCX]
+3. Tries to move stealthily or hide → "You try to sneak quietly." or [ROLL:check:stealth:DCX]
+4. Searches for clues or traps → "Roll for Perception." or [ROLL:check:perception:DCX]
+5. Attempts to climb, jump, or swim → "Make an Athletics check." or [ROLL:check:athletics:DCX]
+6. Casts a spell requiring a saving throw → "They must make a Dexterity save!" or [ROLL:save:dex:DCX]
+7. Is targeted by an enemy spell → "Make a Wisdom saving throw!" or [ROLL:save:wis:DCX]
 
-ROLL TAG FORMATS (COPY THESE EXACTLY):
+**NATURAL LANGUAGE EXAMPLES:**
+✅ "You creep forward. Make a Stealth check."
+✅ "The goblin swings at you! Roll for initiative!"
+✅ "You cast Burning Hands. The bandits must make Dexterity saves against DC 13."
+✅ "You try to convince the guard. Make a Persuasion check."
+✅ "Search the room carefully." (implies Perception/Investigation)
+✅ "You attempt to pick the lock." (implies Thieves' Tools or Sleight of Hand)
 
-SPELL SAVING THROWS - MOST COMMON:
-- Burning Hands: "Flames shoot from your fingers! [ROLL:save:dex:DC13]"
-- Hold Person: "You gesture, freezing them [ROLL:save:wis:DC13] in place."
-- Charm Person: "She looks into your eyes [ROLL:save:wis:DC13] as enchantment takes hold."
-- Thunderwave: "The sonic boom erupts! [ROLL:save:con:DC13]"
-- Sleep: "Magical drowsiness washes over them [ROLL:save:wis:DC13]"
-- Command: "He must resist your magic! [ROLL:save:wis:DC13]"
-
-ABILITY CHECKS - REQUIRED FOR:
-- Stealth: "You creep forward silently [ROLL:check:stealth:DC12]"
-- Perception: "You scan the room for danger [ROLL:check:perception:DC15]"
-- Persuasion: "You make your case convincingly [ROLL:check:persuasion:DC14]"
-- Deception: "You spin a believable lie [ROLL:check:deception:DC13]"
-- Investigation: "You search for hidden clues [ROLL:check:investigation:DC12]"
-- Athletics: "You attempt to climb the wall [ROLL:check:athletics:DC15]"
-
-ATTACK ROLLS - REQUIRED FOR:
-- Melee attack: "You swing your sword [ROLL:attack:d20+4] at the goblin."
-- Ranged attack: "You loose an arrow [ROLL:attack:d20+5] at the target."
-- Spell attack: "A ray of frost [ROLL:attack:d20+5] streaks toward them."
-
-SAVING THROWS - ENVIRONMENTAL:
-- Trap triggered: "A pressure plate clicks! [ROLL:save:dex:DC15]"
-- Poison gas: "Toxic fumes fill your lungs [ROLL:save:con:DC13]"
-- Fear effect: "Terror grips your mind [ROLL:save:wis:DC12]"
-
-The system automatically processes these tags and shows results to the player.
-DO NOT wait for rolls or ask the player - just embed the tags naturally.
+The system handles both methods seamlessly. Write naturally and the rolls will be detected automatically.
 
 EXAMPLE OF CORRECT RESPONSE:
 Player: "I cast Burning Hands at the guards"
@@ -202,10 +203,27 @@ Remember: D&D has challenges, danger, and uncertain outcomes. Use rolls!
 """,
         "fr": """Vous êtes un Maître du Donjon expert menant une aventure de D&D 5ème édition. Vous êtes l'arbitre des règles et le narrateur.
 
-⚠️⚠️⚠️ CRITIQUE: LES BALISES DE JETS DE DÉS SONT OBLIGATOIRES ⚠️⚠️⚠️
-VOUS DEVEZ INCLURE LES BALISES DE JETS SINON LE JEU NE FONCTIONNERA PAS!
+🎲 DEMANDER DES JETS DE DÉS - VOUS AVEZ DEUX OPTIONS:
 
-🎲 LOGIQUE DE DÉCISION DES JETS DE DÉS - LISEZ CECI EN PREMIER:
+**OPTION 1: LANGAGE NATUREL (RECOMMANDÉ)**
+Demandez simplement au joueur de lancer les dés de manière narrative et naturelle:
+- "Faites un jet de Discrétion." → Le système détecte automatiquement le test de Discrétion
+- "Lancez pour l'initiative!" → Le système détecte automatiquement l'initiative
+- "Faites un jet de sauvegarde de Dextérité contre DD 15." → Le système détecte automatiquement la sauvegarde DEX, DD 15
+- "Vous essayez de vous faufiler discrètement." → Le système détecte automatiquement le test de Discrétion
+- "Fouillez la pièce pour des indices." → Le système détecte automatiquement Perception/Investigation
+
+Le système utilise la reconnaissance de motifs intelligente pour détecter les jets dans votre narration.
+C'est la méthode PRÉFÉRÉE - écrivez naturellement et demandez les jets de manière conversationnelle.
+
+**OPTION 2: BALISES EXPLICITES (POUR LA PRÉCISION)**
+Pour des scénarios complexes ou quand vous voulez un contrôle exact, utilisez des balises structurées:
+- [ROLL:check:stealth:DC12] - Test de compétence
+- [ROLL:save:dex:DC15] - Jet de sauvegarde
+- [ROLL:attack:d20+5] - Jet d'attaque
+- [ROLL:initiative:d20+2] - Initiative
+
+Utilisez les balises quand le langage naturel pourrait être ambigu ou pour plusieurs jets simultanés.
 
 **QUAND APPELER UN JET DE DÉS:**
 Appelez TOUJOURS un jet quand:
@@ -219,7 +237,7 @@ N'appelez JAMAIS de jet quand:
 - Le joueur réussit/échoue automatiquement grâce à ses capacités ou au contexte
 
 **FLUX DE DÉCISION DES JETS:**
-Action du joueur → Déterminer si le résultat est incertain → Déterminer capacité/compétence → Définir DD approprié → Narrer avec balise de jet intégrée
+Action du joueur → Déterminer si le résultat est incertain → Déterminer capacité/compétence → Définir DD approprié → Demander le jet naturellement ou utiliser une balise
 
 **DIRECTIVES DE DD (DIFFICULTÉ):**
 - Très facile: DD 5
@@ -229,30 +247,25 @@ Action du joueur → Déterminer si le résultat est incertain → Déterminer c
 - Très difficile: DD 25
 - Presque impossible: DD 30
 
-**DÉCLENCHEURS DE JETS OBLIGATOIRES - VOUS DEVEZ APPELER DES JETS QUAND LE JOUEUR:**
-1. Attaque une créature → [ROLL:attack:d20+MOD]
-2. Tente de tromper, persuader ou intimider → [ROLL:check:skill:DCX]
-3. Essaie de se déplacer furtivement ou se cacher → [ROLL:check:stealth:DCX]
-4. Cherche des indices ou pièges → [ROLL:check:perception/investigation:DCX]
-5. Tente d'escalader, sauter ou nager dans des conditions difficiles → [ROLL:check:athletics:DCX]
-6. Lance un sort nécessitant un jet de sauvegarde → [ROLL:save:ability:DCX]
-7. Est ciblé par un sort ou effet ennemi → [ROLL:save:ability:DCX]
-8. Essaie de crocheter une serrure ou désactiver un mécanisme → [ROLL:check:thieves_tools/sleight_of_hand:DCX]
+**SCÉNARIOS DE JETS COURANTS:**
+1. Attaque une créature → "Vous attaquez le gobelin!" ou [ROLL:attack:d20+MOD]
+2. Tente de tromper, persuader ou intimider → "Faites un jet de Persuasion." ou [ROLL:check:persuasion:DCX]
+3. Essaie de se déplacer furtivement → "Vous essayez de vous faufiler silencieusement." ou [ROLL:check:stealth:DCX]
+4. Cherche des indices ou pièges → "Lancez pour la Perception." ou [ROLL:check:perception:DCX]
+5. Tente d'escalader, sauter ou nager → "Faites un jet d'Athlétisme." ou [ROLL:check:athletics:DCX]
+6. Lance un sort nécessitant sauvegarde → "Ils doivent faire un jet de sauvegarde de Dextérité!" ou [ROLL:save:dex:DCX]
+7. Est ciblé par un sort ennemi → "Faites un jet de sauvegarde de Sagesse!" ou [ROLL:save:wis:DCX]
 
-FORMATS DE BALISES DE JETS (COPIEZ-LES EXACTEMENT):
+**EXEMPLES DE LANGAGE NATUREL:**
+✅ "Vous avancez furtivement. Faites un jet de Discrétion."
+✅ "Le gobelin vous attaque! Lancez pour l'initiative!"
+✅ "Vous lancez Mains brûlantes. Les bandits doivent faire des jets de sauvegarde de Dextérité contre DD 13."
+✅ "Vous essayez de convaincre le garde. Faites un jet de Persuasion."
+✅ "Fouillez attentivement la pièce." (implique Perception/Investigation)
+✅ "Vous tentez de crocheter la serrure." (implique Outils de voleur ou Escamotage)
 
-1. JETS DE SAUVEGARDE DE SORTS (Le Plus Important):
-- Sort Injonction: "Il doit résister à votre magie! [ROLL:save:wis:DC13]"
-- Charme-personne: "Elle croise votre regard [ROLL:save:wis:DC13] alors que l'enchantement prend effet."
-- Immobilisation de personne: "Vous gestuez, les figeant [ROLL:save:wis:DC13] sur place."
-- Vague tonnante: "Le boom sonique éclate! [ROLL:save:con:DC13]"
-- Mains brûlantes: "Les flammes jaillissent de vos doigts! [ROLL:save:dex:DC13]"
+Le système gère les deux méthodes de manière transparente. Écrivez naturellement et les jets seront détectés automatiquement.
 
-TESTS DE COMPÉTENCE:
-- Discrétion: "Vous avancez silencieusement [ROLL:check:stealth:DC12]."
-- Perception: "Vous scrutez les dangers [ROLL:check:perception:DC15]."
-- Persuasion: "Vous plaidez votre cause [ROLL:check:persuasion:DC14]."
-- Investigation: "Vous cherchez des indices [ROLL:check:investigation:DC12]."
 - Athlétisme: "Vous escaladez le mur [ROLL:check:athletics:DC15]."
 
 JETS D'ATTAQUE:
@@ -375,6 +388,150 @@ Remember: D&D has challenges, danger, and uncertain outcomes. Use rolls!
             System prompt in the requested language
         """
         return self.SYSTEM_PROMPTS.get(language, self.SYSTEM_PROMPTS["en"])
+
+    async def call_dm_with_tools(
+        self,
+        messages: List[Dict[str, str]],
+        character: Character,
+        db: AsyncSession,
+        max_iterations: int = 5,
+    ) -> Dict[str, Any]:
+        """
+        Call Mistral DM with tool calling support.
+
+        This implements the two-stage tool calling flow:
+        1. DM calls tools → we execute them
+        2. Feed results back → DM generates final narrative with tool context
+
+        Args:
+            messages: Conversation messages
+            character: Character model instance
+            db: Database session for tool execution
+            max_iterations: Max tool calling iterations to prevent loops
+
+        Returns:
+            Dictionary with narration, tool calls made, and character updates
+        """
+        from mistralai import Mistral
+
+        from app.config import settings
+
+        mistral_client = Mistral(api_key=settings.mistral_api_key)
+        tool_calls_made = []
+        character_updates = {}
+        iteration = 0
+
+        # Initial call with tools
+        current_messages = messages.copy()
+
+        while iteration < max_iterations:
+            iteration += 1
+            logger.info(f"Tool calling iteration {iteration}/{max_iterations}")
+
+            try:
+                # Call Mistral with tools
+                import asyncio
+
+                response = await asyncio.to_thread(
+                    mistral_client.chat.complete,
+                    model=settings.mistral_model,
+                    messages=current_messages,
+                    tools=GAME_MASTER_TOOLS,
+                    temperature=0.7,
+                    max_tokens=2048,
+                )
+
+                assistant_message = response.choices[0].message
+
+                # Check if DM wants to use tools
+                if not assistant_message.tool_calls or len(assistant_message.tool_calls) == 0:
+                    # No tools called - return final narrative
+                    logger.info("No tools called, returning narrative")
+                    return {
+                        "narration": assistant_message.content or "",
+                        "tool_calls_made": tool_calls_made,
+                        "character_updates": character_updates,
+                    }
+
+                # Execute tools
+                logger.info(f"DM requested {len(assistant_message.tool_calls)} tool calls")
+
+                # Add assistant message with tool calls to conversation
+                current_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": assistant_message.content or "",
+                        "tool_calls": [
+                            {
+                                "id": tc.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments,
+                                },
+                            }
+                            for tc in assistant_message.tool_calls
+                        ],
+                    }
+                )
+
+                # Execute each tool
+                for tool_call in assistant_message.tool_calls:
+                    tool_name = tool_call.function.name
+                    tool_args = json.loads(tool_call.function.arguments)
+
+                    logger.info(f"Executing tool: {tool_name} with args: {tool_args}")
+
+                    # Execute the tool
+                    tool_result = await execute_tool(
+                        tool_name=tool_name,
+                        tool_arguments=tool_args,
+                        character=character,
+                        db=db,
+                    )
+
+                    # Track tool calls
+                    tool_calls_made.append(
+                        {
+                            "name": tool_name,
+                            "arguments": tool_args,
+                            "result": tool_result,
+                        }
+                    )
+
+                    # Track character updates
+                    if "character_update" in tool_result:
+                        character_updates.update(tool_result["character_update"])
+
+                    # Add tool result to messages
+                    current_messages.append(
+                        {
+                            "role": "tool",
+                            "name": tool_name,
+                            "content": json.dumps(tool_result),
+                            "tool_call_id": tool_call.id,
+                        }
+                    )
+
+                # Continue loop to get DM's response with tool results
+
+            except Exception as e:
+                logger.error(f"Error in tool calling loop: {e}", exc_info=True)
+                # Fall back to regular narration
+                return {
+                    "narration": "The magical energies swirl uncertainly as the spell takes effect...",
+                    "tool_calls_made": tool_calls_made,
+                    "character_updates": character_updates,
+                    "error": str(e),
+                }
+
+        # Max iterations reached
+        logger.warning(f"Max tool calling iterations ({max_iterations}) reached")
+        return {
+            "narration": "The arcane forces settle as the spell completes its work.",
+            "tool_calls_made": tool_calls_made,
+            "character_updates": character_updates,
+        }
 
     @staticmethod
     def extract_roll_request(response_text: str) -> tuple[str, Optional[Dict]]:
@@ -662,18 +819,36 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
 
     def _format_character_context(self, character: Dict) -> str:
         """Format character information for context"""
-        parts = ["CHARACTER CONTEXT:"]
+        parts = []
 
-        if character.get("name"):
-            parts.append(f"Name: {character['name']}")
-        if character.get("race"):
-            parts.append(f"Race: {character['race']}")
-        if character.get("class"):
-            parts.append(f"Class: {character['class']}")
-        if character.get("level"):
-            parts.append(f"Level: {character['level']}")
+        # RL-126: Include detailed stats if available
+        if character.get("stats"):
+            parts.append(character["stats"])
+        else:
+            # Fallback to basic context
+            parts.append("CHARACTER CONTEXT:")
+            if character.get("name"):
+                parts.append(f"Name: {character['name']}")
+            if character.get("race"):
+                parts.append(f"Race: {character['race']}")
+            if character.get("class"):
+                parts.append(f"Class: {character['class']}")
+            if character.get("level"):
+                parts.append(f"Level: {character['level']}")
+
+        # Add roleplay context (background, personality, etc.)
         if character.get("background"):
-            parts.append(f"Background: {character['background']}")
+            parts.append(f"\nBackground: {character['background']}")
+        if character.get("personality"):
+            parts.append(f"Personality: {character['personality']}")
+        if character.get("personality_trait"):
+            parts.append(f"Personality Trait: {character['personality_trait']}")
+        if character.get("ideal"):
+            parts.append(f"Ideal: {character['ideal']}")
+        if character.get("bond"):
+            parts.append(f"Bond: {character['bond']}")
+        if character.get("flaw"):
+            parts.append(f"Flaw: {character['flaw']}")
 
         return "\n".join(parts)
 
@@ -703,6 +878,9 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
         game_state: Optional[Dict] = None,
         memory_context: Optional[str] = None,
         language: str = "en",
+        character: Optional[Character] = None,
+        db: Optional[AsyncSession] = None,
+        use_tools: bool = True,
     ) -> Dict:
         """
         Generate DM narration in response to player action
@@ -714,6 +892,9 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
             game_state: Current game state
             memory_context: Relevant past memories from vector search
             language: Language for narration ("en" or "fr")
+            character: Character model instance (for tool calling)
+            db: Database session (for tool calling)
+            use_tools: Whether to enable Mistral tool calling (default: True)
 
         Returns:
             Dictionary with response and metadata
@@ -740,10 +921,64 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
                         "language": language,
                         "has_context": character_context is not None,
                         "has_memory": memory_context is not None,
+                        "use_tools": use_tools,
                     }
                 },
             )
 
+            # RL-129: Use Mistral tool calling if enabled and character/db available
+            if use_tools and character is not None and db is not None:
+                logger.info("Using Mistral tool calling for DM narration")
+                tool_result = await self.call_dm_with_tools(
+                    messages=messages,
+                    character=character,
+                    db=db,
+                )
+
+                narration = tool_result.get("narration", "")
+                tool_calls_made = tool_result.get("tool_calls_made", [])
+                character_updates = tool_result.get("character_updates", {})
+
+                # Extract roll request if present
+                cleaned_narration, roll_request = self.extract_roll_request(narration)
+
+                # Extract quest complete if present
+                cleaned_narration, quest_complete_id = self.extract_quest_complete(
+                    cleaned_narration
+                )
+
+                duration = time.time() - start_time
+
+                # Record metrics
+                metrics.record_dm_narration(
+                    duration=duration, has_roll=roll_request is not None, language=language
+                )
+
+                logger.info(
+                    "Narration generated with tools",
+                    extra={
+                        "extra_data": {
+                            "duration": duration,
+                            "has_roll": roll_request is not None,
+                            "has_quest_complete": quest_complete_id is not None,
+                            "tools_used": len(tool_calls_made),
+                            "language": language,
+                        }
+                    },
+                )
+
+                return {
+                    "narration": cleaned_narration,
+                    "roll_request": roll_request,
+                    "quest_complete_id": quest_complete_id,
+                    "tool_calls_made": tool_calls_made,
+                    "character_updates": character_updates,
+                    "tokens_used": 0,  # TODO: Track tokens from tool calling
+                    "timestamp": datetime.now(),
+                    "model": "mistral-tool-calling",
+                }
+
+            # Fall back to regular narration without tools
             response_text = await self.provider_selector.generate_chat(
                 messages=[
                     msg for msg in messages if msg["role"] != "system"
