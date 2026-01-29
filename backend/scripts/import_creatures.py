@@ -16,10 +16,10 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.db.session import get_db_session
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.base import async_session
 from app.db.models.creature import Creature
 
 
@@ -81,12 +81,15 @@ async def import_creatures(csv_path: Path, session: AsyncSession):
     creatures_skipped = 0
     errors = []
 
-    with open(csv_path, "r", encoding="utf-8") as f:
+    with open(csv_path, "r", encoding="utf-8-sig") as f:  # utf-8-sig removes BOM
         # CSV is semicolon-delimited, has header row
         reader = csv.DictReader(f, delimiter=";")
 
         for row_num, row in enumerate(reader, start=2):  # Start at 2 (header is line 1)
             try:
+                # Strip whitespace from keys and values
+                row = {k.strip(): v for k, v in row.items()}
+
                 # Extract and clean fields
                 name = clean_field(row.get("name"))
 
@@ -192,7 +195,7 @@ async def main():
     print("🎲 Realms Creature Import Tool")
     print("=" * 60)
 
-    async with get_db_session() as session:
+    async with async_session() as session:
         imported, skipped, errors = await import_creatures(csv_path, session)
 
     if errors:

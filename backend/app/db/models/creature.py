@@ -3,9 +3,10 @@ Creature database model for monsters, NPCs, and companions.
 Maps to D&D 5e stat blocks from creatures_master.csv dataset.
 """
 
-from backend.app.db.base_class import Base
 from sqlalchemy import Column, Float, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
+
+from app.db.base import Base
 
 
 class Creature(Base):
