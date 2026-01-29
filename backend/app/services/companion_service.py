@@ -1,249 +1,254 @@
-"""AI Companion Service with personality-based responses"""
+"""
+Companion AI service for generating companion NPC responses.
+Uses Google Gemini to provide distinct personality from DM.
+"""
 
-import os
-from typing import Any, Dict, Optional
+import logging
+import random
+from typing import Any
 
-from mistralai import Mistral
+from sqlalchemy.ext.asyncio import AsyncSession
 
-# Initialize Mistral client
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
-client = Mistral(api_key=MISTRAL_API_KEY) if MISTRAL_API_KEY else None
+from app.db.models.character import Character
+from app.db.models.companion import Companion
+from app.services.gemini_service import GeminiService
 
-# Companion Personality Prompts
-COMPANION_PERSONALITIES = {
-    "helpful": {
-        "system_prompt": """You are {name}, a helpful {race} {companion_class} companion in a D&D adventure.
-
-Your personality: HELPFUL
-- Always suggest optimal strategies
-- Warn of dangers before they become critical
-- Offer tactical advice in combat
-- Explain game mechanics when useful
-- Prioritize party survival
-
-Current situation:
-- Player HP: {player_hp}/{player_max_hp}
-- Your HP: {companion_hp}/{companion_max_hp}
-- In combat: {in_combat}
-- Location: {location}
-
-Respond in-character with helpful tactical advice.
-Keep responses under 50 words unless providing crucial information.""",
-        "triggers": ["combat_start", "player_low_hp", "exploration", "puzzle"],
-    },
-    "brave": {
-        "system_prompt": """You are {name}, a brave {race} {companion_class} companion in a D&D adventure.
-
-Your personality: BRAVE
-- Encourage heroic actions
-- Never suggest retreat
-- Celebrate combat victories
-- Mock cowardice (playfully)
-- Take risks
-
-Current situation:
-- Player HP: {player_hp}/{player_max_hp}
-- Your HP: {companion_hp}/{companion_max_hp}
-- In combat: {in_combat}
-- Enemies: {enemies}
-
-Respond with bravery and encourage bold action.
-Keep responses under 40 words.""",
-        "triggers": ["combat_start", "victory", "boss_encounter"],
-    },
-    "cautious": {
-        "system_prompt": """You are {name}, a cautious {race} {companion_class} companion in a D&D adventure.
-
-Your personality: CAUTIOUS
-- Prioritize survival over glory
-- Suggest retreat when outmatched
-- Warn about traps and dangers
-- Conserve resources
-- Plan before acting
-
-Current situation:
-- Player HP: {player_hp}/{player_max_hp} {hp_warning}
-- Enemies: {enemies} {enemy_warning}
-- Location: {location}
-
-Respond with caution and concern for safety.""",
-        "triggers": ["player_low_hp", "outnumbered", "exploration", "trap"],
-    },
-    "sarcastic": {
-        "system_prompt": """You are {name}, a sarcastic {race} {companion_class} companion in a D&D adventure.
-
-Your personality: SARCASTIC
-- Make witty comments about situations
-- Use humor to lighten mood
-- Tease player (playfully)
-- Still provide useful info, but sarcastically
-
-Current situation: {situation}
-
-Respond with sarcasm and wit. Keep it fun, not mean.
-Keep responses under 35 words.""",
-        "triggers": ["combat_start", "player_action", "npc_interaction"],
-    },
-    "mysterious": {
-        "system_prompt": """You are {name}, a mysterious {race} {companion_class} companion in a D&D adventure.
-
-Your personality: MYSTERIOUS
-- Speak in cryptic hints
-- Reference hidden knowledge
-- Have a secret agenda (don't reveal fully)
-- Know more than you say
-
-Current situation: {situation}
-
-Respond mysteriously. Hint at deeper knowledge.
-Keep responses under 40 words.""",
-        "triggers": ["exploration", "lore_discovery", "magic_item"],
-    },
-    "scholarly": {
-        "system_prompt": """You are {name}, a scholarly {race} {companion_class} companion in a D&D adventure.
-
-Your personality: SCHOLARLY
-- Provide lore and history
-- Identify monsters with detail
-- Explain magic and artifacts
-- Reference books and studies
-
-Current situation: {situation}
-
-Respond with academic knowledge and explanations.
-Keep responses under 50 words.""",
-        "triggers": ["monster_encounter", "magic_item", "lore_discovery", "puzzle"],
-    },
-}
+logger = logging.getLogger(__name__)
 
 
 class CompanionService:
-    """Service for generating AI companion responses"""
+    """
+    AI service for companion NPCs.
 
-    @staticmethod
-    def get_personality_triggers(personality: str) -> list[str]:
-        """Get list of triggers for a personality"""
-        return COMPANION_PERSONALITIES.get(personality, {}).get("triggers", [])
+    Handles companion personality, decision-making, and responses
+    using Google Gemini (separate from DM's Mistral).
+    """
 
-    @staticmethod
-    def _format_prompt(
-        personality: str,
-        companion_name: str,
-        companion_race: str,
-        companion_class: str,
-        context: Dict[str, Any],
-    ) -> str:
-        """Format system prompt with context"""
-        prompt_template = COMPANION_PERSONALITIES.get(personality, {}).get(
-            "system_prompt", COMPANION_PERSONALITIES["helpful"]["system_prompt"]
-        )
-
-        # Prepare context values with defaults
-        player_hp = context.get("player_hp", 50)
-        player_max_hp = context.get("player_max_hp", 50)
-        companion_hp = context.get("companion_hp", 40)
-        companion_max_hp = context.get("companion_max_hp", 40)
-        in_combat = context.get("in_combat", False)
-        location = context.get("location", "Unknown")
-        enemies = context.get("enemies", "None")
-        enemy_count = context.get("enemy_count", 0)
-        situation = context.get("situation", "Adventure continues")
-
-        # Calculate warnings
-        hp_warning = "(LOW!)" if player_hp < player_max_hp * 0.3 else ""
-        enemy_warning = "(OUTNUMBERED!)" if enemy_count > 2 else ""
-
-        # Format the prompt
-        return prompt_template.format(
-            name=companion_name,
-            race=companion_race,
-            companion_class=companion_class,
-            player_hp=player_hp,
-            player_max_hp=player_max_hp,
-            companion_hp=companion_hp,
-            companion_max_hp=companion_max_hp,
-            in_combat=in_combat,
-            location=location,
-            enemies=enemies,
-            enemy_count=enemy_count,
-            situation=situation,
-            hp_warning=hp_warning,
-            enemy_warning=enemy_warning,
-        )
-
-    @staticmethod
-    async def generate_companion_speech(
-        personality: str,
-        companion_name: str,
-        companion_race: str,
-        companion_class: str,
-        trigger: str,
-        context: Dict[str, Any],
-        user_message: Optional[str] = None,
-    ) -> str:
-        """Generate companion speech using Mistral AI
+    def __init__(self, gemini_service: GeminiService):
+        """
+        Initialize companion AI service.
 
         Args:
-            personality: Companion personality type (helpful, brave, cautious, etc.)
-            companion_name: Name of the companion
-            companion_race: Race of the companion
-            companion_class: Class of the companion
-            trigger: Event that triggered the speech (combat_start, player_low_hp, etc.)
-            context: Dict with game state (hp, enemies, location, etc.)
-            user_message: Optional message from player to respond to
+            gemini_service: Configured GeminiService instance
+        """
+        self.gemini_service = gemini_service
+        logger.info("CompanionService initialized with Google Gemini")
+
+    async def generate_companion_response(
+        self,
+        companion: Companion,
+        player_action: str,
+        dm_narration: str,
+        recent_context: list[dict[str, Any]],
+        character: Character,
+    ) -> str:
+        """
+        Generate companion's response to current situation.
+
+        Args:
+            companion: Companion model instance
+            player_action: Player's recent action/message
+            dm_narration: DM's recent narration
+            recent_context: Recent conversation messages for context
+            character: Player character for relationship context
 
         Returns:
-            str: Generated companion speech
+            Companion's response as text
         """
-        if not client:
-            # Fallback responses if no API key
-            fallback = {
-                "helpful": "Let me help you with that. Stay safe out there!",
-                "brave": "We can handle this! To victory!",
-                "cautious": "Perhaps we should proceed carefully...",
-                "sarcastic": f"Oh great, another {trigger.replace('_', ' ')}...",
-                "mysterious": "I sense something... unusual here.",
-                "scholarly": "Interesting. According to my studies, this is quite rare.",
-            }
-            return fallback.get(personality, "...")
+        logger.info(f"Generating response for companion '{companion.name}'")
 
-        # Format system prompt
-        system_prompt = CompanionService._format_prompt(
-            personality, companion_name, companion_race, companion_class, context
+        # Build companion personality prompt
+        prompt = self._build_companion_prompt(
+            companion=companion,
+            player_action=player_action,
+            dm_narration=dm_narration,
+            recent_context=recent_context,
+            character=character,
         )
 
-        # Prepare user message
-        if user_message:
-            message = f"Trigger: {trigger}\nPlayer says: {user_message}"
-        else:
-            message = f"Trigger: {trigger}\nRespond to this situation in character."
-
         try:
-            # Call Mistral API
-            response = client.chat.complete(
-                model="mistral-small-latest",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": message},
-                ],
-                max_tokens=100,
+            # Generate response using Gemini
+            response = await self.gemini_service.generate_narration(
+                prompt=prompt,
+                max_tokens=500,
                 temperature=0.8,
             )
 
-            content = response.choices[0].message.content
-            if isinstance(content, str):
-                return content.strip()
-            return str(content).strip() if content else "..."
+            # Add to companion's conversation memory
+            companion.add_conversation_memory("dm", dm_narration)
+            companion.add_conversation_memory("player", player_action)
+            companion.add_conversation_memory("companion", response)
+
+            logger.info(f"Companion '{companion.name}' responded: {response[:100]}...")
+            return response
 
         except Exception as e:
-            print(f"Error generating companion speech: {e}")
-            # Return personality-appropriate fallback
-            fallback = {
-                "helpful": "I'm here to help. What do you need?",
-                "brave": "Let's face this together!",
-                "cautious": "We should be careful here.",
-                "sarcastic": "Well, this should be interesting...",
-                "mysterious": "The path ahead is unclear...",
-                "scholarly": "Fascinating. Let me think on this.",
-            }
-            return fallback.get(personality, "...")
+            logger.error(f"Failed to generate companion response: {e}")
+            return self._get_fallback_response(companion)
+
+    def _build_companion_prompt(
+        self,
+        companion: Companion,
+        player_action: str,
+        dm_narration: str,
+        recent_context: list[dict[str, Any]],
+        character: Character,
+    ) -> str:
+        """Build the prompt for companion AI."""
+        str_mod = companion.get_stat_modifier(companion.strength)
+        dex_mod = companion.get_stat_modifier(companion.dexterity)
+        int_mod = companion.get_stat_modifier(companion.intelligence)
+        wis_mod = companion.get_stat_modifier(companion.wisdom)
+        cha_mod = companion.get_stat_modifier(companion.charisma)
+
+        abilities_desc = []
+        if str_mod >= 3:
+            abilities_desc.append("very strong")
+        if dex_mod >= 3:
+            abilities_desc.append("very agile")
+        if int_mod >= 3:
+            abilities_desc.append("highly intelligent")
+        if wis_mod >= 3:
+            abilities_desc.append("very wise")
+        if cha_mod >= 3:
+            abilities_desc.append("very charismatic")
+
+        abilities_text = ", ".join(abilities_desc) if abilities_desc else "of average abilities"
+
+        context_text = ""
+        if recent_context:
+            recent_messages = recent_context[-10:]
+            context_lines = []
+            for msg in recent_messages:
+                role = msg.get("role", "unknown")
+                content = msg.get("content", "")[:200]
+                if role == "assistant":
+                    context_lines.append(f"DM: {content}")
+                elif role == "user":
+                    context_lines.append(f"{character.name}: {content}")
+            context_text = "\n".join(context_lines)
+
+        prompt = f"""You are {companion.name}, a {companion.creature_name} companion.
+
+**YOUR PERSONALITY:**
+{companion.personality}
+
+**YOUR GOALS:**
+{companion.goals or "To assist your companion on their journey"}
+
+**YOUR BACKGROUND:**
+{companion.background or f"A {companion.creature_name} who has joined the party"}
+
+**YOUR ABILITIES:**
+You are {abilities_text}.
+- Current HP: {companion.hp}/{companion.max_hp}
+- Armor Class: {companion.ac}
+
+**YOUR RELATIONSHIP WITH {character.name}:**
+Status: {companion.relationship_status.replace("_", " ").title()}
+Loyalty: {companion.loyalty}/100
+
+**RECENT CONVERSATION:**
+{context_text if context_text else "(No recent context)"}
+
+**CURRENT SITUATION:**
+DM narration: {dm_narration}
+
+{character.name}'s action: {player_action}
+
+**YOUR RESPONSE:**
+Respond in character as {companion.name}. Your response should:
+- Reflect your personality ({companion.personality})
+- Consider your relationship with {character.name} (currently {companion.relationship_status})
+- Be aware of your current state (HP: {companion.hp}/{companion.max_hp})
+- Stay true to your goals: {companion.goals or "helping your companion"}
+- Be 1-3 sentences, natural and conversational
+- DO NOT narrate the scene - only speak as yourself
+- DO NOT speak for {character.name} or describe their actions
+
+Speak now as {companion.name}:"""
+
+        return prompt
+
+    def _get_fallback_response(self, companion: Companion) -> str:
+        """Generate a fallback response if AI generation fails."""
+        personality_lower = companion.personality.lower()
+
+        if "brave" in personality_lower or "bold" in personality_lower:
+            return f"{companion.name} nods firmly, ready for whatever comes next."
+        elif "cautious" in personality_lower or "careful" in personality_lower:
+            return f"{companion.name} looks around warily, staying alert."
+        elif "friendly" in personality_lower or "loyal" in personality_lower:
+            return f"{companion.name} stays close, offering a reassuring presence."
+        elif "curious" in personality_lower:
+            return f"{companion.name} watches with keen interest."
+        else:
+            return f"{companion.name} remains at your side."
+
+    async def should_companion_respond(
+        self,
+        companion: Companion,
+        player_action: str,
+        dm_narration: str,
+        combat_active: bool = False,
+    ) -> bool:
+        """Determine if companion should speak in current situation."""
+        companion_name_lower = companion.name.lower()
+        player_action_lower = player_action.lower()
+        dm_narration_lower = dm_narration.lower()
+
+        if combat_active and f"{companion_name_lower}'s turn" in dm_narration_lower:
+            return True
+
+        if companion_name_lower in player_action_lower:
+            return True
+
+        opinion_keywords = [
+            "what do you think",
+            "your opinion",
+            "companion",
+            "what should we",
+            "any ideas",
+        ]
+        if any(keyword in player_action_lower for keyword in opinion_keywords):
+            return True
+
+        if companion_name_lower in dm_narration_lower:
+            return True
+
+        if random.random() < 0.1:
+            return True
+
+        return False
+
+    async def update_companion_loyalty(
+        self,
+        companion: Companion,
+        event_description: str,
+        loyalty_change: int,
+        db: AsyncSession,
+    ) -> None:
+        """Update companion loyalty based on player actions."""
+        old_loyalty = companion.loyalty
+        companion.loyalty = max(0, min(100, companion.loyalty + loyalty_change))
+
+        if companion.loyalty >= 80:
+            companion.relationship_status = "trusted"
+        elif companion.loyalty >= 60:
+            companion.relationship_status = "friend"
+        elif companion.loyalty >= 40:
+            companion.relationship_status = "ally"
+        elif companion.loyalty >= 20:
+            companion.relationship_status = "suspicious"
+        else:
+            companion.relationship_status = "just_met"
+
+        companion.add_important_event(
+            f"Loyalty changed from {old_loyalty} to {companion.loyalty}: {event_description}"
+        )
+
+        await db.commit()
+
+        logger.info(
+            f"Companion '{companion.name}' loyalty: {old_loyalty} -> {companion.loyalty} ({companion.relationship_status})"
+        )

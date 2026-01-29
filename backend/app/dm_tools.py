@@ -149,4 +149,54 @@ GAME_MASTER_TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "introduce_companion",
+            "description": "Introduce a new AI-driven companion NPC that will travel with the player. Use this when organically introducing allies, guides, or story-relevant NPCs.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Unique name for the companion (e.g., 'Elara Swiftwind', 'Grimtooth', 'Seraphina')",
+                    },
+                    "creature_name": {
+                        "type": "string",
+                        "description": "Base creature type from creatures database (e.g., 'Elf Scout', 'Dwarf Warrior', 'Guard'). Stats will be copied from this creature.",
+                    },
+                    "personality": {
+                        "type": "string",
+                        "description": "Core personality traits (e.g., 'brave, loyal, curious, witty', 'gruff, protective, honor-bound')",
+                    },
+                    "goals": {
+                        "type": "string",
+                        "description": "Companion's personal goals or motivations (e.g., 'Find her missing brother', 'Redeem his tarnished honor', 'Protect ancient knowledge')",
+                    },
+                    "relationship_status": {
+                        "type": "string",
+                        "enum": ["just_met", "ally", "friend", "trusted", "suspicious"],
+                        "description": "Initial relationship with player: just_met for first encounter, ally for cooperative, friend for warm, trusted for deep bond, suspicious for uneasy alliance",
+                    },
+                    "background": {
+                        "type": "string",
+                        "description": "Brief backstory for companion (e.g., 'Former royal guard exiled for speaking truth', 'Ranger searching the wilds for her captured sibling')",
+                    },
+                },
+                "required": ["name", "creature_name", "personality"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_available_tools",
+            "description": "Get a list of all available DM tools with descriptions. Use this when you need a reminder of what actions you can take.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
 ]

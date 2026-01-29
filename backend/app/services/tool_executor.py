@@ -45,6 +45,10 @@ async def execute_tool(
             return await _execute_get_creature_stats(tool_arguments, db)
         elif tool_name == "roll_for_npc":
             return await _execute_roll_for_npc(tool_arguments, db)
+        elif tool_name == "introduce_companion":
+            return await _execute_introduce_companion(tool_arguments, character, db)
+        elif tool_name == "list_available_tools":
+            return await _execute_list_available_tools(tool_arguments)
         else:
             logger.error(f"Unknown tool: {tool_name}")
             return {
@@ -338,3 +342,167 @@ async def _execute_roll_for_npc(
             "error": str(e),
             "message": f"Failed to roll dice for {npc_name}",
         }
+
+
+async def _execute_introduce_companion(
+    args: dict[str, Any],
+    character: Character,
+    db: AsyncSession,
+) -> dict[str, Any]:
+    """
+    Introduce a new AI-driven companion NPC.
+    Links to creature stats and generates avatar.
+    """
+    from sqlalchemy import func, select
+
+    from app.db.models.companion import Companion
+    from app.db.models.creature import Creature
+
+    name = args.get("name", "Unknown Companion")
+    creature_name = args.get("creature_name", "Guard")
+    personality = args.get("personality", "Friendly and helpful")
+    goals = args.get("goals")
+    relationship_status = args.get("relationship_status", "just_met")
+    background = args.get("background", "")
+
+    logger.info(f"Creating companion '{name}' based on creature '{creature_name}'")
+
+    # Step 1: Look up creature stats
+    query = select(Creature).where(func.lower(Creature.name) == func.lower(creature_name))
+    result = await db.execute(query)
+    creature = result.scalar_one_or_none()
+
+    # Try fuzzy match if exact fails
+    if not creature:
+        query = select(Creature).where(
+            func.lower(Creature.name).contains(func.lower(creature_name))
+        )
+        result = await db.execute(query.limit(1))
+        creature = result.scalar_one_or_none()
+
+    if not creature:
+        logger.error(f"Creature '{creature_name}' not found for companion creation")
+        return {
+            "success": False,
+            "error": f"Creature '{creature_name}' not found in database",
+            "message": f"Cannot create companion: creature '{creature_name}' does not exist. Try a different creature name.",
+        }
+
+    # Step 2: Create companion with stats from creature
+    companion = Companion(
+        character_id=character.id,
+        creature_id=creature.id,
+        name=name,
+        creature_name=creature.name,
+        personality=personality,
+        goals=goals,
+        background=background,
+        relationship_status=relationship_status,
+        loyalty=50,  # Start at neutral
+        # Copy combat stats from creature
+        hp=creature.hp or 10,
+        max_hp=creature.hp or 10,
+        ac=creature.ac or 10,
+        # Copy ability scores
+        strength=creature.strength,
+        dexterity=creature.dexterity,
+        constitution=creature.constitution,
+        intelligence=creature.intelligence,
+        wisdom=creature.wisdom,
+        charisma=creature.charisma,
+        # Copy additional data
+        actions=creature.actions if hasattr(creature, "actions") else None,
+        special_traits=creature.traits if hasattr(creature, "traits") else None,
+        speed=creature.speed,
+        # State
+        is_active=True,
+        is_alive=True,
+        death_save_successes=0,
+        death_save_failures=0,
+    )
+
+    # Step 3: Generate companion avatar
+    try:
+        from app.services.image_service import ImageService
+
+        image_service = ImageService()
+
+        # Create avatar prompt
+        avatar_prompt = f"Fantasy character portrait: {name}, a {creature.name}. "
+        avatar_prompt += f"Personality: {personality}. "
+        if background:
+            avatar_prompt += f"Background: {background}. "
+        avatar_prompt += "Style: D&D character art, detailed, fantasy illustration, hero portrait."
+
+        logger.info(f"Generating avatar for companion '{name}'")
+        image_url = await image_service.generate_image(
+            prompt=avatar_prompt,
+            character_id=character.id,
+            image_type="companion_avatar",
+        )
+
+        if image_url:
+            companion.avatar_url = image_url
+            logger.info(f"Avatar generated successfully: {image_url}")
+    except Exception as e:
+        logger.warning(f"Failed to generate companion avatar: {e}")
+        # Continue without avatar - not a critical failure
+
+    # Step 4: Save to database
+    db.add(companion)
+    await db.flush()
+    await db.commit()
+    await db.refresh(companion)
+
+    logger.info(
+        f"Companion created: {companion.name} (ID: {companion.id}, Creature: {creature.name}, HP: {companion.hp}, AC: {companion.ac})"
+    )
+
+    return {
+        "success": True,
+        "companion": companion.to_dict(),
+        "message": f"{name} joins the party as a companion! (Based on {creature.name}: HP {companion.hp}, AC {companion.ac})",
+    }
+
+
+async def _execute_list_available_tools(
+    args: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    List all available DM tools with descriptions.
+    Helps DM remember what actions are available.
+    """
+    from app.dm_tools import GAME_MASTER_TOOLS
+
+    tools_list = []
+
+    for tool in GAME_MASTER_TOOLS:
+        if tool.get("type") == "function" and "function" in tool:
+            func_info = tool["function"]
+            tools_list.append(
+                {
+                    "name": func_info.get("name"),
+                    "description": func_info.get("description"),
+                    "parameters": list(
+                        func_info.get("parameters", {}).get("properties", {}).keys()
+                    ),
+                }
+            )
+
+    logger.info(f"Listing {len(tools_list)} available tools")
+
+    # Format as readable text
+    tool_descriptions = []
+    for tool in tools_list:
+        params_str = ", ".join(tool["parameters"]) if tool["parameters"] else "none"
+        tool_descriptions.append(
+            f"• **{tool['name']}**: {tool['description']} (Parameters: {params_str})"
+        )
+
+    formatted_list = "\n".join(tool_descriptions)
+
+    return {
+        "success": True,
+        "tools": tools_list,
+        "message": f"Available DM Tools ({len(tools_list)} total):\n\n{formatted_list}",
+    }

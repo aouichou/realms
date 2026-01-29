@@ -160,6 +160,7 @@ class Character(Base):
     conditions = relationship(
         "CharacterCondition", back_populates="character", cascade="all, delete-orphan"
     )
+    companions = relationship("Companion", back_populates="character", cascade="all, delete-orphan")
     # TODO: Uncomment when active_effects is fully implemented
     # active_effects = relationship(
     #     "ActiveEffect", back_populates="character", cascade="all, delete-orphan"
