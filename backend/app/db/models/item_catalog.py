@@ -101,25 +101,27 @@ class ItemCatalog(Base):
 
     def is_weapon(self) -> bool:
         """Check if item is a weapon."""
-        return self.category and "weapon" in self.category.lower()
+        return bool(self.category and "weapon" in self.category.lower())
 
     def is_armor(self) -> bool:
         """Check if item is armor."""
-        return self.category and "armor" in self.category.lower()
+        return bool(self.category and "armor" in self.category.lower())
 
     def is_shield(self) -> bool:
         """Check if item is a shield."""
-        return "shield" in self.name.lower() or (
-            self.category and "shield" in self.category.lower()
+        return bool(
+            "shield" in self.name.lower() or (self.category and "shield" in self.category.lower())
         )
 
     def is_magic_item(self) -> bool:
         """Check if item is magical (non-common rarity)."""
-        return self.rarity and self.rarity.lower() not in ("common", "")
+        return bool(self.rarity and self.rarity.lower() not in ("common", ""))
 
     def get_total_cost_gp(self) -> float:
         """Get total cost in gold pieces (including copper conversion)."""
-        return self.cost_gp + (self.cost_cp / 100.0)
+        gp = self.cost_gp if self.cost_gp is not None else 0
+        cp = self.cost_cp if self.cost_cp is not None else 0
+        return float(gp) + (float(cp) / 100.0)  # type: ignore[arg-type]
 
     def __repr__(self):
         return f"<ItemCatalog {self.name} ({self.rarity} {self.category})>"

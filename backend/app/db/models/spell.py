@@ -72,10 +72,10 @@ class Spell(Base):
 
     # Damage/healing if applicable
     damage_dice: Mapped[Optional[str]] = mapped_column(
-        String(20), nullable=True
+        String(50), nullable=True
     )  # e.g., "1d6", "3d8"
     damage_type: Mapped[Optional[str]] = mapped_column(
-        String(20), nullable=True
+        String(100), nullable=True
     )  # e.g., "fire", "cold"
 
     # Upcasting formula for damage scaling (e.g., "+1d6" means add 1d6 per level above base)

@@ -22,10 +22,10 @@ class Creature(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     # Core identification
-    name = Column(String(100), nullable=False, index=True)
-    size = Column(String(20))  # Tiny, Small, Medium, Large, Huge, Gargantuan
-    creature_type = Column(String(50), index=True)  # humanoid, dragon, undead, etc.
-    alignment = Column(String(50))  # lawful good, neutral evil, etc.
+    name = Column(String(200), nullable=False, index=True)
+    size = Column(String(50))  # Tiny, Small, Medium, Large, Huge, Gargantuan
+    creature_type = Column(String(150), index=True)  # humanoid, dragon, undead, etc.
+    alignment = Column(String(100))  # lawful good, neutral evil, etc.
 
     # Combat stats
     ac = Column(Integer)  # Armor Class
@@ -56,8 +56,9 @@ class Creature(Base):
     languages = Column(Text)  # "Common, Draconic"
 
     # Challenge and rewards
-    cr = Column(String(10), index=True)  # Challenge Rating: "1/4", "5", "16", etc.
-    xp = Column(String(100))  # XP value or treasure reference
+    cr = Column(
+        String(100), index=True
+    )  # Challenge Rating: "1/4", "5", "16", etc.\n    xp = Column(String(100))  # XP value or treasure reference
 
     # Abilities and actions (stored as text for DM display)
     actions = Column(Text)  # Attack descriptions, abilities

@@ -15,6 +15,7 @@ from app.api.v1.endpoints import (
     game,
     images,
     inventory,
+    items,
     loot,
     memories,
     narrate,
@@ -43,6 +44,7 @@ api_router.include_router(effects.router, tags=["effects"])
 api_router.include_router(game.router, tags=["game"])
 api_router.include_router(images.router, tags=["images"])
 api_router.include_router(inventory.router, tags=["inventory"])
+api_router.include_router(items.router, prefix="/items", tags=["items"])
 api_router.include_router(loot.router, tags=["loot"])
 api_router.include_router(memories.router, tags=["memories"])
 api_router.include_router(narrate.router, tags=["narration"])

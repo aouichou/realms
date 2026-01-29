@@ -254,6 +254,67 @@ GAME_MASTER_TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "give_item",
+            "description": "Give an item from the catalog to the player's character inventory. Use this when the DM awards loot, quest rewards, or the player purchases/finds items.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "item_name": {
+                        "type": "string",
+                        "description": "Name of the item to give (e.g., 'Longsword', 'Healing Potion', 'Chain Mail')",
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "description": "Number of items to give (default: 1). Use for stackable items like potions, arrows, gold pieces.",
+                        "minimum": 1,
+                        "default": 1,
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Why the item is being given (e.g., 'found in treasure chest', 'quest reward from mayor', 'purchased from blacksmith')",
+                    },
+                },
+                "required": ["item_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_items",
+            "description": "Search the item catalog for DM reference. Use this to look up item stats, costs, and properties when needed for the game.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search term for item name or description (e.g., 'sword', 'healing', 'armor')",
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": ["weapon", "armor", "shield", "potion", "scroll", "wondrous_item", "general"],
+                        "description": "Filter by item category",
+                    },
+                    "rarity": {
+                        "type": "string",
+                        "enum": ["common", "uncommon", "rare", "very rare", "legendary", "artifact"],
+                        "description": "Filter by rarity for magic items",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return (default: 10, max: 50)",
+                        "minimum": 1,
+                        "maximum": 50,
+                        "default": 10,
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
                 "required": [],
             },
         },

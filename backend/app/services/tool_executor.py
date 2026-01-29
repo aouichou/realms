@@ -51,6 +51,10 @@ async def execute_tool(
             return await _execute_companion_suggest_action(tool_arguments, character, db)
         elif tool_name == "companion_share_knowledge":
             return await _execute_companion_share_knowledge(tool_arguments, character, db)
+        elif tool_name == "give_item":
+            return await _execute_give_item(tool_arguments, character, db)
+        elif tool_name == "search_items":
+            return await _execute_search_items(tool_arguments, db)
         elif tool_name == "list_available_tools":
             return await _execute_list_available_tools(tool_arguments)
         else:
@@ -629,4 +633,186 @@ async def _execute_companion_share_knowledge(
         "information": information,
         "reliability": reliability,
         "message": f"📚 **{companion_name}'s Knowledge about {topic}:** {indicator}\n\n{information}{source_text}",
+    }
+
+
+async def _execute_give_item(
+    args: dict[str, Any],
+    character: Character,
+    db: AsyncSession,
+) -> dict[str, Any]:
+    """
+    Give an item from the catalog to the player's inventory.
+    """
+    from sqlalchemy import func, select
+
+    from app.db.models.item import Item
+    from app.db.models.item_catalog import ItemCatalog
+
+    item_name = args.get("item_name")
+    quantity = args.get("quantity", 1)
+    reason = args.get("reason", "")
+
+    if not item_name:
+        return {
+            "success": False,
+            "error": "item_name is required",
+        }
+
+    # Look up item in catalog (fuzzy match)
+    query = select(ItemCatalog).where(func.lower(ItemCatalog.name) == func.lower(item_name))
+    result = await db.execute(query)
+    catalog_item = result.scalar_one_or_none()
+
+    # Try fuzzy match if exact match fails
+    if not catalog_item:
+        query = select(ItemCatalog).where(
+            func.lower(ItemCatalog.name).contains(func.lower(item_name))
+        )
+        result = await db.execute(query.limit(1))
+        catalog_item = result.scalar_one_or_none()
+
+    if not catalog_item:
+        return {
+            "success": False,
+            "error": f"Item '{item_name}' not found in catalog. Use search_items to find available items.",
+        }
+
+    # Create item in player's inventory
+    new_item = Item(
+        character_id=character.id,
+        name=catalog_item.name,
+        category=catalog_item.category,
+        quantity=quantity,
+        equipped=False,
+        properties=catalog_item.properties or {},
+        description=catalog_item.description,
+    )
+
+    db.add(new_item)
+    await db.commit()
+    await db.refresh(new_item)
+
+    logger.info(f"Gave {quantity}x {catalog_item.name} to character {character.id}")
+
+    reason_text = f" ({reason})" if reason else ""
+    item_desc = (
+        catalog_item.description[:100] + "..."
+        if catalog_item.description and len(catalog_item.description) > 100
+        else catalog_item.description or ""
+    )
+
+    return {
+        "success": True,
+        "item": {
+            "name": catalog_item.name,
+            "category": catalog_item.category,
+            "quantity": quantity,
+            "description": item_desc,
+        },
+        "message": f"✨ **Item Given:** {quantity}x {catalog_item.name}{reason_text}\n{item_desc}",
+    }
+
+
+async def _execute_search_items(
+    args: dict[str, Any],
+    db: AsyncSession,
+) -> dict[str, Any]:
+    """
+    Search the item catalog for DM reference.
+    """
+    from sqlalchemy import func, or_, select
+
+    from app.db.models.item_catalog import ItemCatalog
+
+    query_text = args.get("query")
+    category = args.get("category")
+    rarity = args.get("rarity")
+    limit = args.get("limit", 10)
+
+    if not query_text:
+        return {
+            "success": False,
+            "error": "query is required",
+        }
+
+    # Build query
+    stmt = select(ItemCatalog)
+
+    # Search by name or description
+    search_term = f"%{query_text.lower()}%"
+    stmt = stmt.where(
+        or_(
+            func.lower(ItemCatalog.name).like(search_term),
+            func.lower(ItemCatalog.description).like(search_term),
+        )
+    )
+
+    # Apply filters
+    if category:
+        stmt = stmt.where(func.lower(ItemCatalog.category) == func.lower(category))
+
+    if rarity:
+        stmt = stmt.where(func.lower(ItemCatalog.rarity).like(f"%{rarity.lower()}%"))
+
+    # Execute query with limit
+    stmt = stmt.limit(min(limit, 50)).order_by(ItemCatalog.name)
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+
+    if not items:
+        return {
+            "success": True,
+            "items": [],
+            "message": f"No items found matching '{query_text}'",
+        }
+
+    # Format results
+    item_list = []
+    for item in items:
+        item_info = {
+            "name": item.name,
+            "category": item.category,
+            "rarity": item.rarity,
+        }
+
+        # Add relevant stats based on category
+        if item.is_weapon():
+            item_info["damage"] = (
+                f"{item.damage_dice} {item.damage_type}" if item.damage_dice else "N/A"
+            )
+            if item.attack_bonus:
+                item_info["attack_bonus"] = f"+{item.attack_bonus}"
+
+        if item.is_armor():
+            if item.ac_base:
+                item_info["ac"] = item.ac_base
+            elif item.ac_bonus:
+                item_info["ac_bonus"] = f"+{item.ac_bonus}"
+
+        # Add description (truncated)
+        if item.description:
+            item_info["description"] = (
+                item.description[:150] + "..." if len(item.description) > 150 else item.description
+            )
+
+        item_list.append(item_info)
+
+    logger.info(f"Search '{query_text}' returned {len(items)} items")
+
+    # Format message
+    message_lines = [f"🔍 **Found {len(items)} item(s) matching '{query_text}':**\n"]
+    for item_info in item_list[:5]:  # Show first 5 in message
+        message_lines.append(
+            f"• **{item_info['name']}** ({item_info['category']}, {item_info['rarity']})"
+        )
+
+    if len(items) > 5:
+        message_lines.append(f"... and {len(items) - 5} more")
+
+    return {
+        "success": True,
+        "items": item_list,
+        "total": len(items),
+        "message": "\n".join(message_lines),
     }
