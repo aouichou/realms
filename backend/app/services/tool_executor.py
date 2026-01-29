@@ -43,6 +43,8 @@ async def execute_tool(
             return await _execute_consume_spell_slot(tool_arguments, character, db)
         elif tool_name == "get_creature_stats":
             return await _execute_get_creature_stats(tool_arguments, db)
+        elif tool_name == "roll_for_npc":
+            return await _execute_roll_for_npc(tool_arguments, db)
         else:
             logger.error(f"Unknown tool: {tool_name}")
             return {
@@ -252,3 +254,87 @@ async def _execute_get_creature_stats(
         "creature_data": creature.to_dict(),
         "message": f"Retrieved stats for {creature.name} (CR {creature.cr})",
     }
+
+
+async def _execute_roll_for_npc(
+    args: dict[str, Any],
+    db: AsyncSession,
+) -> dict[str, Any]:
+    """
+    Execute dice roll for NPC/monster.
+    Shows transparency in combat by displaying actual roll results.
+    """
+    from app.services.dice_service import DiceService
+
+    npc_name = args.get("npc_name", "Unknown NPC")
+    roll_type = args.get("roll_type", "attack")
+    dice_expression = args.get("dice_expression", "d20")
+    target_name = args.get("target_name")
+    context = args.get("context", "")
+
+    logger.info(f"Rolling {dice_expression} for {npc_name} ({roll_type})")
+
+    try:
+        # Parse and roll the dice
+        dice_service = DiceService()
+        count, sides, modifier = dice_service.parse_dice_notation(dice_expression)
+
+        # Roll all dice
+        rolls = []
+        for _ in range(count):
+            roll = await dice_service.roll_die(sides)
+            rolls.append(roll)
+
+        # Calculate total
+        dice_total = sum(rolls)
+        final_total = dice_total + modifier
+
+        # Format roll breakdown
+        breakdown_parts = []
+        if len(rolls) > 1:
+            breakdown_parts.append(f"{len(rolls)}d{sides}: {rolls} = {dice_total}")
+        else:
+            breakdown_parts.append(f"d{sides}: {rolls[0]}")
+
+        if modifier != 0:
+            sign = "+" if modifier > 0 else ""
+            breakdown_parts.append(f"{sign}{modifier}")
+
+        breakdown = " ".join(breakdown_parts)
+
+        # Create result message
+        result_msg = f"{npc_name} rolled {final_total}"
+        if context:
+            result_msg += f" ({context})"
+        if target_name:
+            result_msg += f" vs {target_name}"
+
+        logger.info(f"NPC roll result: {result_msg} [{breakdown}]")
+
+        return {
+            "success": True,
+            "npc_name": npc_name,
+            "roll_type": roll_type,
+            "result": final_total,
+            "breakdown": breakdown,
+            "rolls": rolls,
+            "modifier": modifier,
+            "target_name": target_name,
+            "context": context,
+            "message": result_msg,
+        }
+
+    except ValueError as e:
+        logger.error(f"Invalid dice expression '{dice_expression}': {e}")
+        return {
+            "success": False,
+            "error": f"Invalid dice notation: {dice_expression}",
+            "message": f"Could not parse dice expression '{dice_expression}'. Use format like 'd20+5' or '2d6+3'",
+        }
+    except Exception as e:
+        logger.error(f"Error rolling for NPC: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "message": f"Failed to roll dice for {npc_name}",
+        }

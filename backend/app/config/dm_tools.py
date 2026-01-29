@@ -115,4 +115,38 @@ GAME_MASTER_TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "roll_for_npc",
+            "description": "Roll dice for an NPC, monster, or enemy. Use this for ALL NPC/monster rolls: attacks, saves, ability checks, damage, or initiative. NEVER state roll results narratively - always use this tool.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "npc_name": {
+                        "type": "string",
+                        "description": "Name of NPC/monster rolling (e.g., 'Goblin', 'Guard', 'Bandit Captain')",
+                    },
+                    "roll_type": {
+                        "type": "string",
+                        "enum": ["attack", "damage", "saving_throw", "ability_check", "initiative"],
+                        "description": "Type of roll: attack for attack rolls, damage for damage dice, saving_throw for saves, ability_check for skill/ability checks, initiative for combat order",
+                    },
+                    "dice_expression": {
+                        "type": "string",
+                        "description": "Dice notation (e.g., 'd20+5' for attack, '2d6+3' for damage, 'd20' for initiative)",
+                    },
+                    "target_name": {
+                        "type": "string",
+                        "description": "Optional: Name of target for attacks (e.g., 'the player', 'Theron')",
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "Brief context for the roll (e.g., 'scimitar attack', 'Dexterity saving throw', 'Stealth check')",
+                    },
+                },
+                "required": ["npc_name", "roll_type", "dice_expression"],
+            },
+        },
+    },
 ]
