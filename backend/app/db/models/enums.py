@@ -126,3 +126,4 @@ class MessageRole(str, PyEnum):
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
+    COMPANION = "companion"  # RL-131: Messages from AI companions

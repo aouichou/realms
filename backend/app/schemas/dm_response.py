@@ -40,7 +40,10 @@ class DMResponse(BaseModel):
     scene_image_url: Optional[str] = None
     tokens_used: int
     rolls: Optional[list[dict[str, Any]]] = None  # Executed dice rolls
-    companion_speech: Optional[str] = None  # AI companion contextual response
+    companion_speech: Optional[str] = None  # AI companion contextual response (legacy)
+    companion_responses: Optional[list[dict[str, Any]]] = (
+        None  # RL-131: Companion responses with full data
+    )
     warnings: Optional[list[str]] = None  # Spell detection warnings and suggestions
     tool_calls_made: Optional[list[dict[str, Any]]] = None  # RL-129: Mistral tool calls
     character_updates: Optional[dict[str, Any]] = None  # RL-129: Character state changes from tools

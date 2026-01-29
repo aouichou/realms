@@ -3,10 +3,11 @@ Companion database model for AI-driven NPCs that travel with players.
 Companions are linked to creatures for stats but have unique personalities.
 """
 
+import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -25,10 +26,12 @@ class Companion(Base):
 
     __tablename__ = "companions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
 
     # Relationships
-    character_id = Column(Integer, ForeignKey("characters.id"), nullable=False, index=True)
+    character_id = Column(
+        UUID(as_uuid=True), ForeignKey("characters.id"), nullable=False, index=True
+    )
     creature_id = Column(Integer, ForeignKey("creatures.id"), nullable=False, index=True)
 
     # Core identity

@@ -755,67 +755,105 @@ async def send_player_action(
         except Exception as e:
             logger.warning(f"Failed to capture dialogue memory: {e}")
 
-    # Generate companion response if appropriate
-    companion_response = None
+    # Generate companion responses if any active companions (RL-131)
+    companion_responses = []
     try:
+        from app.db.models import Companion
         from app.services.companion_service import CompanionService
 
-        # Determine trigger based on game state
-        companion_trigger = None
-
-        # Check for combat start
-        combat_keywords = [
-            "combat",
-            "attack",
-            "initiative",
-            "roll for initiative",
-            "enemy",
-            "enemies",
-        ]
-        if any(keyword in result["narration"].lower() for keyword in combat_keywords):
-            companion_trigger = "combat_start"
-
-        # Check for player low HP
-        if character.current_hp and character.max_hp:
-            hp_percent = character.current_hp / character.max_hp
-            if hp_percent < 0.3:
-                companion_trigger = "player_low_hp"
-
-        # Check for victory
-        victory_keywords = ["defeated", "victory", "won", "slain", "killed the"]
-        if any(keyword in result["narration"].lower() for keyword in victory_keywords):
-            companion_trigger = "victory"
-
-        # Check for puzzle/riddle
-        puzzle_keywords = ["puzzle", "riddle", "mystery", "clue", "solve"]
-        if any(keyword in result["narration"].lower() for keyword in puzzle_keywords):
-            companion_trigger = "puzzle"
-
-        # Generate companion speech if trigger detected
-        if companion_trigger:
-            # Build game context
-            game_context = {
-                "player_hp": character.current_hp or character.max_hp,
-                "player_max_hp": character.max_hp,
-                "in_combat": companion_trigger == "combat_start",
-                "location": request.action[:100],  # Use action as context
-                "situation": result["narration"][:200],
-            }
-
-            # Use default companion personality (helpful)
-            # Frontend will override with user's selected personality
-            companion_response = await CompanionService.generate_companion_speech(
-                personality="helpful",
-                companion_name="Aria",
-                companion_race="Elf",
-                companion_class="Wizard",
-                trigger=companion_trigger,
-                context=game_context,
-                user_message=request.action,
+        # Get active companions for this character
+        result_companions = await db.execute(
+            select(Companion).where(
+                Companion.character_id == request.character_id,
+                Companion.is_active == True,
+                Companion.is_alive == True,
             )
-            logger.info(f"Generated companion response for trigger: {companion_trigger}")
+        )
+        active_companions = result_companions.scalars().all()
+
+        if active_companions:
+            logger.info(
+                f"Found {len(active_companions)} active companions for character {request.character_id}"
+            )
+
+            # Determine if in combat
+            combat_keywords = [
+                "combat",
+                "attack",
+                "initiative",
+                "roll for initiative",
+                "enemy",
+                "enemies",
+            ]
+            in_combat = any(keyword in result["narration"].lower() for keyword in combat_keywords)
+
+            # Get recent conversation context (last 3 messages)
+            recent_context = []
+            if session_id and len(conversation_history) > 0:
+                recent_context = conversation_history[-3:]
+
+            # Initialize companion service
+            companion_service = CompanionService()
+
+            # Check each companion and generate responses
+            for companion in active_companions:
+                try:
+                    # Check if companion should respond
+                    should_respond = await companion_service.should_companion_respond(
+                        companion=companion,
+                        player_action=request.action,
+                        dm_narration=result["narration"],
+                        in_combat=in_combat,
+                    )
+
+                    if should_respond:
+                        logger.info(f"Companion {companion.name} will respond")
+
+                        # Generate companion response
+                        companion_message = await companion_service.generate_companion_response(
+                            companion=companion,
+                            player_action=request.action,
+                            dm_narration=result["narration"],
+                            recent_context=recent_context,
+                            character=character,
+                        )
+
+                        if companion_message:
+                            # Save companion message to conversation history
+                            if session_id:
+                                companion_msg = MessageCreate(
+                                    session_id=session_id,
+                                    role="companion",
+                                    content=companion_message,
+                                    tokens_used=0,  # Gemini doesn't provide token counts
+                                    companion_id=companion.id,
+                                )
+                                await ConversationService.create_message(db, companion_msg)
+                                logger.info(f"Saved companion message from {companion.name}")
+
+                            # Add to response data
+                            companion_responses.append(
+                                {
+                                    "companion_id": str(companion.id),
+                                    "companion_name": companion.name,
+                                    "message": companion_message,
+                                    "loyalty": companion.loyalty,
+                                    "relationship_status": companion.relationship_status.value,
+                                }
+                            )
+
+                            logger.info(f"Generated response from companion {companion.name}")
+                    else:
+                        logger.debug(f"Companion {companion.name} chose not to respond")
+
+                except Exception as companion_err:
+                    logger.warning(
+                        f"Failed to generate response for companion {companion.id}: {companion_err}"
+                    )
+                    continue
+
     except Exception as e:
-        logger.warning(f"Failed to generate companion response: {e}")
+        logger.warning(f"Failed to process companions: {e}")
 
     # Build response
     roll_request = None
@@ -852,7 +890,12 @@ async def send_player_action(
         scene_image_url=scene_image_url,
         tokens_used=result["tokens_used"],
         rolls=response_data.get("rolls"),
-        companion_speech=companion_response,
+        companion_speech=companion_responses[0]["message"]
+        if companion_responses
+        else None,  # Legacy field for backward compat
+        companion_responses=companion_responses
+        if companion_responses
+        else None,  # New field with full companion data
         warnings=response_data.get("warnings"),
         tool_calls_made=result.get("tool_calls_made"),  # RL-129: Mistral tool calls
         character_updates=result.get("character_updates"),  # RL-129: Character state changes

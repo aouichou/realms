@@ -42,6 +42,11 @@ class ConversationMessage(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     tokens_used: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     scene_image_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    companion_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("companions.id", ondelete="SET NULL"),
+        nullable=True,
+    )  # RL-131: Link to companion if role is 'companion'
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False, index=True

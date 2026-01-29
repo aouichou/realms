@@ -22,8 +22,8 @@ def upgrade() -> None:
     # Create companions table
     op.create_table(
         "companions",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("character_id", sa.Integer(), nullable=False),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("character_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("creature_id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(length=100), nullable=False),
         sa.Column("creature_name", sa.String(length=100), nullable=False),
