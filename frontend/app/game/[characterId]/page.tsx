@@ -1,5 +1,6 @@
 'use client';
 
+import NPCRollResult from '@/components/NPCRollResult';
 import { SpellWarningContainer } from '@/components/SpellWarningContainer';
 import { ToolCallsBadgeContainer } from '@/components/ToolCallBadge';
 import { TypewriterText } from '@/components/TypewriterText';
@@ -817,10 +818,15 @@ export default function GamePage() {
 										<ToolCallsBadgeContainer toolCalls={message.tool_calls_made} />
 									)}
 
-									{/* Scene Image (if present) */}
-									{message.scene_image_url && message.role === 'assistant' && (
-										<SceneImage imageUrl={message.scene_image_url} alt="Scene illustration" />
-									)}
+									{/* RL-133: Display NPC roll results */}
+									{message.tool_calls_made
+										?.filter(call => call.name === 'roll_for_npc' && call.result?.success)
+										.map((call, idx) => (
+											<NPCRollResult
+												key={`npc-roll-${idx}`}
+												roll={call.result as any}
+											/>
+										))}
 
 									<div className="text-narrative text-white font-body leading-relaxed whitespace-pre-line">
 										{message.role === 'assistant' ? (
