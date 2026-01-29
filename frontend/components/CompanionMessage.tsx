@@ -86,11 +86,11 @@ export default function CompanionMessage({
 			{/* Companion Message Container */}
 			<div className="flex items-start gap-3 mb-4">
 				{/* Avatar */}
-				<div className="relative flex-shrink-0">
+				<div className="relative shrink-0">
 					<div
 						className={`
 							w-12 h-12 rounded-full
-							bg-gradient-to-br ${getRelationshipColor(companion.relationship_status)}
+							bg-linear-to-br ${getRelationshipColor(companion.relationship_status)}
 							flex items-center justify-center
 							ring-2 ring-offset-2 ring-offset-[#0a0a0a] ring-teal-500/50
 							shadow-lg shadow-teal-500/20
@@ -114,7 +114,7 @@ export default function CompanionMessage({
 						className={`
 							absolute -bottom-1 -right-1
 							w-5 h-5 rounded-full
-							bg-gradient-to-br ${getRelationshipColor(companion.relationship_status)}
+							bg-linear-to-br ${getRelationshipColor(companion.relationship_status)}
 							flex items-center justify-center
 							ring-2 ring-[#0a0a0a]
 							shadow-lg
@@ -148,7 +148,7 @@ export default function CompanionMessage({
 					<div
 						className={`
 							px-4 py-3 rounded-2xl rounded-tl-sm
-							bg-gradient-to-br from-teal-900/40 to-emerald-900/30
+							bg-linear-to-br from-teal-900/40 to-emerald-900/30
 							border border-teal-700/50
 							shadow-lg shadow-teal-900/20
 							backdrop-blur-sm

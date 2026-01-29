@@ -115,6 +115,10 @@ class CompanionService:
 
         abilities_text = ", ".join(abilities_desc) if abilities_desc else "of average abilities"
 
+        # Loyalty-based behavior modifiers
+        loyalty = companion.loyalty or 50  # type: ignore
+        loyalty_behavior = self._get_loyalty_behavior(loyalty)
+
         context_text = ""
         if recent_context:
             recent_messages = recent_context[-10:]
@@ -146,7 +150,9 @@ You are {abilities_text}.
 
 **YOUR RELATIONSHIP WITH {character.name}:**
 Status: {companion.relationship_status.replace("_", " ").title()}
-Loyalty: {companion.loyalty}/100
+Loyalty: {loyalty}/100
+
+{loyalty_behavior}
 
 **RECENT CONVERSATION:**
 {context_text if context_text else "(No recent context)"}
@@ -159,7 +165,7 @@ DM narration: {dm_narration}
 **YOUR RESPONSE:**
 Respond in character as {companion.name}. Your response should:
 - Reflect your personality ({companion.personality})
-- Consider your relationship with {character.name} (currently {companion.relationship_status})
+- Consider your loyalty level ({loyalty}/100) and behavior: {self._get_loyalty_descriptor(loyalty)}
 - Be aware of your current state (HP: {companion.hp}/{companion.max_hp})
 - Stay true to your goals: {companion.goals or "helping your companion"}
 - Be 1-3 sentences, natural and conversational
@@ -169,6 +175,61 @@ Respond in character as {companion.name}. Your response should:
 Speak now as {companion.name}:"""
 
         return prompt
+
+    def _get_loyalty_behavior(self, loyalty: int) -> str:
+        """Get loyalty-based behavior guidelines."""
+        if loyalty >= 80:
+            return """**BEHAVIOR GUIDANCE (High Loyalty):**
+You are deeply devoted to your companion. You:
+- Offer protective and supportive comments
+- Volunteer for dangerous tasks willingly
+- Express genuine care and concern
+- May occasionally show affection or admiration"""
+
+        elif loyalty >= 60:
+            return """**BEHAVIOR GUIDANCE (Good Loyalty):**
+You are cooperative and helpful. You:
+- Readily assist when asked
+- Offer practical suggestions
+- Maintain a professional but friendly demeanor
+- Show respect for your companion's decisions"""
+
+        elif loyalty >= 40:
+            return """**BEHAVIOR GUIDANCE (Neutral Loyalty):**
+You are pragmatic and businesslike. You:
+- Fulfill your obligations but nothing more
+- Speak matter-of-factly
+- May express mild skepticism
+- Keep emotional distance"""
+
+        elif loyalty >= 20:
+            return """**BEHAVIOR GUIDANCE (Low Loyalty):**
+You are hesitant and questioning. You:
+- May challenge or question decisions
+- Express concerns openly
+- Show reluctance for dangerous tasks
+- Maintain a guarded or cautious tone"""
+
+        else:
+            return """**BEHAVIOR GUIDANCE (Very Low Loyalty):**
+You are reluctant and possibly defiant. You:
+- May openly disagree or argue
+- Show frustration or resentment
+- Consider your own interests first
+- Might hint at leaving or refusing tasks"""
+
+    def _get_loyalty_descriptor(self, loyalty: int) -> str:
+        """Get a short descriptor for loyalty level."""
+        if loyalty >= 80:
+            return "devoted and protective"
+        elif loyalty >= 60:
+            return "cooperative and helpful"
+        elif loyalty >= 40:
+            return "neutral and pragmatic"
+        elif loyalty >= 20:
+            return "hesitant and questioning"
+        else:
+            return "reluctant and defiant"
 
     def _get_fallback_response(self, companion: Companion) -> str:
         """Generate a fallback response if AI generation fails."""

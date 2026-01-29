@@ -47,6 +47,10 @@ async def execute_tool(
             return await _execute_roll_for_npc(tool_arguments, db)
         elif tool_name == "introduce_companion":
             return await _execute_introduce_companion(tool_arguments, character, db)
+        elif tool_name == "companion_suggest_action":
+            return await _execute_companion_suggest_action(tool_arguments, character, db)
+        elif tool_name == "companion_share_knowledge":
+            return await _execute_companion_share_knowledge(tool_arguments, character, db)
         elif tool_name == "list_available_tools":
             return await _execute_list_available_tools(tool_arguments)
         else:
@@ -505,4 +509,124 @@ async def _execute_list_available_tools(
         "success": True,
         "tools": tools_list,
         "message": f"Available DM Tools ({len(tools_list)} total):\n\n{formatted_list}",
+    }
+
+
+async def _execute_companion_suggest_action(
+    args: dict[str, Any],
+    character: Character,
+    db: AsyncSession,
+) -> dict[str, Any]:
+    """
+    Allow a companion to suggest a tactical action to the player.
+    """
+    from sqlalchemy import select
+
+    from app.db.models.companion import Companion
+
+    companion_name = args.get("companion_name")
+    suggestion = args.get("suggestion")
+    reason = args.get("reason", "")
+    urgency = args.get("urgency", "moderate")
+
+    if not companion_name or not suggestion:
+        return {
+            "success": False,
+            "error": "companion_name and suggestion are required",
+        }
+
+    # Verify companion exists and belongs to character
+    result = await db.execute(
+        select(Companion).where(
+            Companion.character_id == character.id, Companion.name == companion_name
+        )
+    )
+    companion = result.scalar_one_or_none()
+
+    if not companion:
+        return {
+            "success": False,
+            "error": f"Companion {companion_name} not found for this character",
+        }
+
+    logger.info(f"Companion {companion_name} suggesting action (urgency: {urgency}): {suggestion}")
+
+    # Format the suggestion with urgency styling
+    urgency_emojis = {
+        "low": "💡",
+        "moderate": "⚔️",
+        "high": "⚠️",
+        "critical": "🚨",
+    }
+
+    emoji = urgency_emojis.get(urgency, "💡")
+    reason_text = f" ({reason})" if reason else ""
+
+    return {
+        "success": True,
+        "companion_name": companion_name,
+        "suggestion": suggestion,
+        "urgency": urgency,
+        "message": f"{emoji} **{companion_name}'s Suggestion:** {suggestion}{reason_text}",
+    }
+
+
+async def _execute_companion_share_knowledge(
+    args: dict[str, Any],
+    character: Character,
+    db: AsyncSession,
+) -> dict[str, Any]:
+    """
+    Allow a companion to share knowledge or lore with the player.
+    """
+    from sqlalchemy import select
+
+    from app.db.models.companion import Companion
+
+    companion_name = args.get("companion_name")
+    topic = args.get("topic")
+    information = args.get("information")
+    source = args.get("source", "")
+    reliability = args.get("reliability", "confident")
+
+    if not companion_name or not topic or not information:
+        return {
+            "success": False,
+            "error": "companion_name, topic, and information are required",
+        }
+
+    # Verify companion exists and belongs to character
+    result = await db.execute(
+        select(Companion).where(
+            Companion.character_id == character.id, Companion.name == companion_name
+        )
+    )
+    companion = result.scalar_one_or_none()
+
+    if not companion:
+        return {
+            "success": False,
+            "error": f"Companion {companion_name} not found for this character",
+        }
+
+    logger.info(f"Companion {companion_name} sharing knowledge about {topic}")
+
+    # Format the knowledge with reliability indicator
+    reliability_indicators = {
+        "certain": "✓ (Certain)",
+        "confident": "➜ (Confident)",
+        "uncertain": "? (Uncertain)",
+        "rumor": "~ (Rumor)",
+    }
+
+    indicator = reliability_indicators.get(reliability, "➜")
+    source_text = f" (Source: {source})" if source else ""
+
+    return {
+        "success": True,
+        "companion_name": companion_name,
+        "topic": topic,
+        "information": information,
+        "reliability": reliability,
+        "message": f"📚 **{companion_name}'s Knowledge about {topic}:** {indicator}\n\n{information}{source_text}",
     }

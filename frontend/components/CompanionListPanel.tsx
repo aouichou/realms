@@ -189,7 +189,7 @@ export function CompanionListPanel({ characterId, onCompanionToggle }: Companion
 				</div>
 			</CardHeader>
 			<CardContent>
-				<ScrollArea className="h-[400px] pr-4">
+				<ScrollArea className="h-100 pr-4">
 					<div className="space-y-3">
 						{companions.map((companion) => (
 							<div
@@ -206,7 +206,7 @@ export function CompanionListPanel({ characterId, onCompanionToggle }: Companion
 								{/* Header with Avatar and Name */}
 								<div className="flex items-start gap-3 mb-2">
 									{/* Avatar */}
-									<div className="relative w-12 h-12 rounded-lg overflow-hidden border-2 border-teal-500/30 flex-shrink-0">
+									<div className="relative w-12 h-12 rounded-lg overflow-hidden border-2 border-teal-500/30 shrink-0">
 										{companion.avatar_url ? (
 											<Image
 												src={companion.avatar_url}
@@ -215,7 +215,7 @@ export function CompanionListPanel({ characterId, onCompanionToggle }: Companion
 												className="object-cover"
 											/>
 										) : (
-											<div className="w-full h-full bg-gradient-to-br from-teal-600 to-emerald-700 flex items-center justify-center">
+											<div className="w-full h-full bg-linear-to-br from-teal-600 to-emerald-700 flex items-center justify-center">
 												<span className="text-white text-xl font-bold">
 													{companion.name.charAt(0)}
 												</span>

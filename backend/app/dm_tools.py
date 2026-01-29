@@ -190,11 +190,70 @@ GAME_MASTER_TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "list_available_tools",
-            "description": "Get a list of all available DM tools with descriptions. Use this when you need a reminder of what actions you can take.",
+            "name": "companion_suggest_action",
+            "description": "Allow a companion to suggest tactical options or courses of action to the player. Use this when a companion would naturally offer strategic advice based on their personality and knowledge.",
             "parameters": {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "companion_name": {
+                        "type": "string",
+                        "description": "Name of the companion making the suggestion",
+                    },
+                    "suggestion": {
+                        "type": "string",
+                        "description": "The tactical suggestion or advice being offered (e.g., 'I could flank from the left while you distract them', 'We should investigate that suspicious shrine')",
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Why the companion is suggesting this (e.g., 'based on my scouting experience', 'I sense something magical here')",
+                    },
+                    "urgency": {
+                        "type": "string",
+                        "enum": ["low", "moderate", "high", "critical"],
+                        "description": "How urgent the suggestion is: low for general advice, moderate for tactical suggestions, high for important warnings, critical for immediate danger",
+                    },
+                },
+                "required": ["companion_name", "suggestion"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "companion_share_knowledge",
+            "description": "Allow a companion to share lore, information, or knowledge with the player. Use this when a companion would know relevant information about locations, creatures, history, or magic.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "companion_name": {
+                        "type": "string",
+                        "description": "Name of the companion sharing knowledge",
+                    },
+                    "topic": {
+                        "type": "string",
+                        "description": "What the knowledge is about (e.g., 'ancient ruins', 'goblin tactics', 'local legends', 'magical artifacts')",
+                    },
+                    "information": {
+                        "type": "string",
+                        "description": "The actual information or lore being shared. Should be 2-4 sentences of useful knowledge.",
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "How the companion knows this (e.g., 'from my military training', 'tales from my village', 'I read about this in the archives')",
+                    },
+                    "reliability": {
+                        "type": "string",
+                        "enum": ["certain", "confident", "uncertain", "rumor"],
+                        "description": "How reliable the information is: certain for facts, confident for likely true, uncertain for educated guess, rumor for hearsay",
+                    },
+                },
+                "required": ["companion_name", "topic", "information"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
                 "required": [],
             },
         },
