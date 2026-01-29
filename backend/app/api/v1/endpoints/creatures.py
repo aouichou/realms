@@ -33,9 +33,7 @@ async def get_creature_by_name(
     Uses case-insensitive partial matching.
     """
     # Try exact match first
-    query = select(Creature).where(
-        func.lower(Creature.name) == func.lower(creature_name)
-    )
+    query = select(Creature).where(func.lower(Creature.name) == func.lower(creature_name))
     result = await db.execute(query)
     creature = result.scalar_one_or_none()
 
@@ -64,7 +62,9 @@ async def list_creatures(
     *,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    creature_type: str | None = Query(None, description="Filter by creature type (e.g., dragon, humanoid)"),
+    creature_type: str | None = Query(
+        None, description="Filter by creature type (e.g., dragon, humanoid)"
+    ),
     min_cr: float | None = Query(None, description="Minimum Challenge Rating"),
     max_cr: float | None = Query(None, description="Maximum Challenge Rating"),
     search: str | None = Query(None, description="Search in name"),
@@ -141,18 +141,16 @@ async def list_creature_types(
 
     Useful for filtering and UI dropdowns.
     """
-    query = select(Creature.creature_type, func.count(Creature.id)).group_by(
-        Creature.creature_type
-    ).order_by(func.count(Creature.id).desc())
+    query = (
+        select(Creature.creature_type, func.count(Creature.id))
+        .group_by(Creature.creature_type)
+        .order_by(func.count(Creature.id).desc())
+    )
 
     result = await db.execute(query)
     types = result.all()
 
     return {
-        "creature_types": [
-            {"type": type_name, "count": count}
-            for type_name, count in types
-        ],
+        "creature_types": [{"type": type_name, "count": count} for type_name, count in types],
         "total_types": len(types),
     }
-
