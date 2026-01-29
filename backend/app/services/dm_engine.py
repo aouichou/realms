@@ -11,8 +11,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config.dm_tools import GAME_MASTER_TOOLS
-from app.models.character import Character
+from app.db.models.character import Character
+from app.dm_tools import GAME_MASTER_TOOLS
 from app.observability.logger import get_logger
 from app.observability.metrics import metrics
 from app.observability.tracing import trace_async
@@ -595,7 +595,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
 
     async def call_dm_with_tools(
         self,
-        messages: List[Dict[str, str]],
+        messages: List[Dict[str, Any]],
         character: Character,
         db: AsyncSession,
         max_iterations: int = 5,
@@ -639,8 +639,8 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                 response = await asyncio.to_thread(
                     mistral_client.chat.complete,
                     model=settings.mistral_model,
-                    messages=current_messages,
-                    tools=GAME_MASTER_TOOLS,
+                    messages=current_messages,  # type: ignore[arg-type]
+                    tools=GAME_MASTER_TOOLS,  # type: ignore[arg-type]
                     temperature=0.7,
                     max_tokens=2048,
                 )
@@ -661,7 +661,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                 logger.info(f"DM requested {len(assistant_message.tool_calls)} tool calls")
 
                 # Add assistant message with tool calls to conversation
-                current_messages.append(
+                current_messages.append(  # type: ignore[arg-type]
                     {
                         "role": "assistant",
                         "content": assistant_message.content or "",
@@ -682,7 +682,12 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                 # Execute each tool
                 for tool_call in assistant_message.tool_calls:
                     tool_name = tool_call.function.name
-                    tool_args = json.loads(tool_call.function.arguments)
+                    # Handle both string and dict arguments
+                    tool_args = (
+                        json.loads(tool_call.function.arguments)
+                        if isinstance(tool_call.function.arguments, str)
+                        else tool_call.function.arguments
+                    )
 
                     logger.info(f"Executing tool: {tool_name} with args: {tool_args}")
 
@@ -708,7 +713,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                         character_updates.update(tool_result["character_update"])
 
                     # Add tool result to messages
-                    current_messages.append(
+                    current_messages.append(  # type: ignore[arg-type]
                         {
                             "role": "tool",
                             "name": tool_name,
