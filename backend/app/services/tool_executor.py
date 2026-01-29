@@ -201,39 +201,54 @@ async def _execute_get_creature_stats(
 ) -> dict[str, Any]:
     """
     Retrieve creature stats from database.
-    Note: This requires RL-130 (creature dataset) to be implemented.
-    For now, returns a placeholder.
+    Uses fuzzy matching to find creatures by name.
     """
+    from sqlalchemy import func, select
+
+    from app.db.models.creature import Creature
+
     creature_name = args.get("creature_name", "Unknown")
-    creature_type = args.get("creature_type", "monster")
+    creature_type = args.get("creature_type")
 
-    # TODO: RL-130 - Implement creature database lookup
-    # For now, return placeholder stats
-    logger.warning(
-        f"get_creature_stats called for '{creature_name}' but RL-130 not yet implemented. "
-        "Returning placeholder stats."
-    )
+    logger.info(f"Looking up creature: '{creature_name}' (type: {creature_type})")
 
-    # Placeholder goblin stats as example
-    placeholder_stats = {
-        "name": creature_name,
-        "type": creature_type,
-        "ac": 15,
-        "hp": 7,
-        "speed": 30,
-        "str": 8,
-        "dex": 14,
-        "con": 10,
-        "int": 10,
-        "wis": 8,
-        "cha": 8,
-        "cr": "1/4",
-        "note": "Placeholder stats - RL-130 creature database not yet implemented",
-    }
+    # Try exact match first
+    query = select(Creature).where(func.lower(Creature.name) == func.lower(creature_name))
+
+    if creature_type:
+        query = query.where(Creature.creature_type == creature_type.lower())
+
+    result = await db.execute(query)
+    creature = result.scalar_one_or_none()
+
+    # If no exact match, try fuzzy match (contains)
+    if not creature:
+        query = select(Creature).where(
+            func.lower(Creature.name).contains(func.lower(creature_name))
+        )
+        if creature_type:
+            query = query.where(Creature.creature_type == creature_type.lower())
+
+        result = await db.execute(query.limit(1))
+        creature = result.scalar_one_or_none()
+
+    if not creature:
+        logger.warning(f"Creature '{creature_name}' not found in database")
+        return {
+            "success": False,
+            "error": f"Creature '{creature_name}' not found in database",
+            "message": f"Could not find '{creature_name}'. Try a more specific name or check spelling.",
+        }
+
+    # Return formatted stat block
+    stat_block = creature.get_stat_block()
+
+    logger.info(f"Successfully retrieved stats for '{creature.name}' (CR {creature.cr})")
 
     return {
         "success": True,
-        "creature_stats": placeholder_stats,
-        "message": f"Retrieved stats for {creature_name} (placeholder until RL-130)",
-        "warning": "⚠️ Using placeholder stats - creature database not yet implemented (RL-130)",
+        "creature_name": creature.name,
+        "stat_block": stat_block,
+        "creature_data": creature.to_dict(),
+        "message": f"Retrieved stats for {creature.name} (CR {creature.cr})",
     }

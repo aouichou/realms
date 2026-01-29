@@ -8,6 +8,7 @@ from app.api.v1.endpoints import (
     companion,
     conditions,
     conversations,
+    creatures,
     dice,
     effects,
     game,
@@ -34,6 +35,7 @@ api_router.include_router(combat.router, tags=["combat"])
 api_router.include_router(companion.router, tags=["companion"])
 api_router.include_router(conditions.router, tags=["conditions"])
 api_router.include_router(conversations.router, tags=["conversations"])
+api_router.include_router(creatures.router, prefix="/creatures", tags=["creatures"])
 api_router.include_router(dice.router, tags=["dice"])
 api_router.include_router(effects.router, tags=["effects"])
 api_router.include_router(game.router, tags=["game"])
