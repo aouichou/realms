@@ -18,7 +18,7 @@ import ReactMarkdown from 'react-markdown';
 // Lazy load heavy components for better initial load
 const AbilityCheckPanel = lazy(() => import('@/components/AbilityCheckPanel').then(mod => ({ default: mod.AbilityCheckPanel })));
 const ActiveEffectsDisplay = lazy(() => import('@/components/ActiveEffectsDisplay').then(mod => ({ default: mod.ActiveEffectsDisplay })));
-const CompanionPanel = lazy(() => import('@/components/CompanionPanel').then(mod => ({ default: mod.CompanionPanel })));
+const CompanionListPanel = lazy(() => import('@/components/CompanionListPanel').then(mod => ({ default: mod.CompanionListPanel })));
 const EnhancedCharacterSheet = lazy(() => import('@/components/EnhancedCharacterSheet').then(mod => ({ default: mod.EnhancedCharacterSheet })));
 const ImageGalleryPanel = lazy(() => import('@/components/ImageGalleryPanel').then(mod => ({ default: mod.ImageGalleryPanel })));
 const InventoryPanel = lazy(() => import('@/components/InventoryPanel').then(mod => ({ default: mod.InventoryPanel })));
@@ -1106,17 +1106,11 @@ export default function GamePage() {
 
 							{/* Companion Panel */}
 							{openPanel === 'companion' && character && (
-								<div className="bg-neutral-900 rounded-lg h-150">
-									<CompanionPanel
+								<div className="bg-neutral-900 rounded-lg">
+									<CompanionListPanel
 										characterId={characterId}
-										gameContext={{
-											player_hp: character.hp_current,
-											player_max_hp: character.hp_max,
-											location: sessionId ? 'Adventure' : 'Village',
-											situation: messages.length > 0 ? messages[messages.length - 1].content : 'Ready for adventure',
-										}}
-										onSpeechGenerated={(speech) => {
-											console.log('Companion says:', speech);
+										onCompanionToggle={(companionId, isActive) => {
+											console.log(`Companion ${companionId} ${isActive ? 'activated' : 'deactivated'}`);
 										}}
 									/>
 								</div>
