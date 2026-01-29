@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     characters,
     combat,
     companion,
+    companions,
     conditions,
     conversations,
     creatures,
@@ -33,6 +34,7 @@ api_router.include_router(characters.router, tags=["characters"])
 api_router.include_router(adventures.router, tags=["adventures"])
 api_router.include_router(combat.router, tags=["combat"])
 api_router.include_router(companion.router, tags=["companion"])
+api_router.include_router(companions.router, prefix="/companions", tags=["companions"])
 api_router.include_router(conditions.router, tags=["conditions"])
 api_router.include_router(conversations.router, tags=["conversations"])
 api_router.include_router(creatures.router, prefix="/creatures", tags=["creatures"])
