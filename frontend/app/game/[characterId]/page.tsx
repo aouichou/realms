@@ -1,5 +1,6 @@
 'use client';
 
+import { CompanionMessage } from '@/components/CompanionMessage';
 import NPCRollResult from '@/components/NPCRollResult';
 import { SpellWarningContainer } from '@/components/SpellWarningContainer';
 import { ToolCallsBadgeContainer } from '@/components/ToolCallBadge';
@@ -31,12 +32,25 @@ const SaveSlotsModal = lazy(() => import('@/components/SaveSlotsModal').then(mod
 
 interface Message {
 	id: number;
-	role: 'user' | 'assistant';
+	role: 'user' | 'assistant' | 'companion';
 	content: string;
 	timestamp: string;
 	scene_image_url?: string;
 	quest_complete_id?: string;
 	warnings?: string[];
+	companion_id?: string;
+	companion_name?: string;
+	companion_data?: {
+		id: string;
+		name: string;
+		creature_name: string;
+		relationship_status: string;
+		loyalty: number;
+		hp: number;
+		max_hp: number;
+		ac: number;
+		avatar_url?: string;
+	};
 	tool_calls_made?: Array<{
 		name: string;
 		arguments: Record<string, any>;
@@ -322,6 +336,30 @@ export default function GamePage() {
 					character_updates: data.character_updates,
 				};
 				setMessages(prev => [...prev, dmMessage]);
+
+				// RL-131: Add companion responses after DM message
+				if (data.companion_responses && data.companion_responses.length > 0) {
+					const companionMessages: Message[] = data.companion_responses.map((comp: any, idx: number) => ({
+						id: Date.now() + 2 + idx,
+						role: 'companion' as const,
+						content: comp.message,
+						timestamp: new Date().toISOString(),
+						companion_id: comp.companion_id,
+						companion_name: comp.companion_name,
+						companion_data: {
+							id: comp.companion_id,
+							name: comp.companion_name,
+							creature_name: comp.creature_name || 'Companion',
+							relationship_status: comp.relationship_status,
+							loyalty: comp.loyalty,
+							hp: comp.hp || 0,
+							max_hp: comp.max_hp || 0,
+							ac: comp.ac || 10,
+							avatar_url: comp.avatar_url,
+						},
+					}));
+					setMessages(prev => [...prev, ...companionMessages]);
+				}
 
 				// Store pending roll requests if DM asks for rolls
 				if (data.roll_requests && data.roll_requests.length > 0) {
@@ -794,79 +832,94 @@ export default function GamePage() {
 					) : (
 						<div className="flex-1 overflow-y-auto space-y-3 mb-4">
 							{messages.map((message) => (
-								<div
-									key={message.id}
-									className={`p-3 md:p-4 rounded-lg backdrop-blur-md ${message.role === 'user'
-										? 'bg-accent-400/20 border border-accent-400/30 ml-6 md:ml-12'
-										: 'bg-white/10 border border-white/20 mr-6 md:mr-12'
-										}`}
-								>
-									<div className="flex items-center gap-2 mb-2">
-										<span className="font-display text-sm text-white">
-											{message.role === 'user' ? 'You' : 'Dungeon Master'}
-										</span>
-										{message.role === 'assistant' && (
-											<span className="text-xs font-body font-bold tracking-wide
+								<div key={message.id}>
+									{/* Regular user/assistant messages */}
+									{(message.role === 'user' || message.role === 'assistant') && (
+										<div
+											className={`p-3 md:p-4 rounded-lg backdrop-blur-md ${message.role === 'user'
+												? 'bg-accent-400/20 border border-accent-400/30 ml-6 md:ml-12'
+												: 'bg-white/10 border border-white/20 mr-6 md:mr-12'
+												}`}
+										>
+											<div className="flex items-center gap-2 mb-2">
+												<span className="font-display text-sm text-white">
+													{message.role === 'user' ? 'You' : 'Dungeon Master'}
+												</span>
+												{message.role === 'assistant' && (
+													<span className="text-xs font-body font-bold tracking-wide
                                    bg-accent-400 text-primary-900 px-2 py-0.5 rounded">
-												AI
-											</span>
-										)}
-									</div>
+														AI
+													</span>
+												)}
+											</div>
 
-									{/* RL-129: Tool calls badge (optional showcase) */}
-									{message.tool_calls_made && message.tool_calls_made.length > 0 && (
-										<ToolCallsBadgeContainer toolCalls={message.tool_calls_made} />
+											{/* RL-129: Tool calls badge (optional showcase) */}
+											{message.tool_calls_made && message.tool_calls_made.length > 0 && (
+												<ToolCallsBadgeContainer toolCalls={message.tool_calls_made} />
+											)}
+
+											{/* RL-133: Display NPC roll results */}
+											{message.tool_calls_made
+												?.filter(call => call.name === 'roll_for_npc' && call.result?.success)
+												.map((call, idx) => (
+													<NPCRollResult
+														key={`npc-roll-${idx}`}
+														roll={call.result as any}
+													/>
+												))}
+
+											<div className="text-narrative text-white font-body leading-relaxed whitespace-pre-line">
+												{message.role === 'assistant' ? (
+													<TypewriterText text={message.content} speed={120}>
+														{(displayedText, isComplete, showCursor) => (
+															<>
+																<ReactMarkdown
+																	components={{
+																		h3: ({ children }) => (
+																			<h3 className="text-xl font-display text-white mt-3 mb-2">{children}</h3>
+																		),
+																		strong: ({ children }) => (
+																			<strong className="font-semibold text-white">{children}</strong>
+																		),
+																		em: ({ children }) => (
+																			<em className="italic text-white/90">{children}</em>
+																		),
+																		ul: ({ children }) => (
+																			<ul className="list-disc list-inside space-y-1">{children}</ul>
+																		),
+																		ol: ({ children }) => (
+																			<ol className="list-decimal list-inside space-y-1">{children}</ol>
+																		),
+																		li: ({ children }) => (
+																			<li className="ml-4">{children}</li>
+																		),
+																	}}
+																>
+																	{displayedText}
+																</ReactMarkdown>
+																{showCursor && (
+																	<span className="inline-block w-1 h-4 ml-0.5 bg-purple-400 animate-pulse" />
+																)}
+															</>
+														)}
+													</TypewriterText>
+												) : (
+													message.content
+												)}
+											</div>
+										</div>
 									)}
 
-									{/* RL-133: Display NPC roll results */}
-									{message.tool_calls_made
-										?.filter(call => call.name === 'roll_for_npc' && call.result?.success)
-										.map((call, idx) => (
-											<NPCRollResult
-												key={`npc-roll-${idx}`}
-												roll={call.result as any}
+									{/* RL-131: Companion messages */}
+									{message.role === 'companion' && message.companion_data && (
+										<div className="mr-6 md:mr-12">
+											<CompanionMessage
+												companion={message.companion_data}
+												message={message.content}
+												showStats={true}
 											/>
-										))}
-
-									<div className="text-narrative text-white font-body leading-relaxed whitespace-pre-line">
-										{message.role === 'assistant' ? (
-											<TypewriterText text={message.content} speed={120}>
-												{(displayedText, isComplete, showCursor) => (
-													<>
-														<ReactMarkdown
-															components={{
-																h3: ({ children }) => (
-																	<h3 className="text-xl font-display text-white mt-3 mb-2">{children}</h3>
-																),
-																strong: ({ children }) => (
-																	<strong className="font-semibold text-white">{children}</strong>
-																),
-																em: ({ children }) => (
-																	<em className="italic text-white/90">{children}</em>
-																),
-																ul: ({ children }) => (
-																	<ul className="list-disc list-inside space-y-1">{children}</ul>
-																),
-																ol: ({ children }) => (
-																	<ol className="list-decimal list-inside space-y-1">{children}</ol>
-																),
-																li: ({ children }) => (
-																	<li className="ml-4">{children}</li>
-																),
-															}}
-														>
-															{displayedText}
-														</ReactMarkdown>
-														{showCursor && (
-															<span className="inline-block w-1 h-4 ml-0.5 bg-purple-400 animate-pulse" />
-														)}
-													</>
-												)}
-											</TypewriterText>
-										) : (
-											message.content
-										)}
-									</div>
+										</div>
+									)}
 								</div>
 							))}
 							{/* Show "DM is thinking..." message while loading */}
