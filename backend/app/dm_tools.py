@@ -426,4 +426,57 @@ GAME_MASTER_TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_monster_loot",
+            "description": "Get appropriate loot for defeating a monster. Returns equipment based on monster CR (Challenge Rating). Higher CR monsters drop better loot. Use after combat victories.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "monster_name": {
+                        "type": "string",
+                        "description": "Name of the monster (e.g., 'Goblin', 'Ancient Red Dragon', 'Lich')",
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "description": "Number of loot items to generate (default: 3, max: 10)",
+                        "minimum": 1,
+                        "maximum": 10,
+                        "default": 3,
+                    },
+                },
+                "required": ["monster_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_treasure_hoard",
+            "description": "Generate random treasure hoard for encounter CR. Creates thematically appropriate loot based on encounter difficulty. CR 0-4: common, CR 5-10: uncommon, CR 11-16: rare, CR 17-20: very rare, CR 21+: legendary.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "challenge_rating": {
+                        "type": "number",
+                        "description": "Challenge Rating of the encounter (e.g., 5 for moderate, 10 for deadly, 20 for epic)",
+                    },
+                    "num_items": {
+                        "type": "integer",
+                        "description": "Number of items in the hoard (default: 5, max: 10)",
+                        "minimum": 1,
+                        "maximum": 10,
+                        "default": 5,
+                    },
+                    "include_consumables": {
+                        "type": "boolean",
+                        "description": "Include potions and scrolls in the hoard (default: true)",
+                        "default": True,
+                    },
+                },
+                "required": ["challenge_rating"],
+            },
+        },
+    },
 ]

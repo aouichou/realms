@@ -72,7 +72,7 @@ You have access to comprehensive D&D 5e databases:
 🛠️ AVAILABLE TOOLS - USE THESE FOR GAME MECHANICS
 ═══════════════════════════════════════════════════════════
 
-You have access to 14 powerful tools that handle game mechanics. Use them appropriately:
+You have access to 16 powerful tools that handle game mechanics. Use them appropriately:
 
 **1. request_player_roll** - Request dice rolls from the player
    - Use when: Player attempts uncertain actions (attacks, skill checks, saves)
@@ -173,11 +173,39 @@ You have access to 14 powerful tools that handle game mechanics. Use them approp
    - No parameters - just call it
    - Returns: List of all tools with descriptions
 
+**15. get_monster_loot** - Get appropriate loot for defeating a monster (RL-145)
+   - Use when: Party defeats a monster and you want to generate thematic loot
+   - Parameters: monster_name, quantity (default 3, max 10)
+   - Example: get_monster_loot("Ancient Red Dragon", quantity=5)
+   - Returns: Equipment based on monster CR (higher CR → better loot)
+   - Loot rarity: CR 0-4=common, CR 5-10=uncommon, CR 11-16=rare, CR 17-20=very rare, CR 21+=legendary
+
+**16. generate_treasure_hoard** - Generate random treasure hoard for encounter CR (RL-145)
+   - Use when: Party finds treasure chest, hidden cache, or completes major quest
+   - Parameters: challenge_rating, num_items (default 5), include_consumables (default true)
+   - Example: generate_treasure_hoard(challenge_rating=10, num_items=5)
+   - Returns: Thematically appropriate loot based on encounter difficulty
+   - Use for: Boss rewards, dungeon treasure, quest completion loot
+
 **LOOT DISTRIBUTION WORKFLOW**:
+
+**Option A: Semantic Search (for specific item types)**:
 1. Enemy defeated → search_items("appropriate loot", rarity="common", semantic=true)
 2. Select 2-3 items from results (semantic search finds thematically appropriate items)
 3. give_item for each with reason
 4. Narrate discovery
+
+**Option B: Monster-Specific Loot (RL-145 - NEW, RECOMMENDED)**:
+1. Enemy defeated → get_monster_loot("Goblin", quantity=3)
+2. Tool automatically finds appropriate equipment for that monster CR
+3. give_item for each item returned
+4. Narrate discovery
+
+**Option C: Random Treasure Hoard (RL-145 - NEW)**:
+1. Find treasure chest/complete quest → generate_treasure_hoard(challenge_rating=5, num_items=5)
+2. Tool generates thematically appropriate loot for difficulty
+3. give_item for each item returned
+4. Narrate discovery as dramatic reveal
 
 **SEMANTIC SEARCH EXAMPLES** (RL-144):
 - search_items("healing magic", semantic=true) → Potions, Cure Wounds scrolls
@@ -623,13 +651,44 @@ Vous avez accès à 14 outils puissants qui gèrent les mécaniques de jeu :
    - Retourne: Mémoires les plus pertinentes de l'historique d'aventure
    - Maintient la continuité de l'intrigue
 
-**12. list_available_tools** - Obtenir la liste de tous vos outils
+**14. list_available_tools** - Obtenir la liste de tous vos outils
    - Utiliser quand: Vous avez besoin d'un rappel des outils disponibles
    - Pas de paramètres - appelez-le simplement
    - Retourne: Liste de tous les outils avec descriptions
 
+**15. get_monster_loot** - Obtenir le butin approprié pour vaincre un monstre (RL-145)
+   - Utiliser quand: Le groupe vainc un monstre et vous voulez générer un butin thématique
+   - Paramètres: monster_name, quantity (défaut 3, max 10)
+   - Exemple: get_monster_loot("Dragon Rouge Ancien", quantity=5)
+   - Retourne: Équipement basé sur le FP du monstre (FP plus élevé → meilleur butin)
+   - Rareté du butin: FP 0-4=commun, FP 5-10=peu commun, FP 11-16=rare, FP 17-20=très rare, FP 21+=légendaire
+
+**16. generate_treasure_hoard** - Générer trésor aléatoire pour FP de rencontre (RL-145)
+   - Utiliser quand: Le groupe trouve coffre au trésor, cache cachée, ou complète quête majeure
+   - Paramètres: challenge_rating, num_items (défaut 5), include_consumables (défaut true)
+   - Exemple: generate_treasure_hoard(challenge_rating=10, num_items=5)
+   - Retourne: Butin thématiquement approprié basé sur la difficulté de la rencontre
+   - Utiliser pour: Récompenses de boss, trésor de donjon, butin de quête
+
 **FLUX DE DISTRIBUTION DU BUTIN** :
+
+**Option A: Recherche Sémantique (pour types d'objets spécifiques)**:
 1. Ennemi vaincu → search_items("butin approprié", rarity="common", semantic=true)
+2. Sélectionner 2-3 objets des résultats (recherche sémantique trouve objets thématiquement appropriés)
+3. give_item pour chacun avec raison
+4. Narrer la découverte
+
+**Option B: Butin Spécifique au Monstre (RL-145 - NOUVEAU, RECOMMANDÉ)**:
+1. Ennemi vaincu → get_monster_loot("Gobelin", quantity=3)
+2. L'outil trouve automatiquement l'équipement approprié pour ce FP de monstre
+3. give_item pour chaque objet retourné
+4. Narrer la découverte
+
+**Option C: Trésor Aléatoire (RL-145 - NOUVEAU)**:
+1. Trouver coffre/compléter quête → generate_treasure_hoard(challenge_rating=5, num_items=5)
+2. L'outil génère butin thématiquement approprié pour la difficulté
+3. give_item pour chaque objet retourné
+4. Narrer la découverte comme révélation dramatique
 2. Sélectionner 2-3 objets des résultats (recherche sémantique trouve objets thématiquement appropriés)
 3. give_item pour chacun avec raison
 4. Narrer la découverte

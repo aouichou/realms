@@ -61,6 +61,10 @@ async def execute_tool(
             return await _execute_search_spells(tool_arguments, db)
         elif tool_name == "search_memories":
             return await _execute_search_memories(tool_arguments, character, db)
+        elif tool_name == "get_monster_loot":
+            return await _execute_get_monster_loot(tool_arguments, db)
+        elif tool_name == "generate_treasure_hoard":
+            return await _execute_generate_treasure_hoard(tool_arguments, db)
         elif tool_name == "list_available_tools":
             return await _execute_list_available_tools(tool_arguments)
         else:
@@ -1134,11 +1138,10 @@ async def _execute_search_memories(
     """
     Search adventure memories using vector similarity.
     Enables DM to recall past events semantically.
-    """
-    import torch
-    from sqlalchemy import select
 
-    from app.db.models.memory import AdventureMemory
+    REFACTORED: Now uses centralized SemanticSearchService (RL-144)
+    """
+    from app.services.semantic_search_service import get_semantic_search_service
 
     query_text = args.get("query")
     limit = args.get("limit", 5)
@@ -1146,70 +1149,38 @@ async def _execute_search_memories(
     if not query_text:
         return {"success": False, "error": "query is required"}
 
-    # Generate embedding for query using ImageDetectionService model
     try:
-        from app.services.image_detection_service import get_image_detection_service
+        # Use centralized semantic search service
+        semantic_service = get_semantic_search_service()
 
-        detection_service = get_image_detection_service()
-
-        with torch.inference_mode():
-            query_embedding = detection_service._model.encode(
-                query_text,
-                convert_to_tensor=True,
-                show_progress_bar=False,
-                normalize_embeddings=True,
-            )
-
-        # Convert to list for pgvector
-        query_vector = query_embedding.cpu().numpy().tolist()
-
-        # Search memories by cosine similarity
-        stmt = (
-            select(AdventureMemory)
-            .where(AdventureMemory.character_id == character.id)
-            .order_by(AdventureMemory.embedding.cosine_distance(query_vector))
-            .limit(min(limit, 10))
+        memory_list = await semantic_service.search_memories(
+            query=query_text,
+            db=db,
+            character_id=character.id,
+            limit=limit,
         )
 
-        result = await db.execute(stmt)
-        memories = result.scalars().all()
-
-        if not memories:
+        if not memory_list:
             return {
                 "success": True,
                 "memories": [],
                 "message": f"No memories found for '{query_text}'",
             }
 
-        # Format results
-        memory_list = []
-        for memory in memories:
-            memory_list.append(
-                {
-                    "content": (
-                        memory.content[:200] + "..."
-                        if len(memory.content) > 200
-                        else memory.content
-                    ),
-                    "timestamp": memory.created_at.isoformat(),
-                    "type": memory.memory_type,
-                }
-            )
-
-        logger.info(f"Memory search '{query_text}' returned {len(memories)} results")
+        logger.info(f"Memory search '{query_text}' returned {len(memory_list)} results")
 
         # Format message
-        message_lines = [f"🧠 **Found {len(memories)} memory(ies) for '{query_text}':**\n"]
+        message_lines = [f"🧠 **Found {len(memory_list)} memory(ies) for '{query_text}':**\n"]
         for i, mem in enumerate(memory_list[:3], 1):
             message_lines.append(f"{i}. {mem['content']}")
 
-        if len(memories) > 3:
-            message_lines.append(f"... and {len(memories) - 3} more")
+        if len(memory_list) > 3:
+            message_lines.append(f"... and {len(memory_list) - 3} more")
 
         return {
             "success": True,
             "memories": memory_list,
-            "total": len(memories),
+            "total": len(memory_list),
             "message": "\n".join(message_lines),
         }
 
@@ -1218,4 +1189,147 @@ async def _execute_search_memories(
         return {
             "success": False,
             "error": f"Failed to search memories: {str(e)}",
+        }
+
+
+async def _execute_get_monster_loot(
+    args: dict[str, Any],
+    db: AsyncSession,
+) -> dict[str, Any]:
+    """
+    Get appropriate loot for defeating a monster.
+    Uses ContentLinker to generate loot based on monster CR.
+    RL-145: Content Cross-Reference System
+    """
+    from app.services.content_linker import get_content_linker
+
+    monster_name = args.get("monster_name")
+    quantity = args.get("quantity", 3)
+
+    if not monster_name:
+        return {"success": False, "error": "monster_name is required"}
+
+    try:
+        content_linker = get_content_linker()
+        items = await content_linker.get_monster_equipment(
+            monster_name=monster_name,
+            db=db,
+            limit=quantity,
+        )
+
+        if not items:
+            return {
+                "success": True,
+                "items": [],
+                "message": f"⚔️ No loot found for '{monster_name}'. Try searching for the monster first.",
+            }
+
+        logger.info(f"RL-145: Generated {len(items)} loot items for {monster_name}")
+
+        # Format message
+        message_lines = [f"⚔️ **Loot from {monster_name}:**\n"]
+        for i, item in enumerate(items[:5], 1):
+            damage = f" ({item['damage_dice']} {item['damage_type']})" if item.get('damage_dice') else ""
+            ac = f" (AC {item['ac_base']})" if item.get('ac_base') else ""
+            ac_bonus = f" (+{item['ac_bonus']} AC)" if item.get('ac_bonus') else ""
+
+            message_lines.append(
+                f"{i}. **{item['name']}** ({item['rarity']})" + damage + ac + ac_bonus
+            )
+
+        if len(items) > 5:
+            message_lines.append(f"... and {len(items) - 5} more items")
+
+        return {
+            "success": True,
+            "items": items,
+            "total": len(items),
+            "message": "\n".join(message_lines),
+        }
+
+    except Exception as e:
+        logger.error(f"RL-145: Error getting monster loot: {str(e)}")
+        return {
+            "success": False,
+            "error": f"Failed to get monster loot: {str(e)}",
+        }
+
+
+async def _execute_generate_treasure_hoard(
+    args: dict[str, Any],
+    db: AsyncSession,
+) -> dict[str, Any]:
+    """
+    Generate random treasure hoard based on encounter CR.
+    Uses ContentLinker to generate appropriate loot for encounter difficulty.
+    RL-145: Content Cross-Reference System
+    """
+    from app.services.content_linker import get_content_linker
+
+    challenge_rating = args.get("challenge_rating")
+    num_items = args.get("num_items", 5)
+    include_consumables = args.get("include_consumables", True)
+
+    if challenge_rating is None:
+        return {"success": False, "error": "challenge_rating is required"}
+
+    try:
+        cr = float(challenge_rating)
+        content_linker = get_content_linker()
+
+        items = await content_linker.generate_loot_table(
+            encounter_cr=cr,
+            db=db,
+            num_items=num_items,
+            include_consumables=include_consumables,
+        )
+
+        if not items:
+            return {
+                "success": True,
+                "items": [],
+                "message": f"💎 No treasure found for CR {cr} encounter.",
+            }
+
+        logger.info(f"RL-145: Generated {len(items)} treasure items for CR {cr}")
+
+        # Determine rarity descriptor
+        if cr <= 4:
+            descriptor = "common"
+        elif cr <= 10:
+            descriptor = "uncommon"
+        elif cr <= 16:
+            descriptor = "rare"
+        elif cr <= 20:
+            descriptor = "very rare"
+        else:
+            descriptor = "legendary"
+
+        # Format message
+        message_lines = [f"💎 **Treasure Hoard (CR {cr} - {descriptor}):**\n"]
+        for i, item in enumerate(items, 1):
+            value = f" ({item['value_gp']} gp)" if item.get('value_gp') else ""
+            message_lines.append(
+                f"{i}. **{item['name']}** ({item['rarity']})" + value
+            )
+
+        return {
+            "success": True,
+            "items": items,
+            "total": len(items),
+            "challenge_rating": cr,
+            "rarity_level": descriptor,
+            "message": "\n".join(message_lines),
+        }
+
+    except ValueError:
+        return {
+            "success": False,
+            "error": f"Invalid challenge_rating: {challenge_rating}. Must be a number.",
+        }
+    except Exception as e:
+        logger.error(f"RL-145: Error generating treasure hoard: {str(e)}")
+        return {
+            "success": False,
+            "error": f"Failed to generate treasure hoard: {str(e)}",
         }

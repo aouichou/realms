@@ -393,6 +393,88 @@ class SemanticSearchService:
             for spell, similarity in top_spells
         ]
 
+    async def search_memories(
+        self,
+        query: str,
+        db: AsyncSession,
+        character_id: int,
+        limit: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """
+        Search adventure memories using semantic similarity.
+        Enables DM to recall past events semantically.
+
+        Args:
+            query: Natural language search query
+            db: Database session
+            character_id: Character ID to filter memories
+            limit: Max results (default 5, max 10)
+
+        Returns:
+            List of memories with content, timestamp, type
+
+        Example:
+            search_memories("dragon encounter", db, character_id=1, limit=5)
+            → Returns memories about dragon encounters
+        """
+        if not self.embedding_service or not self.embedding_service._model:
+            logger.error("RL-144: Embedding model not initialized for memory search")
+            return []
+
+        if not query or not query.strip():
+            logger.warning("RL-144: Empty query for memory search")
+            return []
+
+        # Import here to avoid circular dependency
+        from app.db.models.adventure import AdventureMemory
+
+        try:
+            # Generate embedding for query
+            logger.info(f"RL-144: Semantic memory search '{query}' for character {character_id}")
+
+            query_embedding = self._generate_embedding(query)
+            if query_embedding is None:
+                logger.warning("RL-144: Failed to generate query embedding for memory search")
+                return []
+
+            # Convert to list for pgvector
+            query_vector = query_embedding.tolist()
+
+            # Search memories by cosine similarity (pgvector)
+            from sqlalchemy import select
+
+            stmt = (
+                select(AdventureMemory)
+                .where(AdventureMemory.character_id == character_id)
+                .order_by(AdventureMemory.embedding.cosine_distance(query_vector))
+                .limit(min(limit, 10))
+            )
+
+            result = await db.execute(stmt)
+            memories = result.scalars().all()
+
+            logger.info(
+                f"RL-144: Found {len(memories)} memories for '{query}'"
+            )
+
+            # Format results
+            return [
+                {
+                    "content": (
+                        memory.content[:200] + "..."
+                        if len(memory.content) > 200
+                        else memory.content
+                    ),
+                    "timestamp": memory.created_at.isoformat(),
+                    "type": memory.memory_type,
+                }
+                for memory in memories
+            ]
+
+        except Exception as e:
+            logger.error(f"RL-144: Error in memory search: {e}")
+            return []
+
 
 # Singleton instance
 _semantic_search_instance: Optional[SemanticSearchService] = None
