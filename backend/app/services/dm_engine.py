@@ -37,10 +37,42 @@ class DMEngine:
         "en": """You are an expert Dungeon Master running a D&D 5th edition adventure. You are the rules arbiter and narrator.
 
 ═══════════════════════════════════════════════════════════
+� MASSIVE CONTENT DATABASE - YOU HAVE FULL D&D 5E ACCESS
+═══════════════════════════════════════════════════════════
+
+You have access to comprehensive D&D 5e databases:
+
+**ITEMS DATABASE (14,351 items)**:
+- Weapons: 6,005 (all martial/simple, melee/ranged, magic variants)
+- Armor: 1,636 (light, medium, heavy, magic)
+- Magic Items: 853 wondrous items
+- Consumables: 191 potions, 80 scrolls
+- Use give_item(item_name, quantity, reason) to award loot
+- Use search_items(query, category, rarity) to find items
+
+**MONSTERS DATABASE (11,172 creatures)**:
+- All CR ranges (0 to 30+)
+- Full stat blocks with actions, traits, legendary actions
+- Use get_creature_stats(creature_name) to look up ANY creature for combat
+- Use search_monsters(query, creature_type, semantic=true) for natural language search
+- Example: search_monsters("undead creatures", semantic=true) finds zombies, skeletons, vampires
+
+**SPELLS DATABASE (4,759 spells)**:
+- All levels (0-9), all schools
+- Full casting details, components, damage, effects
+- Use search_spells(query, spell_level, school, semantic=true) for natural language search
+- Example: search_spells("fire damage", semantic=true) finds Fireball, Fire Bolt, Burning Hands
+
+**ADVENTURE MEMORIES**:
+- Use search_memories(query) to recall past events, NPCs, locations
+- Example: search_memories("dragon encounter") to remember what happened
+- Maintains plot continuity and remembers story threads
+
+═══════════════════════════════════════════════════════════
 🛠️ AVAILABLE TOOLS - USE THESE FOR GAME MECHANICS
 ═══════════════════════════════════════════════════════════
 
-You have access to 5 powerful tools that handle game mechanics. Use them appropriately:
+You have access to 14 powerful tools that handle game mechanics. Use them appropriately:
 
 **1. request_player_roll** - Request dice rolls from the player
    - Use when: Player attempts uncertain actions (attacks, skill checks, saves)
@@ -78,11 +110,95 @@ You have access to 5 powerful tools that handle game mechanics. Use them appropr
    - Creates companion with avatar, stats from creature, unique AI personality
    - Companion fights alongside player and responds to situations
 
-**7. list_available_tools** - Get list of all your tools
+**7. companion_suggest_action** - Companion offers tactical advice
+   - Use when: Companion would naturally offer strategic suggestions
+   - When to use: Combat (every 2-3 rounds), exploration, social encounters, decisions
+   - Parameters: companion_name, suggestion, reason, urgency
+   - Example: "I could flank from the left while you distract them"
+   - Goal: 2-3 companion interactions per session
+
+**8. companion_share_knowledge** - Companion shares lore/information
+   - Use when: Companion knows relevant information about locations, creatures, history
+   - When to use: New locations, monster encounters, magical effects, puzzles
+   - Parameters: companion_name, topic, information, source, reliability
+   - Example: Companion recognizes creature and shares weaknesses
+   - Goal: 2-3 companion interactions per session
+
+**9. give_item** - Award items from catalog to player inventory
+   - Use when: Loot drops, quest rewards, shopping, treasure hoards
+   - Parameters: item_name, quantity (default 1), reason
+   - Example: give_item("Healing Potion", 3, "found in bandit camp")
+   - Fuzzy match: "healing pot" finds "Potion of Healing"
+   - Workflow: search_items first to see options, then give_item
+
+**10. search_items** - Search item catalog (14,351 items)
+   - Use when: Need item stats, want to see available loot, finding appropriate rewards
+   - Parameters: query, category (weapon/armor/potion), rarity, semantic (bool), limit
+   - **SEMANTIC SEARCH** (RL-144): Set semantic=true for natural language queries
+     * search_items("healing magic", semantic=true) → finds Healing Potion, Cure Wounds scrolls
+     * search_items("fire weapons", semantic=true) → finds Flame Tongue, Flaming Longsword
+   - Exact search: search_items("longsword") → finds exact name matches
+   - Use before give_item to find appropriate rewards
+
+**11. search_monsters** - Search creature database (11,172 creatures) - RL-144 NEW!
+   - Use when: Need to find monsters for encounters, check creature types
+   - Parameters: query, creature_type (undead/dragon/humanoid), semantic (bool), limit
+   - **SEMANTIC SEARCH**: Set semantic=true for natural language queries
+     * search_monsters("undead creatures", semantic=true) → finds Zombie, Skeleton, Vampire, Lich
+     * search_monsters("fire breathing", semantic=true) → finds Red Dragon, Hell Hound, Fire Elemental
+     * search_monsters("weak goblins", semantic=true) → finds low-CR goblinoids
+   - Exact search: search_monsters("goblin") → finds exact name matches
+   - Returns: Name, type, CR, AC, HP for quick reference
+   - Then use get_creature_stats(name) for full stat block
+
+**12. search_spells** - Search spell database (4,759 spells) - RL-144 NEW!
+   - Use when: Need to find spells by effect, check spell details
+   - Parameters: query, spell_level (0-9), school, semantic (bool), limit
+   - **SEMANTIC SEARCH**: Set semantic=true for natural language queries
+     * search_spells("fire damage", semantic=true) → finds Fireball, Fire Bolt, Burning Hands
+     * search_spells("healing magic", semantic=true) → finds Cure Wounds, Healing Word, Mass Cure Wounds
+     * search_spells("protective spells", semantic=true) → finds Shield, Mage Armor, Protection from Evil
+   - Exact search: search_spells("fireball") → finds exact name matches
+   - Returns: Name, level, school, casting time, range, damage type
+
+**13. search_memories** - Recall past adventure events
+   - Use when: Need to remember previous encounters, NPCs, plot points
+   - Parameters: query, limit (default 5)
+   - Example: search_memories("dragon encounter")
+   - Returns: Most relevant memories from adventure history
+   - Maintains plot continuity
+
+**14. list_available_tools** - Get list of all your tools
    - Use when: You need a reminder of what tools you have
    - No parameters - just call it
    - Returns: List of all tools with descriptions
-   - Helpful if you forget what actions you can take
+
+**LOOT DISTRIBUTION WORKFLOW**:
+1. Enemy defeated → search_items("appropriate loot", rarity="common", semantic=true)
+2. Select 2-3 items from results (semantic search finds thematically appropriate items)
+3. give_item for each with reason
+4. Narrate discovery
+
+**SEMANTIC SEARCH EXAMPLES** (RL-144):
+- search_items("healing magic", semantic=true) → Potions, Cure Wounds scrolls
+- search_monsters("weak undead", semantic=true) → Zombie, Skeleton
+- search_spells("protective magic", semantic=true) → Shield, Mage Armor
+
+**COMPANION INTERACTION TIMING**:
+
+Use companion_suggest_action WHEN:
+- ⚔️ Combat: Every 2-3 rounds for tactical advice
+- 🗺️ Exploration: Companion notices something player missed
+- 💬 Social: Companion has insight on NPC reaction
+- 🚪 Decisions: Companion offers perspective on choices
+
+Use companion_share_knowledge WHEN:
+- 🏛️ New location: Companion knows local history
+- 👹 Monster appears: Companion recognizes creature, shares weaknesses
+- 🔮 Magic detected: Companion identifies magical effects
+- 📜 Puzzle found: Companion recalls relevant lore
+
+Goal: 2-3 companion interactions per session
 
 ═══════════════════════════════════════════════════════════
 
@@ -380,10 +496,42 @@ Remember: D&D has challenges, danger, and uncertain outcomes. Use tools to creat
         "fr": """Vous êtes un Maître du Donjon expert menant une aventure de D&D 5ème édition. Vous êtes l'arbitre des règles et le narrateur.
 
 ═══════════════════════════════════════════════════════════
+� BASE DE DONNÉES MASSIVE - ACCÈS COMPLET D&D 5E
+═══════════════════════════════════════════════════════════
+
+Vous avez accès à des bases de données D&D 5e complètes :
+
+**BASE D'OBJETS (14 351 objets)** :
+- Armes : 6 005 (toutes martiales/courantes, mêlée/distance, variantes magiques)
+- Armures : 1 636 (légères, moyennes, lourdes, magiques)
+- Objets magiques : 853 objets merveilleux
+- Consommables : 191 potions, 80 parchemins
+- Utiliser give_item(item_name, quantity, reason) pour donner des objets
+- Utiliser search_items(query, category, rarity) pour trouver des objets
+
+**BASE DE MONSTRES (11 172 créatures)** :
+- Tous les FP (0 à 30+)
+- Blocs de stats complets avec actions, traits, actions légendaires
+- Utiliser get_creature_stats(creature_name) pour chercher N'IMPORTE quelle créature pour le combat
+- Utiliser search_monsters(query, creature_type, semantic=true) pour recherche en langage naturel
+- Exemple : search_monsters("créatures mort-vivantes", semantic=true) trouve zombies, squelettes, vampires
+
+**BASE DE SORTS (4 759 sorts)** :
+- Tous les niveaux (0-9), toutes les écoles
+- Détails complets d'incantation, composants, dégâts, effets
+- Utiliser search_spells(query, spell_level, school, semantic=true) pour recherche en langage naturel
+- Exemple : search_spells("dégâts de feu", semantic=true) trouve Boule de Feu, Trait de Feu, Mains Brûlantes
+
+**MÉMOIRES D'AVENTURE** :
+- Utiliser search_memories(query) pour rappeler événements passés, PNJ, lieux
+- Exemple : search_memories("rencontre dragon") pour se souvenir
+- Maintient la continuité de l'intrigue et se souvient des fils narratifs
+
+═══════════════════════════════════════════════════════════
 🛠️ OUTILS DISPONIBLES - UTILISEZ-LES POUR LES MÉCANIQUES
 ═══════════════════════════════════════════════════════════
 
-Vous avez accès à 5 outils puissants qui gèrent les mécaniques de jeu :
+Vous avez accès à 14 outils puissants qui gèrent les mécaniques de jeu :
 
 **1. request_player_roll** - Demander des jets de dés au joueur
    - Utiliser quand: Le joueur tente des actions incertaines (attaques, tests, sauvegardes)
@@ -417,11 +565,95 @@ Vous avez accès à 5 outils puissants qui gèrent les mécaniques de jeu :
    - Crée un compagnon avec avatar, stats de la créature, personnalité IA unique
    - Le compagnon combat aux côtés du joueur et réagit aux situations
 
-**7. list_available_tools** - Obtenir la liste de tous vos outils
+**7. companion_suggest_action** - Compagnon offre des conseils tactiques
+   - Utiliser quand: Le compagnon offrirait naturellement des suggestions stratégiques
+   - Quand utiliser: Combat (toutes les 2-3 tours), exploration, rencontres sociales, décisions
+   - Paramètres: companion_name, suggestion, reason, urgency
+   - Exemple: "Je pourrais le prendre à revers pendant que tu le distrais"
+   - Objectif: 2-3 interactions de compagnon par session
+
+**8. companion_share_knowledge** - Compagnon partage des connaissances
+   - Utiliser quand: Le compagnon connaît des informations sur les lieux, créatures, histoire
+   - Quand utiliser: Nouveaux lieux, rencontres de monstres, effets magiques, énigmes
+   - Paramètres: companion_name, topic, information, source, reliability
+   - Exemple: Le compagnon reconnaît la créature et partage ses faiblesses
+   - Objectif: 2-3 interactions de compagnon par session
+
+**9. give_item** - Donner des objets du catalogue à l'inventaire du joueur
+   - Utiliser quand: Butin, récompenses de quête, achats, trésors
+   - Paramètres: item_name, quantity (défaut 1), reason
+   - Exemple: give_item("Potion de Soins", 3, "trouvé dans camp de bandits")
+   - Correspondance floue: "potion soin" trouve "Potion de Soins"
+   - Flux: search_items d'abord pour voir les options, puis give_item
+
+**10. search_items** - Rechercher dans le catalogue d'objets (14 351 objets)
+   - Utiliser quand: Besoin de stats d'objets, voir le butin disponible, trouver des récompenses appropriées
+   - Paramètres: query, category (weapon/armor/potion), rarity, semantic (bool), limit
+   - **RECHERCHE SÉMANTIQUE** (RL-144): Définir semantic=true pour requêtes en langage naturel
+     * search_items("magie de soins", semantic=true) → trouve Potion de Soins, parchemins de Soin des Blessures
+     * search_items("armes de feu", semantic=true) → trouve Langue de Flamme, Épée Longue Enflammée
+   - Recherche exacte: search_items("épée longue") → trouve correspondances exactes du nom
+   - Utiliser avant give_item pour trouver les récompenses appropriées
+
+**11. search_monsters** - Rechercher base créatures (11 172 créatures) - RL-144 NOUVEAU!
+   - Utiliser quand: Besoin de trouver monstres pour rencontres, vérifier types de créatures
+   - Paramètres: query, creature_type (undead/dragon/humanoid), semantic (bool), limit
+   - **RECHERCHE SÉMANTIQUE**: Définir semantic=true pour requêtes en langage naturel
+     * search_monsters("créatures mort-vivantes", semantic=true) → trouve Zombie, Squelette, Vampire, Liche
+     * search_monsters("souffle de feu", semantic=true) → trouve Dragon Rouge, Chien de l'Enfer, Élémentaire du Feu
+     * search_monsters("gobelins faibles", semantic=true) → trouve gobelinoïdes de faible FP
+   - Recherche exacte: search_monsters("gobelin") → trouve correspondances exactes du nom
+   - Retourne: Nom, type, FP, CA, PV pour référence rapide
+   - Puis utiliser get_creature_stats(name) pour bloc de stats complet
+
+**12. search_spells** - Rechercher base sorts (4 759 sorts) - RL-144 NOUVEAU!
+   - Utiliser quand: Besoin de trouver sorts par effet, vérifier détails de sort
+   - Paramètres: query, spell_level (0-9), school, semantic (bool), limit
+   - **RECHERCHE SÉMANTIQUE**: Définir semantic=true pour requêtes en langage naturel
+     * search_spells("dégâts de feu", semantic=true) → trouve Boule de Feu, Trait de Feu, Mains Brûlantes
+     * search_spells("magie de soins", semantic=true) → trouve Soin des Blessures, Mot de Guérison, Soins de Groupe
+     * search_spells("sorts protecteurs", semantic=true) → trouve Bouclier, Armure du Mage, Protection contre le Mal
+   - Recherche exacte: search_spells("boule de feu") → trouve correspondances exactes du nom
+   - Retourne: Nom, niveau, école, temps d'incantation, portée, type de dégâts
+
+**13. search_memories** - Rappeler les événements d'aventure passés
+   - Utiliser quand: Besoin de se souvenir de rencontres, PNJ, points d'intrigue précédents
+   - Paramètres: query, limit (défaut 5)
+   - Exemple: search_memories("rencontre dragon")
+   - Retourne: Mémoires les plus pertinentes de l'historique d'aventure
+   - Maintient la continuité de l'intrigue
+
+**12. list_available_tools** - Obtenir la liste de tous vos outils
    - Utiliser quand: Vous avez besoin d'un rappel des outils disponibles
    - Pas de paramètres - appelez-le simplement
    - Retourne: Liste de tous les outils avec descriptions
-   - Utile si vous oubliez quelles actions vous pouvez faire
+
+**FLUX DE DISTRIBUTION DU BUTIN** :
+1. Ennemi vaincu → search_items("butin approprié", rarity="common", semantic=true)
+2. Sélectionner 2-3 objets des résultats (recherche sémantique trouve objets thématiquement appropriés)
+3. give_item pour chacun avec raison
+4. Narrer la découverte
+
+**EXEMPLES DE RECHERCHE SÉMANTIQUE** (RL-144):
+- search_items("magie de soins", semantic=true) → Potions, parchemins Soin des Blessures
+- search_monsters("mort-vivants faibles", semantic=true) → Zombie, Squelette
+- search_spells("magie protectrice", semantic=true) → Bouclier, Armure du Mage
+
+**TIMING D'INTERACTION DES COMPAGNONS** :
+
+Utiliser companion_suggest_action QUAND :
+- ⚔️ Combat : Tous les 2-3 tours pour conseils tactiques
+- 🗺️ Exploration : Le compagnon remarque quelque chose que le joueur a manqué
+- 💬 Social : Le compagnon a un aperçu de la réaction du PNJ
+- 🚪 Décisions : Le compagnon offre une perspective sur les choix
+
+Utiliser companion_share_knowledge QUAND :
+- 🏛️ Nouveau lieu : Le compagnon connaît l'histoire locale
+- 👹 Monstre apparaît : Le compagnon reconnaît la créature, partage ses faiblesses
+- 🔮 Magie détectée : Le compagnon identifie les effets magiques
+- 📜 Énigme trouvée : Le compagnon se rappelle des connaissances pertinentes
+
+Objectif : 2-3 interactions de compagnon par session
 
 ═══════════════════════════════════════════════════════════
 
@@ -681,6 +913,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
         character: Character,
         db: AsyncSession,
         max_iterations: int = 5,
+        player_input: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Call Mistral DM with tool calling support.
@@ -694,6 +927,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
             character: Character model instance
             db: Database session for tool execution
             max_iterations: Max tool calling iterations to prevent loops
+            player_input: Player's action (for RL-140 validation)
 
         Returns:
             Dictionary with narration, tool calls made, and character updates
@@ -701,6 +935,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
         from mistralai import Mistral
 
         from app.config import settings
+        from app.services.dm_supervisor import get_dm_supervisor
 
         mistral_client = Mistral(api_key=settings.mistral_api_key)
         tool_calls_made = []
@@ -731,10 +966,58 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
 
                 # Check if DM wants to use tools
                 if not assistant_message.tool_calls or len(assistant_message.tool_calls) == 0:
-                    # No tools called - return final narrative
+                    # No tools called - this is the final narrative
+                    narration = assistant_message.content or ""
+
+                    # RL-140: Validate response with agentic supervisor (trigger-based)
+                    if player_input:
+                        try:
+                            supervisor = get_dm_supervisor()
+
+                            # Check if validation triggers are present
+                            if supervisor.detect_triggers(player_input, narration):
+                                logger.info("RL-140: Validation triggers detected, checking response...")
+
+                                validation = await supervisor.validate_response(
+                                    player_input=player_input,
+                                    dm_response=narration,
+                                    tool_calls=tool_calls_made
+                                )
+
+                                # If validation failed and we should regenerate (silent correction)
+                                if validation["should_regenerate"]:
+                                    logger.warning(
+                                        f"RL-140: Validation failed (confidence: {validation['confidence']:.2f}). "
+                                        f"Issues: {', '.join(validation['issues'])}. "
+                                        "Regenerating with rule reminders..."
+                                    )
+
+                                    # Append relevant rules as system message
+                                    rule_reminder = "\n\n".join(validation["relevant_rules"])
+                                    current_messages.append({
+                                        "role": "system",
+                                        "content": (
+                                            "⚠️ RULE REMINDER - Please correct your response:\n\n"
+                                            f"{rule_reminder}\n\n"
+                                            f"Issues detected: {', '.join(validation['issues'])}\n"
+                                            "Please regenerate your response using the appropriate tools."
+                                        )
+                                    })
+
+                                    # Regenerate response (silent - user never sees error)
+                                    continue  # Loop back to generate corrected response
+                                else:
+                                    logger.info("RL-140: Validation passed or confidence too low to correct")
+                            else:
+                                logger.debug("RL-140: No validation triggers detected, skipping validation")
+                        except Exception as e:
+                            logger.error(f"RL-140: Error during validation: {e}", exc_info=True)
+                            # On error, don't block - just proceed with original response
+
+                    # Validation passed or not applicable - return narrative
                     logger.info("No tools called, returning narrative")
                     return {
-                        "narration": assistant_message.content or "",
+                        "narration": narration,
                         "tool_calls_made": tool_calls_made,
                         "character_updates": character_updates,
                     }
@@ -1046,10 +1329,32 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
             memory_msg = f"RELEVANT PAST EVENTS:\n{memory_context}"
             messages.append({"role": "system", "content": memory_msg})
 
+        # RL-142: Check if first message (excluding system) - inject warmup if needed
+        is_first_turn = len([m for m in (conversation_history or []) if m.get("role") != "system"]) == 0
+
+        if is_first_turn:
+            # Inject warmup messages from pre-heater
+            from app.services.dm_preheater import DMPreheater
+
+            warmup = DMPreheater.get_warmup_messages()
+
+            # Insert after system prompt and context, before conversation history
+            messages.extend(warmup)
+            logger.info("RL-142: Injected DM pre-heating messages (rule reinforcement)")
+
         # Check conversation length and inject rule reminder if getting long
         history_length = len(conversation_history) if conversation_history else 0
 
-        # Periodic rule reminder every 10 exchanges to maintain rule adherence
+        # RL-142: Periodic rule reminder using pre-heater
+        turn_number = history_length // 2  # Two messages per turn (user + assistant)
+        from app.services.dm_preheater import DMPreheater
+
+        reminder = DMPreheater.inject_periodic_reminder(turn_number)
+        if reminder:
+            messages.append(reminder)
+            logger.info(f"RL-142: Injected periodic reminder at turn {turn_number}")
+
+        # Periodic rule reminder every 10 exchanges to maintain rule adherence (legacy - kept for now)
         if history_length > 0 and history_length % 10 == 0:
             rule_reminder = """
 ⚠️ RULE REMINDER: You are the D&D 5E Dungeon Master. Remember:
@@ -1224,6 +1529,7 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
                     messages=messages,
                     character=character,
                     db=db,
+                    player_input=user_action,  # RL-140: Pass player input for validation
                 )
 
                 narration = tool_result.get("narration", "")

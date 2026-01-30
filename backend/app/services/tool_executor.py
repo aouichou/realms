@@ -55,6 +55,12 @@ async def execute_tool(
             return await _execute_give_item(tool_arguments, character, db)
         elif tool_name == "search_items":
             return await _execute_search_items(tool_arguments, db)
+        elif tool_name == "search_monsters":
+            return await _execute_search_monsters(tool_arguments, db)
+        elif tool_name == "search_spells":
+            return await _execute_search_spells(tool_arguments, db)
+        elif tool_name == "search_memories":
+            return await _execute_search_memories(tool_arguments, character, db)
         elif tool_name == "list_available_tools":
             return await _execute_list_available_tools(tool_arguments)
         else:
@@ -720,6 +726,7 @@ async def _execute_search_items(
 ) -> dict[str, Any]:
     """
     Search the item catalog for DM reference.
+    Supports both exact matching and semantic search (RL-144).
     """
     from sqlalchemy import func, or_, select
 
@@ -729,12 +736,54 @@ async def _execute_search_items(
     category = args.get("category")
     rarity = args.get("rarity")
     limit = args.get("limit", 10)
+    use_semantic = args.get("semantic", False)
 
     if not query_text:
         return {
             "success": False,
             "error": "query is required",
         }
+
+    # RL-144: Use semantic search if requested
+    if use_semantic:
+        from app.services.semantic_search_service import get_semantic_search_service
+
+        logger.info(f"RL-144: Using semantic search for items: '{query_text}'")
+        semantic_service = get_semantic_search_service()
+
+        results = await semantic_service.search_items(
+            query=query_text,
+            db=db,
+            limit=limit,
+            category=category,
+            rarity=rarity,
+        )
+
+        if not results:
+            return {
+                "success": True,
+                "items": [],
+                "message": f"No items found matching '{query_text}' (semantic search)",
+            }
+
+        # Format message
+        message_lines = [f"🔍 **Found {len(results)} item(s) matching '{query_text}' (semantic):**\n"]
+        for item in results[:5]:
+            message_lines.append(
+                f"• **{item['name']}** ({item['category']}, {item['rarity']}) - similarity: {item['similarity']}"
+            )
+        if len(results) > 5:
+            message_lines.append(f"... and {len(results) - 5} more")
+
+        return {
+            "success": True,
+            "items": results,
+            "total": len(results),
+            "message": "\n".join(message_lines),
+            "search_type": "semantic",
+        }
+
+    # Original exact matching logic
 
     # Build query
     stmt = select(ItemCatalog)
@@ -815,4 +864,358 @@ async def _execute_search_items(
         "items": item_list,
         "total": len(items),
         "message": "\n".join(message_lines),
+        "search_type": "exact",
     }
+
+
+async def _execute_search_monsters(
+    args: dict[str, Any],
+    db: AsyncSession,
+) -> dict[str, Any]:
+    """
+    Search the creature database for DM reference (RL-144).
+    Supports both exact matching and semantic search.
+    """
+    from sqlalchemy import func, or_, select
+
+    from app.db.models.creature import Creature
+
+    query_text = args.get("query")
+    creature_type = args.get("creature_type")
+    limit = args.get("limit", 10)
+    use_semantic = args.get("semantic", False)
+
+    if not query_text:
+        return {
+            "success": False,
+            "error": "query is required",
+        }
+
+    # RL-144: Use semantic search if requested
+    if use_semantic:
+        from app.services.semantic_search_service import get_semantic_search_service
+
+        logger.info(f"RL-144: Using semantic search for monsters: '{query_text}'")
+        semantic_service = get_semantic_search_service()
+
+        results = await semantic_service.search_monsters(
+            query=query_text,
+            db=db,
+            limit=limit,
+            creature_type=creature_type,
+        )
+
+        if not results:
+            return {
+                "success": True,
+                "creatures": [],
+                "message": f"No creatures found matching '{query_text}' (semantic search)",
+            }
+
+        # Format message
+        message_lines = [f"🐉 **Found {len(results)} creature(s) matching '{query_text}' (semantic):**\n"]
+        for creature in results[:5]:
+            message_lines.append(
+                f"• **{creature['name']}** ({creature['creature_type']}, CR {creature['cr']}) - AC {creature['ac']}, HP {creature['hp']} - similarity: {creature['similarity']}"
+            )
+        if len(results) > 5:
+            message_lines.append(f"... and {len(results) - 5} more")
+
+        return {
+            "success": True,
+            "creatures": results,
+            "total": len(results),
+            "message": "\n".join(message_lines),
+            "search_type": "semantic",
+        }
+
+    # Exact matching logic
+    stmt = select(Creature)
+
+    # Search by name or type
+    search_term = f"%{query_text.lower()}%"
+    stmt = stmt.where(
+        or_(
+            func.lower(Creature.name).like(search_term),
+            func.lower(Creature.creature_type).like(search_term),
+        )
+    )
+
+    # Apply filters
+    if creature_type:
+        stmt = stmt.where(
+            func.lower(Creature.creature_type).contains(func.lower(creature_type))
+        )
+
+    # Execute query with limit
+    stmt = stmt.limit(min(limit, 50)).order_by(Creature.name)
+    result = await db.execute(stmt)
+    creatures = result.scalars().all()
+
+    if not creatures:
+        return {
+            "success": True,
+            "creatures": [],
+            "message": f"No creatures found matching '{query_text}'",
+        }
+
+    # Format results
+    creature_list = []
+    for creature in creatures:
+        creature_info = {
+            "name": creature.name,
+            "creature_type": creature.creature_type,
+            "size": creature.size,
+            "cr": creature.cr,
+            "ac": creature.ac,
+            "hp": creature.hp,
+            "alignment": creature.alignment,
+        }
+        creature_list.append(creature_info)
+
+    logger.info(f"Search '{query_text}' returned {len(creatures)} creatures")
+
+    # Format message
+    message_lines = [f"🐉 **Found {len(creatures)} creature(s) matching '{query_text}':**\n"]
+    for creature_info in creature_list[:5]:
+        message_lines.append(
+            f"• **{creature_info['name']}** ({creature_info['creature_type']}, CR {creature_info['cr']}) - AC {creature_info['ac']}, HP {creature_info['hp']}"
+        )
+    if len(creatures) > 5:
+        message_lines.append(f"... and {len(creatures) - 5} more")
+
+    return {
+        "success": True,
+        "creatures": creature_list,
+        "total": len(creatures),
+        "message": "\n".join(message_lines),
+        "search_type": "exact",
+    }
+
+
+async def _execute_search_spells(
+    args: dict[str, Any],
+    db: AsyncSession,
+) -> dict[str, Any]:
+    """
+    Search the spell database for DM reference (RL-144).
+    Supports both exact matching and semantic search.
+    """
+    from sqlalchemy import func, or_, select
+
+    from app.db.models.spell import Spell
+
+    query_text = args.get("query")
+    spell_level = args.get("spell_level")
+    school = args.get("school")
+    limit = args.get("limit", 10)
+    use_semantic = args.get("semantic", False)
+
+    if not query_text:
+        return {
+            "success": False,
+            "error": "query is required",
+        }
+
+    # RL-144: Use semantic search if requested
+    if use_semantic:
+        from app.services.semantic_search_service import get_semantic_search_service
+
+        logger.info(f"RL-144: Using semantic search for spells: '{query_text}'")
+        semantic_service = get_semantic_search_service()
+
+        results = await semantic_service.search_spells(
+            query=query_text,
+            db=db,
+            limit=limit,
+            spell_level=spell_level,
+            school=school,
+        )
+
+        if not results:
+            return {
+                "success": True,
+                "spells": [],
+                "message": f"No spells found matching '{query_text}' (semantic search)",
+            }
+
+        # Format message
+        message_lines = [f"✨ **Found {len(results)} spell(s) matching '{query_text}' (semantic):**\n"]
+        for spell in results[:5]:
+            level_text = "Cantrip" if spell['level'] == 0 else f"Level {spell['level']}"
+            message_lines.append(
+                f"• **{spell['name']}** ({level_text}, {spell['school']}) - {spell['casting_time']}, {spell['range']} - similarity: {spell['similarity']}"
+            )
+        if len(results) > 5:
+            message_lines.append(f"... and {len(results) - 5} more")
+
+        return {
+            "success": True,
+            "spells": results,
+            "total": len(results),
+            "message": "\n".join(message_lines),
+            "search_type": "semantic",
+        }
+
+    # Exact matching logic
+    stmt = select(Spell)
+
+    # Search by name or description
+    search_term = f"%{query_text.lower()}%"
+    stmt = stmt.where(
+        or_(
+            func.lower(Spell.name).like(search_term),
+            func.lower(Spell.description).like(search_term),
+        )
+    )
+
+    # Apply filters
+    if spell_level is not None:
+        stmt = stmt.where(Spell.level == spell_level)
+    if school:
+        stmt = stmt.where(func.lower(Spell.school) == func.lower(school))
+
+    # Execute query with limit
+    stmt = stmt.limit(min(limit, 50)).order_by(Spell.level, Spell.name)
+    result = await db.execute(stmt)
+    spells = result.scalars().all()
+
+    if not spells:
+        return {
+            "success": True,
+            "spells": [],
+            "message": f"No spells found matching '{query_text}'",
+        }
+
+    # Format results
+    spell_list = []
+    for spell in spells:
+        spell_info = {
+            "name": spell.name,
+            "level": spell.level,
+            "school": str(spell.school),
+            "casting_time": str(spell.casting_time),
+            "range": spell.range,
+            "duration": spell.duration,
+            "description": spell.description[:150] + "..."
+            if len(spell.description) > 150
+            else spell.description,
+            "damage_type": spell.damage_type,
+            "is_concentration": spell.is_concentration,
+        }
+        spell_list.append(spell_info)
+
+    logger.info(f"Search '{query_text}' returned {len(spells)} spells")
+
+    # Format message
+    message_lines = [f"✨ **Found {len(spells)} spell(s) matching '{query_text}':**\n"]
+    for spell_info in spell_list[:5]:
+        level_text = "Cantrip" if spell_info['level'] == 0 else f"Level {spell_info['level']}"
+        message_lines.append(
+            f"• **{spell_info['name']}** ({level_text}, {spell_info['school']}) - {spell_info['casting_time']}, {spell_info['range']}"
+        )
+    if len(spells) > 5:
+        message_lines.append(f"... and {len(spells) - 5} more")
+
+    return {
+        "success": True,
+        "spells": spell_list,
+        "total": len(spells),
+        "message": "\n".join(message_lines),
+        "search_type": "exact",
+    }
+
+
+async def _execute_search_memories(
+    args: dict[str, Any],
+    character: Character,
+    db: AsyncSession,
+) -> dict[str, Any]:
+    """
+    Search adventure memories using vector similarity.
+    Enables DM to recall past events semantically.
+    """
+    import torch
+    from sqlalchemy import select
+
+    from app.db.models.memory import AdventureMemory
+
+    query_text = args.get("query")
+    limit = args.get("limit", 5)
+
+    if not query_text:
+        return {"success": False, "error": "query is required"}
+
+    # Generate embedding for query using ImageDetectionService model
+    try:
+        from app.services.image_detection_service import get_image_detection_service
+
+        detection_service = get_image_detection_service()
+
+        with torch.inference_mode():
+            query_embedding = detection_service._model.encode(
+                query_text,
+                convert_to_tensor=True,
+                show_progress_bar=False,
+                normalize_embeddings=True,
+            )
+
+        # Convert to list for pgvector
+        query_vector = query_embedding.cpu().numpy().tolist()
+
+        # Search memories by cosine similarity
+        stmt = (
+            select(AdventureMemory)
+            .where(AdventureMemory.character_id == character.id)
+            .order_by(AdventureMemory.embedding.cosine_distance(query_vector))
+            .limit(min(limit, 10))
+        )
+
+        result = await db.execute(stmt)
+        memories = result.scalars().all()
+
+        if not memories:
+            return {
+                "success": True,
+                "memories": [],
+                "message": f"No memories found for '{query_text}'",
+            }
+
+        # Format results
+        memory_list = []
+        for memory in memories:
+            memory_list.append(
+                {
+                    "content": (
+                        memory.content[:200] + "..."
+                        if len(memory.content) > 200
+                        else memory.content
+                    ),
+                    "timestamp": memory.created_at.isoformat(),
+                    "type": memory.memory_type,
+                }
+            )
+
+        logger.info(f"Memory search '{query_text}' returned {len(memories)} results")
+
+        # Format message
+        message_lines = [f"🧠 **Found {len(memories)} memory(ies) for '{query_text}':**\n"]
+        for i, mem in enumerate(memory_list[:3], 1):
+            message_lines.append(f"{i}. {mem['content']}")
+
+        if len(memories) > 3:
+            message_lines.append(f"... and {len(memories) - 3} more")
+
+        return {
+            "success": True,
+            "memories": memory_list,
+            "total": len(memories),
+            "message": "\n".join(message_lines),
+        }
+
+    except Exception as e:
+        logger.error(f"Error searching memories: {str(e)}")
+        return {
+            "success": False,
+            "error": f"Failed to search memories: {str(e)}",
+        }

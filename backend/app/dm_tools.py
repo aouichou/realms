@@ -282,13 +282,13 @@ GAME_MASTER_TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "search_items",
-            "description": "Search the item catalog for DM reference. Use this to look up item stats, costs, and properties when needed for the game.",
+            "description": "Search the item catalog (14,351 items) for DM reference. Use this to look up item stats, costs, and properties. Supports both exact name matching and semantic search for natural language queries.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Search term for item name or description (e.g., 'sword', 'healing', 'armor')",
+                        "description": "Search term. For exact matching: 'longsword', 'healing potion'. For semantic search: 'healing magic', 'fire weapons', 'protective gear'",
                     },
                     "category": {
                         "type": "string",
@@ -299,6 +299,11 @@ GAME_MASTER_TOOLS: list[dict[str, Any]] = [
                         "type": "string",
                         "enum": ["common", "uncommon", "rare", "very rare", "legendary", "artifact"],
                         "description": "Filter by rarity for magic items",
+                    },
+                    "semantic": {
+                        "type": "boolean",
+                        "description": "Use semantic search for natural language queries (e.g., 'healing magic'). Default: false for exact matching.",
+                        "default": False,
                     },
                     "limit": {
                         "type": "integer",
@@ -315,6 +320,108 @@ GAME_MASTER_TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "search_monsters",
+            "description": "Search the creature database (11,172 monsters) for DM reference. Returns stat blocks for combat encounters. Supports semantic search for natural language queries like 'undead creatures' or 'fire breathing'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search term. For exact: 'goblin', 'ancient red dragon'. For semantic: 'undead creatures', 'flying enemies', 'weak monsters'",
+                    },
+                    "creature_type": {
+                        "type": "string",
+                        "description": "Filter by type: undead, dragon, humanoid, beast, fiend, celestial, elemental, fey, construct, monstrosity, aberration, giant, ooze, plant",
+                    },
+                    "semantic": {
+                        "type": "boolean",
+                        "description": "Use semantic search for natural language queries. Default: false for exact matching.",
+                        "default": False,
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 10, max: 50)",
+                        "minimum": 1,
+                        "maximum": 50,
+                        "default": 10,
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_spells",
+            "description": "Search the spell database (4,759 spells) for DM reference. Useful for spell effects, casting requirements, and damage calculations. Supports semantic search for natural language queries like 'fire damage spells'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search term. For exact: 'fireball', 'cure wounds'. For semantic: 'fire damage', 'healing spells', 'protective magic'",
+                    },
+                    "spell_level": {
+                        "type": "integer",
+                        "description": "Filter by spell level (0 for cantrips, 1-9 for leveled spells)",
+                        "minimum": 0,
+                        "maximum": 9,
+                    },
+                    "school": {
+                        "type": "string",
+                        "enum": ["abjuration", "conjuration", "divination", "enchantment", "evocation", "illusion", "necromancy", "transmutation"],
+                        "description": "Filter by spell school",
+                    },
+                    "semantic": {
+                        "type": "boolean",
+                        "description": "Use semantic search for natural language queries. Default: false for exact matching.",
+                        "default": False,
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 10, max: 50)",
+                        "minimum": 1,
+                        "maximum": 50,
+                        "default": 10,
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_memories",
+            "description": "Search past adventure memories to recall events, NPCs, locations, or plot points. Use when you need to remember something from earlier in the adventure.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "What to search for (e.g., 'dragon encounter', 'tavern keeper', 'magical artifact')",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max results to return (default: 5, max: 10)",
+                        "minimum": 1,
+                        "maximum": 10,
+                        "default": 5,
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_available_tools",
+            "description": "Get a list of all available DM tools. Use when you need a reminder of what actions you can take.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
                 "required": [],
             },
         },
