@@ -1,6 +1,6 @@
 'use client';
 
-import { CompanionMessage } from '@/components/CompanionMessage';
+import CompanionMessage from '@/components/CompanionMessage';
 import NPCRollResult from '@/components/NPCRollResult';
 import { SpellWarningContainer } from '@/components/SpellWarningContainer';
 import { ToolCallsBadgeContainer } from '@/components/ToolCallBadge';
