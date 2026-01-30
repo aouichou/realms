@@ -1,0 +1,1 @@
+"""Game configuration package."""

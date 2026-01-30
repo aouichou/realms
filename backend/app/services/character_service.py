@@ -1,7 +1,7 @@
 """Character service for business logic."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 

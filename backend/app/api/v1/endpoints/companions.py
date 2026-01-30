@@ -10,10 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db
+from app.db.base import get_db
 from app.db.models.character import Character
 from app.db.models.companion import Companion
 from app.db.models.user import User
+from app.middleware.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -135,9 +136,9 @@ async def get_companion(
     companion_data = companion.to_dict()
 
     # Include memory and events if present
-    if companion.conversation_memory:
+    if companion.conversation_memory is not None:  # type: ignore[comparison-overlap]
         companion_data["conversation_memory"] = companion.conversation_memory
-    if companion.important_events:
+    if companion.important_events is not None:  # type: ignore[comparison-overlap]
         companion_data["important_events"] = companion.important_events
 
     return companion_data
@@ -181,11 +182,17 @@ async def update_companion_loyalty(
         )
 
     # Import here to avoid circular imports
+    from app.config import settings
     from app.services.companion_service import CompanionService
-    from app.services.provider_init import get_provider
+    from app.services.gemini_service import GeminiService
 
     # Get Gemini service for companion
-    gemini_service = get_provider("gemini")
+    gemini_config = settings.ai_providers_config.get("gemini", {})
+    gemini_service = GeminiService(
+        api_key=gemini_config.get("api_key"),
+        model=gemini_config.get("model", "gemini-1.5-flash"),
+        priority=gemini_config.get("priority", 1),
+    )
     companion_service = CompanionService(gemini_service)
 
     # Update loyalty
@@ -234,11 +241,10 @@ async def toggle_companion_active(
             detail="Companion not found or does not belong to you",
         )
 
-    companion.is_active = is_active
+    companion.is_active = is_active  # type: ignore[assignment]
     await db.commit()
     await db.refresh(companion)
 
     logger.info(f"Companion {companion.name} set to {'active' if is_active else 'inactive'}")
 
     return companion.to_dict()
-

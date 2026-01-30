@@ -95,11 +95,12 @@ class CompanionService:
         character: Character,
     ) -> str:
         """Build the prompt for companion AI."""
-        str_mod = companion.get_stat_modifier(companion.strength)
-        dex_mod = companion.get_stat_modifier(companion.dexterity)
-        int_mod = companion.get_stat_modifier(companion.intelligence)
-        wis_mod = companion.get_stat_modifier(companion.wisdom)
-        cha_mod = companion.get_stat_modifier(companion.charisma)
+        # SQLAlchemy attributes accessed at runtime - type ignore for static analysis
+        str_mod = companion.get_stat_modifier(companion.strength)  # type: ignore[arg-type]
+        dex_mod = companion.get_stat_modifier(companion.dexterity)  # type: ignore[arg-type]
+        int_mod = companion.get_stat_modifier(companion.intelligence)  # type: ignore[arg-type]
+        wis_mod = companion.get_stat_modifier(companion.wisdom)  # type: ignore[arg-type]
+        cha_mod = companion.get_stat_modifier(companion.charisma)  # type: ignore[arg-type]
 
         abilities_desc = []
         if str_mod >= 3:
@@ -115,8 +116,8 @@ class CompanionService:
 
         abilities_text = ", ".join(abilities_desc) if abilities_desc else "of average abilities"
 
-        # Loyalty-based behavior modifiers
-        loyalty = companion.loyalty or 50  # type: ignore
+        # Loyalty-based behavior modifiers - cast Column to int for type checking
+        loyalty: int = companion.loyalty or 50  # type: ignore[assignment]
         loyalty_behavior = self._get_loyalty_behavior(loyalty)
 
         context_text = ""
@@ -165,7 +166,7 @@ DM narration: {dm_narration}
 **YOUR RESPONSE:**
 Respond in character as {companion.name}. Your response should:
 - Reflect your personality ({companion.personality})
-- Consider your loyalty level ({loyalty}/100) and behavior: {self._get_loyalty_descriptor(loyalty)}
+- Consider your loyalty level ({loyalty}/100) and behavior: {self._get_loyalty_descriptor(loyalty)}  # type: ignore[arg-type]
 - Be aware of your current state (HP: {companion.hp}/{companion.max_hp})
 - Stay true to your goals: {companion.goals or "helping your companion"}
 - Be 1-3 sentences, natural and conversational
@@ -290,22 +291,29 @@ You are reluctant and possibly defiant. You:
         db: AsyncSession,
     ) -> None:
         """Update companion loyalty based on player actions."""
-        old_loyalty = companion.loyalty
-        companion.loyalty = max(0, min(100, companion.loyalty + loyalty_change))
+        old_loyalty = companion.loyalty  # type: ignore[assignment]
+        companion.loyalty = max(0, min(100, companion.loyalty + loyalty_change))  # type: ignore[assignment,operator]
 
-        if companion.loyalty >= 80:
-            companion.relationship_status = "trusted"
-        elif companion.loyalty >= 60:
-            companion.relationship_status = "friend"
-        elif companion.loyalty >= 40:
-            companion.relationship_status = "ally"
-        elif companion.loyalty >= 20:
-            companion.relationship_status = "suspicious"
+        # Use setattr to properly update SQLAlchemy columns
+        from sqlalchemy.orm.attributes import flag_modified
+
+        flag_modified(companion, "loyalty")
+
+        # Update relationship status based on new loyalty
+        if companion.loyalty >= 80:  # type: ignore[operator]
+            companion.relationship_status = "trusted"  # type: ignore[assignment]
+        elif companion.loyalty >= 60:  # type: ignore[operator]
+            companion.relationship_status = "friend"  # type: ignore[assignment]
+        elif companion.loyalty >= 40:  # type: ignore[operator]
+            companion.relationship_status = "ally"  # type: ignore[assignment]
+        elif companion.loyalty >= 20:  # type: ignore[operator]
+            companion.relationship_status = "suspicious"  # type: ignore[assignment]
         else:
-            companion.relationship_status = "just_met"
+            companion.relationship_status = "just_met"  # type: ignore[assignment]
+        flag_modified(companion, "relationship_status")
 
         companion.add_important_event(
-            f"Loyalty changed from {old_loyalty} to {companion.loyalty}: {event_description}"
+            f"Loyalty changed from {old_loyalty} to {companion.loyalty}: {event_description}"  # type: ignore[str-format]
         )
 
         await db.commit()

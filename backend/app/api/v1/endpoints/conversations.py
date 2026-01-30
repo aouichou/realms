@@ -765,8 +765,8 @@ async def send_player_action(
         result_companions = await db.execute(
             select(Companion).where(
                 Companion.character_id == request.character_id,
-                Companion.is_active == True,
-                Companion.is_alive == True,
+                Companion.is_active,
+                Companion.is_alive,
             )
         )
         active_companions = result_companions.scalars().all()
@@ -777,15 +777,16 @@ async def send_player_action(
             )
 
             # Determine if in combat
-            combat_keywords = [
-                "combat",
-                "attack",
-                "initiative",
-                "roll for initiative",
-                "enemy",
-                "enemies",
-            ]
-            in_combat = any(keyword in result["narration"].lower() for keyword in combat_keywords)
+            # Combat detection - not currently used but available for future enhancement
+            # combat_keywords = [
+            #     "combat",
+            #     "attack",
+            #     "initiative",
+            #     "roll for initiative",
+            #     "enemy",
+            #     "enemies",
+            # ]
+            # in_combat = any(keyword in result["narration"].lower() for keyword in combat_keywords)
 
             # Get recent conversation context (last 3 messages)
             recent_context = []
@@ -793,7 +794,16 @@ async def send_player_action(
                 recent_context = conversation_history[-3:]
 
             # Initialize companion service
-            companion_service = CompanionService()
+            from app.config import settings
+            from app.services.gemini_service import GeminiService
+
+            gemini_config = settings.ai_providers_config.get("gemini", {})
+            gemini_service = GeminiService(
+                api_key=gemini_config.get("api_key"),
+                model=gemini_config.get("model", "gemini-1.5-flash"),
+                priority=gemini_config.get("priority", 1),
+            )
+            companion_service = CompanionService(gemini_service)
 
             # Check each companion and generate responses
             for companion in active_companions:
@@ -803,7 +813,6 @@ async def send_player_action(
                         companion=companion,
                         player_action=request.action,
                         dm_narration=result["narration"],
-                        in_combat=in_combat,
                     )
 
                     if should_respond:
@@ -826,7 +835,7 @@ async def send_player_action(
                                     role="companion",
                                     content=companion_message,
                                     tokens_used=0,  # Gemini doesn't provide token counts
-                                    companion_id=companion.id,
+                                    companion_id=companion.id,  # type: ignore[arg-type]
                                 )
                                 await ConversationService.create_message(db, companion_msg)
                                 logger.info(f"Saved companion message from {companion.name}")

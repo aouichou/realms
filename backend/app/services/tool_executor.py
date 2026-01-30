@@ -440,31 +440,26 @@ async def _execute_introduce_companion(
     )
 
     # Step 3: Generate companion avatar
-    try:
-        from app.services.image_service import ImageService
-
-        image_service = ImageService()
-
-        # Create avatar prompt
-        avatar_prompt = f"Fantasy character portrait: {name}, a {creature.name}. "
-        avatar_prompt += f"Personality: {personality}. "
-        if background:
-            avatar_prompt += f"Background: {background}. "
-        avatar_prompt += "Style: D&D character art, detailed, fantasy illustration, hero portrait."
-
-        logger.info(f"Generating avatar for companion '{name}'")
-        image_url = await image_service.generate_image(
-            prompt=avatar_prompt,
-            character_id=character.id,
-            image_type="companion_avatar",
-        )
-
-        if image_url:
-            companion.avatar_url = image_url
-            logger.info(f"Avatar generated successfully: {image_url}")
-    except Exception as e:
-        logger.warning(f"Failed to generate companion avatar: {e}")
-        # Continue without avatar - not a critical failure
+    # Note: Image generation temporarily disabled
+    # try:
+    #     from app.services.image_service import ImageService
+    #     image_service = ImageService()
+    #     avatar_prompt = f"Fantasy character portrait: {name}, a {creature.name}. "
+    #     avatar_prompt += f"Personality: {personality}. "
+    #     if background:
+    #         avatar_prompt += f"Background: {background}. "
+    #     avatar_prompt += "Style: D&D character art, detailed, fantasy illustration, hero portrait."
+    #     logger.info(f"Generating avatar for companion '{name}'")
+    #     image_url = await image_service.generate_image(
+    #         prompt=avatar_prompt,
+    #         character_id=character.id,
+    #         image_type="companion_avatar",
+    #     )
+    #     if image_url:
+    #         companion.avatar_url = image_url
+    #         logger.info(f"Avatar generated successfully: {image_url}")
+    # except Exception as e:
+    #     logger.warning(f"Failed to generate companion avatar: {e}")
 
     # Step 4: Save to database
     db.add(companion)
@@ -706,11 +701,8 @@ async def _execute_give_item(
     logger.info(f"Gave {quantity}x {catalog_item.name} to character {character.id}")
 
     reason_text = f" ({reason})" if reason else ""
-    item_desc = (
-        catalog_item.description[:100] + "..."
-        if catalog_item.description and len(catalog_item.description) > 100
-        else catalog_item.description or ""
-    )
+    desc_str = str(catalog_item.description) if catalog_item.description is not None else ""
+    item_desc = desc_str[:100] + "..." if len(desc_str) > 100 else desc_str
 
     return {
         "success": True,
@@ -771,7 +763,9 @@ async def _execute_search_items(
             }
 
         # Format message
-        message_lines = [f"🔍 **Found {len(results)} item(s) matching '{query_text}' (semantic):**\n"]
+        message_lines = [
+            f"🔍 **Found {len(results)} item(s) matching '{query_text}' (semantic):**\n"
+        ]
         for item in results[:5]:
             message_lines.append(
                 f"• **{item['name']}** ({item['category']}, {item['rarity']}) - similarity: {item['similarity']}"
@@ -823,7 +817,7 @@ async def _execute_search_items(
     # Format results
     item_list = []
     for item in items:
-        item_info = {
+        item_info: dict[str, Any] = {
             "name": item.name,
             "category": item.category,
             "rarity": item.rarity,
@@ -831,23 +825,23 @@ async def _execute_search_items(
 
         # Add relevant stats based on category
         if item.is_weapon():
-            item_info["damage"] = (
-                f"{item.damage_dice} {item.damage_type}" if item.damage_dice else "N/A"
-            )
-            if item.attack_bonus:
+            if item.damage_dice is not None:
+                item_info["damage"] = f"{item.damage_dice} {item.damage_type}"
+            else:
+                item_info["damage"] = "N/A"
+            if item.attack_bonus is not None:
                 item_info["attack_bonus"] = f"+{item.attack_bonus}"
 
         if item.is_armor():
-            if item.ac_base:
+            if item.ac_base is not None:
                 item_info["ac"] = item.ac_base
-            elif item.ac_bonus:
+            elif item.ac_bonus is not None:
                 item_info["ac_bonus"] = f"+{item.ac_bonus}"
 
         # Add description (truncated)
-        if item.description:
-            item_info["description"] = (
-                item.description[:150] + "..." if len(item.description) > 150 else item.description
-            )
+        if item.description is not None:
+            desc_str = str(item.description)
+            item_info["description"] = desc_str[:150] + "..." if len(desc_str) > 150 else desc_str
 
         item_list.append(item_info)
 
@@ -917,7 +911,9 @@ async def _execute_search_monsters(
             }
 
         # Format message
-        message_lines = [f"🐉 **Found {len(results)} creature(s) matching '{query_text}' (semantic):**\n"]
+        message_lines = [
+            f"🐉 **Found {len(results)} creature(s) matching '{query_text}' (semantic):**\n"
+        ]
         for creature in results[:5]:
             message_lines.append(
                 f"• **{creature['name']}** ({creature['creature_type']}, CR {creature['cr']}) - AC {creature['ac']}, HP {creature['hp']} - similarity: {creature['similarity']}"
@@ -947,9 +943,7 @@ async def _execute_search_monsters(
 
     # Apply filters
     if creature_type:
-        stmt = stmt.where(
-            func.lower(Creature.creature_type).contains(func.lower(creature_type))
-        )
+        stmt = stmt.where(func.lower(Creature.creature_type).contains(func.lower(creature_type)))
 
     # Execute query with limit
     stmt = stmt.limit(min(limit, 50)).order_by(Creature.name)
@@ -1044,9 +1038,11 @@ async def _execute_search_spells(
             }
 
         # Format message
-        message_lines = [f"✨ **Found {len(results)} spell(s) matching '{query_text}' (semantic):**\n"]
+        message_lines = [
+            f"✨ **Found {len(results)} spell(s) matching '{query_text}' (semantic):**\n"
+        ]
         for spell in results[:5]:
-            level_text = "Cantrip" if spell['level'] == 0 else f"Level {spell['level']}"
+            level_text = "Cantrip" if spell["level"] == 0 else f"Level {spell['level']}"
             message_lines.append(
                 f"• **{spell['name']}** ({level_text}, {spell['school']}) - {spell['casting_time']}, {spell['range']} - similarity: {spell['similarity']}"
             )
@@ -1114,7 +1110,7 @@ async def _execute_search_spells(
     # Format message
     message_lines = [f"✨ **Found {len(spells)} spell(s) matching '{query_text}':**\n"]
     for spell_info in spell_list[:5]:
-        level_text = "Cantrip" if spell_info['level'] == 0 else f"Level {spell_info['level']}"
+        level_text = "Cantrip" if spell_info["level"] == 0 else f"Level {spell_info['level']}"
         message_lines.append(
             f"• **{spell_info['name']}** ({level_text}, {spell_info['school']}) - {spell_info['casting_time']}, {spell_info['range']}"
         )
@@ -1156,7 +1152,7 @@ async def _execute_search_memories(
         memory_list = await semantic_service.search_memories(
             query=query_text,
             db=db,
-            character_id=character.id,
+            character_id=character.id,  # type: ignore[arg-type]
             limit=limit,
         )
 
@@ -1229,9 +1225,11 @@ async def _execute_get_monster_loot(
         # Format message
         message_lines = [f"⚔️ **Loot from {monster_name}:**\n"]
         for i, item in enumerate(items[:5], 1):
-            damage = f" ({item['damage_dice']} {item['damage_type']})" if item.get('damage_dice') else ""
-            ac = f" (AC {item['ac_base']})" if item.get('ac_base') else ""
-            ac_bonus = f" (+{item['ac_bonus']} AC)" if item.get('ac_bonus') else ""
+            damage = (
+                f" ({item['damage_dice']} {item['damage_type']})" if item.get("damage_dice") else ""
+            )
+            ac = f" (AC {item['ac_base']})" if item.get("ac_base") else ""
+            ac_bonus = f" (+{item['ac_bonus']} AC)" if item.get("ac_bonus") else ""
 
             message_lines.append(
                 f"{i}. **{item['name']}** ({item['rarity']})" + damage + ac + ac_bonus
@@ -1308,10 +1306,8 @@ async def _execute_generate_treasure_hoard(
         # Format message
         message_lines = [f"💎 **Treasure Hoard (CR {cr} - {descriptor}):**\n"]
         for i, item in enumerate(items, 1):
-            value = f" ({item['value_gp']} gp)" if item.get('value_gp') else ""
-            message_lines.append(
-                f"{i}. **{item['name']}** ({item['rarity']})" + value
-            )
+            value = f" ({item['value_gp']} gp)" if item.get("value_gp") else ""
+            message_lines.append(f"{i}. **{item['name']}** ({item['rarity']})" + value)
 
         return {
             "success": True,

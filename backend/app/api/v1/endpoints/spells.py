@@ -10,9 +10,9 @@ from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.config.spell_effects import get_effect_config, spell_creates_effect
 from app.db.base import get_db
 from app.db.models import Character, CharacterClass, CharacterSpell, GameSession, Spell
+from app.game_config.spell_effects import get_effect_config, spell_creates_effect
 from app.observability.logger import get_logger
 from app.observability.tracing import trace_async
 from app.schemas.spell import (
@@ -630,7 +630,6 @@ async def cast_spell(
                     description=effect_config.get("description"),
                     source=f"{spell.name} spell",
                     duration_value=effect_config.get("duration_value"),
-                    rounds_remaining=effect_config.get("rounds_remaining"),
                     bonus_value=effect_config.get("bonus_value", 0),
                     dice_bonus=effect_config.get("dice_bonus"),
                     advantage=effect_config.get("advantage", False),
@@ -643,8 +642,7 @@ async def cast_spell(
 
     # Capture spell casting as memory
     try:
-        from app.db.models import GameSession
-
+        # GameSession already imported at top of file
         result_session = await db.execute(
             select(GameSession)
             .where(GameSession.character_id == character_id)

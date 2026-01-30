@@ -4,10 +4,11 @@ Validates DM responses against reference knowledge using semantic retrieval.
 Implements trigger-based validation with silent regeneration on rule violations.
 """
 
-import re
 import logging
+import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
+
 import numpy as np
 import torch
 
@@ -37,9 +38,26 @@ class DMSupervisor:
 
         # Trigger keywords that indicate validation should run
         self.trigger_keywords = [
-            "attack", "damage", "hit points", "hp", "roll", "dice", "d20",
-            "combat", "initiative", "loot", "item", "spell", "cast",
-            "heal", "hurt", "wound", "strike", "swing", "shoot", "stab"
+            "attack",
+            "damage",
+            "hit points",
+            "hp",
+            "roll",
+            "dice",
+            "d20",
+            "combat",
+            "initiative",
+            "loot",
+            "item",
+            "spell",
+            "cast",
+            "heal",
+            "hurt",
+            "wound",
+            "strike",
+            "swing",
+            "shoot",
+            "stab",
         ]
 
         # Common mistake patterns to detect
@@ -48,26 +66,26 @@ class DMSupervisor:
                 "name": "narrated_roll_result",
                 "pattern": r"(you|player|character)\s+(roll|rolled|rolls)\s+(and\s+)?(hit|hits|miss|misses|get|gets|score|scores)",
                 "explanation": "DM should use request_player_roll, not narrate roll results",
-                "relevant_sections": ["Dice Rolling Protocol", "Common Mistakes"]
+                "relevant_sections": ["Dice Rolling Protocol", "Common Mistakes"],
             },
             {
                 "name": "narrated_npc_roll",
                 "pattern": r"(goblin|monster|enemy|guard|bandit|creature|it|he|she|they)\s+(roll|rolled|rolls|hit|hits|deal|deals|attack|attacks)\s+(and|for|you)",
                 "explanation": "DM should use roll_for_npc, not narrate NPC rolls",
-                "relevant_sections": ["Dice Rolling Protocol", "roll_for_npc"]
+                "relevant_sections": ["Dice Rolling Protocol", "roll_for_npc"],
             },
             {
                 "name": "damage_without_tool",
                 "pattern": r"(take|takes|deals?|suffering?|loses?)\s+\d+\s+(damage|hp|hit points)",
                 "explanation": "Must use update_character_hp when mentioning damage",
-                "relevant_sections": ["HP Management", "update_character_hp"]
+                "relevant_sections": ["HP Management", "update_character_hp"],
             },
             {
                 "name": "specific_roll_number",
                 "pattern": r"(roll|rolled|rolls|score|scores|get|gets)\s+(a\s+)?\d{1,2}(\s+|$)",
                 "explanation": "DM should not narrate specific roll numbers without using tools",
-                "relevant_sections": ["Dice Rolling Protocol", "Tool Usage Rules"]
-            }
+                "relevant_sections": ["Dice Rolling Protocol", "Tool Usage Rules"],
+            },
         ]
 
         self._load_reference_knowledge()
@@ -78,7 +96,7 @@ class DMSupervisor:
         """Load all markdown files from dm_knowledge directory."""
         try:
             for md_file in self.knowledge_dir.glob("*.md"):
-                with open(md_file, 'r', encoding='utf-8') as f:
+                with open(md_file, "r", encoding="utf-8") as f:
                     content = f.read()
                     self.reference_texts[md_file.stem] = content
                     logger.info(f"RL-140: Loaded {md_file.name} ({len(content)} chars)")
@@ -100,19 +118,19 @@ class DMSupervisor:
 
             for file_name, content in self.reference_texts.items():
                 # Split into sections (by headers)
-                sections = re.split(r'\n##\s+', content)
+                sections = re.split(r"\n##\s+", content)
 
                 for i, section in enumerate(sections):
                     if not section.strip():
                         continue
 
                     # Extract section title
-                    lines = section.split('\n', 1)
-                    title = lines[0].strip('#').strip() if lines else f"Section {i}"
+                    lines = section.split("\n", 1)
+                    title = lines[0].strip("#").strip() if lines else f"Section {i}"
                     section_content = lines[1] if len(lines) > 1 else section
 
                     # Further split large sections into smaller chunks
-                    paragraphs = section_content.split('\n\n')
+                    paragraphs = section_content.split("\n\n")
                     current_chunk = []
                     current_length = 0
 
@@ -121,13 +139,17 @@ class DMSupervisor:
 
                         # If adding this paragraph exceeds 1000 chars, save current chunk
                         if current_length + para_length > 1000 and current_chunk:
-                            chunk_text = '\n\n'.join(current_chunk)
-                            chunks.append({
-                                "file": file_name,
-                                "section": title,
-                                "text": chunk_text,
-                                "preview": chunk_text[:200] + "..." if len(chunk_text) > 200 else chunk_text
-                            })
+                            chunk_text = "\n\n".join(current_chunk)
+                            chunks.append(
+                                {
+                                    "file": file_name,
+                                    "section": title,
+                                    "text": chunk_text,
+                                    "preview": chunk_text[:200] + "..."
+                                    if len(chunk_text) > 200
+                                    else chunk_text,
+                                }
+                            )
                             current_chunk = []
                             current_length = 0
 
@@ -136,13 +158,17 @@ class DMSupervisor:
 
                     # Save remaining chunk
                     if current_chunk:
-                        chunk_text = '\n\n'.join(current_chunk)
-                        chunks.append({
-                            "file": file_name,
-                            "section": title,
-                            "text": chunk_text,
-                            "preview": chunk_text[:200] + "..." if len(chunk_text) > 200 else chunk_text
-                        })
+                        chunk_text = "\n\n".join(current_chunk)
+                        chunks.append(
+                            {
+                                "file": file_name,
+                                "section": title,
+                                "text": chunk_text,
+                                "preview": chunk_text[:200] + "..."
+                                if len(chunk_text) > 200
+                                else chunk_text,
+                            }
+                        )
 
             self.reference_chunks = chunks
             logger.info(f"RL-140: Created {len(chunks)} reference chunks")
@@ -155,9 +181,7 @@ class DMSupervisor:
                 with torch.inference_mode():
                     for text in chunk_texts:
                         embedding = self.model_service._model.encode(
-                            text,
-                            convert_to_tensor=True,
-                            show_progress_bar=False
+                            text, convert_to_tensor=True, show_progress_bar=False
                         )
                         embeddings.append(embedding.cpu().numpy())
 
@@ -207,11 +231,13 @@ class DMSupervisor:
                 return []
 
             with torch.inference_mode():
-                query_embedding = self.model_service._model.encode(
-                    context,
-                    convert_to_tensor=True,
-                    show_progress_bar=False
-                ).cpu().numpy()
+                query_embedding = (
+                    self.model_service._model.encode(
+                        context, convert_to_tensor=True, show_progress_bar=False
+                    )
+                    .cpu()
+                    .numpy()
+                )
 
             # Calculate cosine similarity with all chunks
             similarities = []
@@ -254,26 +280,34 @@ class DMSupervisor:
         response_lower = dm_response.lower()
 
         # Check for damage mentions without update_character_hp
-        if any(word in response_lower for word in ["damage", "hp", "hit points", "hurt", "wounded"]):
+        if any(
+            word in response_lower for word in ["damage", "hp", "hit points", "hurt", "wounded"]
+        ):
             if "update_character_hp" not in tool_names:
                 # Only flag if specific damage numbers mentioned
-                if re.search(r'\d+\s+(damage|hp)', response_lower):
+                if re.search(r"\d+\s+(damage|hp)", response_lower):
                     issues.append("Mentioned damage/HP change but didn't call update_character_hp")
 
         # Check for roll mentions without appropriate roll tools
         if any(word in response_lower for word in ["roll", "rolled", "dice", "d20"]):
             if "request_player_roll" not in tool_names and "roll_for_npc" not in tool_names:
                 # Check if it's actually narrating a roll result (bad) or just mentioning rolling (ok)
-                if re.search(r'(you|player|character|goblin|monster|enemy)\s+(roll|rolled)', response_lower):
-                    issues.append("Mentioned rolling but didn't call request_player_roll or roll_for_npc")
+                if re.search(
+                    r"(you|player|character|goblin|monster|enemy)\s+(roll|rolled)", response_lower
+                ):
+                    issues.append(
+                        "Mentioned rolling but didn't call request_player_roll or roll_for_npc"
+                    )
 
         # Check for loot mentions without give_item
         if any(word in response_lower for word in ["loot", "treasure", "find", "discover"]):
             if "item" in response_lower or "gold" in response_lower or "potion" in response_lower:
                 if "give_item" not in tool_names and "search_items" not in tool_names:
                     # Only flag if specific items mentioned
-                    if re.search(r'(healing potion|sword|armor|gold pieces|item)', response_lower):
-                        issues.append("Mentioned specific loot but didn't call search_items or give_item")
+                    if re.search(r"(healing potion|sword|armor|gold pieces|item)", response_lower):
+                        issues.append(
+                            "Mentioned specific loot but didn't call search_items or give_item"
+                        )
 
         return issues
 
@@ -291,20 +325,19 @@ class DMSupervisor:
 
         for mistake in self.mistake_patterns:
             if re.search(mistake["pattern"], dm_response, re.IGNORECASE):
-                detected.append({
-                    "type": mistake["name"],
-                    "explanation": mistake["explanation"],
-                    "relevant_sections": mistake["relevant_sections"]
-                })
+                detected.append(
+                    {
+                        "type": mistake["name"],
+                        "explanation": mistake["explanation"],
+                        "relevant_sections": mistake["relevant_sections"],
+                    }
+                )
                 logger.debug(f"RL-140: Detected mistake pattern: {mistake['name']}")
 
         return detected
 
     async def validate_response(
-        self,
-        player_input: str,
-        dm_response: str,
-        tool_calls: Optional[List[Dict]] = None
+        self, player_input: str, dm_response: str, tool_calls: Optional[List[Dict]] = None
     ) -> Dict:
         """
         Validate DM response against rules.
@@ -372,7 +405,7 @@ class DMSupervisor:
                 "issues": all_issues,
                 "mistakes": detected_mistakes,
                 "relevant_rules": relevant_rules,
-                "should_regenerate": should_regenerate
+                "should_regenerate": should_regenerate,
             }
 
             if not is_valid:
@@ -389,7 +422,7 @@ class DMSupervisor:
                 "issues": [],
                 "mistakes": [],
                 "relevant_rules": [],
-                "should_regenerate": False
+                "should_regenerate": False,
             }
 
 
