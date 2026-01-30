@@ -454,10 +454,24 @@ export default function GamePage() {
 
 		// Auto-send roll result to DM
 		const rollTarget = rollResult.skill || rollResult.ability || pendingRollRequest.description || pendingRollRequest.type;
-		const rollMessage = `I rolled a ${rollResult.total} (${rollResult.roll} + ${rollResult.modifier}) for ${rollTarget}${rollResult.success !== undefined ? ` and ${rollResult.success ? 'succeeded' : 'failed'}` : ''}`;
+		// Only show success/failure if DC was provided and success is explicitly true or false (not null)
+		const successText = rollResult.success !== null && rollResult.success !== undefined
+			? ` and ${rollResult.success ? 'succeeded' : 'failed'}`
+			: '';
+		const rollMessage = `I rolled a ${rollResult.total} (${rollResult.roll} + ${rollResult.modifier}) for ${rollTarget}${successText}`;
 
 		setInputValue(rollMessage);
 		setIsLoading(true);
+
+		// Clear the roll request card immediately after rolling
+		if (pendingRollQueue.length > 1) {
+			const [, ...remaining] = pendingRollQueue;
+			setPendingRollQueue(remaining);
+			setPendingRollRequest(remaining[0] || null);
+		} else {
+			setPendingRollQueue([]);
+			setPendingRollRequest(null);
+		}
 
 		// Add user message immediately
 		const tempUserMsg: Message = {
@@ -505,15 +519,6 @@ export default function GamePage() {
 				};
 				setMessages(prev => [...prev, dmMessage]);
 
-				// Clear or advance pending request after result sent
-				if (pendingRollQueue.length > 1) {
-					const [, ...remaining] = pendingRollQueue;
-					setPendingRollQueue(remaining);
-					setPendingRollRequest(remaining[0] || null);
-				} else {
-					setPendingRollQueue([]);
-					setPendingRollRequest(null);
-				}
 				setInputValue('');
 
 				// Store new roll request(s) if DM asks for another
@@ -1100,6 +1105,9 @@ export default function GamePage() {
 									<AbilityCheckPanel
 										characterId={characterId}
 										onRollComplete={handleRollComplete}
+										requestedDc={pendingRollRequest?.dc}
+										requestedSkill={pendingRollRequest?.skill}
+										requestedAbility={pendingRollRequest?.ability}
 									/>
 								</div>
 							)}

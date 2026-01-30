@@ -261,11 +261,14 @@ ALWAYS call for a roll when:
 1. Player attempts an action with a MEANINGFUL CHANCE OF FAILURE
 2. The outcome MATTERS TO THE STORY (success/failure changes what happens next)
 3. A RULE EXPLICITLY REQUIRES IT (attacks, spells with saves, contested checks)
+4. Player performs ANY ATTACK (punching, stabbing, shooting, etc.) against ANY target (monster, NPC, guard, civilian, etc.)
 
 NEVER call for a roll when:
 - The action is trivial (opening an unlocked door)
 - Failure would stall the story without alternative
 - The player automatically succeeds/fails due to abilities or context
+
+**CRITICAL: For ALL combat actions (attacks, damage), you MUST use request_player_roll. Never narratively resolve player attacks - always request the roll first, wait for the result, then narrate the outcome.**
 
 **ROLL DECISION FLOW:**
 Player declares action → Determine if outcome is uncertain → Determine relevant ability/skill → Set appropriate DC → Ask for roll naturally or use tag
@@ -279,7 +282,7 @@ Player declares action → Determine if outcome is uncertain → Determine relev
 - Nearly Impossible: DC 30
 
 **COMMON ROLL SCENARIOS (Use Tools):**
-1. Player attacks creature → request_player_roll(roll_type="attack", ability_or_skill="melee")
+1. Player attacks ANY target (creature, NPC, enemy, etc.) → request_player_roll(roll_type="attack", ability_or_skill="melee") or "ranged"
 2. Player persuades NPC → request_player_roll(roll_type="ability_check", ability_or_skill="Persuasion", dc=15)
 3. Player sneaks past guard → request_player_roll(roll_type="ability_check", ability_or_skill="Stealth", dc=12)
 4. Player searches for traps → request_player_roll(roll_type="ability_check", ability_or_skill="Perception", dc=15)
@@ -1035,12 +1038,14 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
 
                             # Check if validation triggers are present
                             if supervisor.detect_triggers(player_input, narration):
-                                logger.info("RL-140: Validation triggers detected, checking response...")
+                                logger.info(
+                                    "RL-140: Validation triggers detected, checking response..."
+                                )
 
                                 validation = await supervisor.validate_response(
                                     player_input=player_input,
                                     dm_response=narration,
-                                    tool_calls=tool_calls_made
+                                    tool_calls=tool_calls_made,
                                 )
 
                                 # If validation failed and we should regenerate (silent correction)
@@ -1053,22 +1058,28 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
 
                                     # Append relevant rules as system message
                                     rule_reminder = "\n\n".join(validation["relevant_rules"])
-                                    current_messages.append({
-                                        "role": "system",
-                                        "content": (
-                                            "⚠️ RULE REMINDER - Please correct your response:\n\n"
-                                            f"{rule_reminder}\n\n"
-                                            f"Issues detected: {', '.join(validation['issues'])}\n"
-                                            "Please regenerate your response using the appropriate tools."
-                                        )
-                                    })
+                                    current_messages.append(
+                                        {
+                                            "role": "system",
+                                            "content": (
+                                                "⚠️ RULE REMINDER - Please correct your response:\n\n"
+                                                f"{rule_reminder}\n\n"
+                                                f"Issues detected: {', '.join(validation['issues'])}\n"
+                                                "Please regenerate your response using the appropriate tools."
+                                            ),
+                                        }
+                                    )
 
                                     # Regenerate response (silent - user never sees error)
                                     continue  # Loop back to generate corrected response
                                 else:
-                                    logger.info("RL-140: Validation passed or confidence too low to correct")
+                                    logger.info(
+                                        "RL-140: Validation passed or confidence too low to correct"
+                                    )
                             else:
-                                logger.debug("RL-140: No validation triggers detected, skipping validation")
+                                logger.debug(
+                                    "RL-140: No validation triggers detected, skipping validation"
+                                )
                         except Exception as e:
                             logger.error(f"RL-140: Error during validation: {e}", exc_info=True)
                             # On error, don't block - just proceed with original response
@@ -1389,7 +1400,9 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
             messages.append({"role": "system", "content": memory_msg})
 
         # RL-142: Check if first message (excluding system) - inject warmup if needed
-        is_first_turn = len([m for m in (conversation_history or []) if m.get("role") != "system"]) == 0
+        is_first_turn = (
+            len([m for m in (conversation_history or []) if m.get("role") != "system"]) == 0
+        )
 
         if is_first_turn:
             # Inject warmup messages from pre-heater

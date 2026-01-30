@@ -26,6 +26,9 @@ import { useEffect, useState } from "react";
 interface AbilityCheckPanelProps {
 	characterId: string;
 	onRollComplete?: (result: any) => void;
+	requestedDc?: number;
+	requestedSkill?: string;
+	requestedAbility?: string;
 }
 
 interface Skill {
@@ -119,12 +122,12 @@ const QUICK_CHECKS = [
 	{ name: "Deception", icon: Users },
 ];
 
-export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckPanelProps) {
+export function AbilityCheckPanel({ characterId, onRollComplete, requestedDc, requestedSkill, requestedAbility }: AbilityCheckPanelProps) {
 	const { t } = useTranslation();
-	const [selectedSkill, setSelectedSkill] = useState<string>("");
+	const [selectedSkill, setSelectedSkill] = useState<string>(requestedSkill || "");
 	const [advantage, setAdvantage] = useState(false);
 	const [disadvantage, setDisadvantage] = useState(false);
-	const [dc, setDc] = useState<number | "">("");
+	const [dc, setDc] = useState<number | "">(requestedDc || "");
 	const [rolling, setRolling] = useState(false);
 	const [rollHistory, setRollHistory] = useState<RollResult[]>([]);
 
@@ -172,6 +175,12 @@ export function AbilityCheckPanel({ characterId, onRollComplete }: AbilityCheckP
 		retry: 2,
 		retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
 	});
+
+	// Update DC and selected skill when pendingRollRequest changes
+	useEffect(() => {
+		if (requestedDc) setDc(requestedDc);
+		if (requestedSkill) setSelectedSkill(requestedSkill);
+	}, [requestedDc, requestedSkill]);
 
 	useEffect(() => {
 		// Load roll history from localStorage
