@@ -16,6 +16,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models import Character
+    from app.db.models.game_session import GameSession
 
 
 class EffectType(str, Enum):
@@ -123,6 +124,7 @@ class ActiveEffect(Base):
 
     # Relationships
     character: Mapped["Character"] = relationship("Character", back_populates="active_effects")
+    session: Mapped["GameSession"] = relationship("GameSession", back_populates="active_effects")
 
     def __repr__(self) -> str:
         return f"<ActiveEffect(id={self.id}, name={self.name}, type={self.effect_type}, char={self.character_id})>"
