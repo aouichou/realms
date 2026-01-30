@@ -73,7 +73,7 @@ class EffectsService:
             span.set_attribute("character_id", str(character_id))
             if duration_value:
                 span.set_attribute("effect.duration_value", duration_value)
-        
+
         # If requires concentration, end other concentration effects
         if requires_concentration:
             await EffectsService.break_concentration(db, character_id)
@@ -189,7 +189,7 @@ class EffectsService:
                 await db.commit()
                 logger.info(f"Removed effect '{effect.name}' (ID: {effect_id})")
                 return True
-            
+
             span.set_attribute("effect.found", False)
             return False
 
@@ -245,13 +245,26 @@ class EffectsService:
         tracer = get_tracer()
         with tracer.start_as_current_span("effects.tick_processing") as span:
             span.set_attribute("character_id", str(character_id))
-            
+
             effects = await EffectsService.get_active_effects(db, character_id)
             expired_names = []
             span.set_attribute("effects.count", len(effects))
 
             for effect in effects:
                 if effect.duration_type == EffectDuration.ROUNDS:
+                    logger.debug(
+                        f"Processing effect tick: {effect.name}",
+                        extra={
+                            "extra_data": {
+                                "effect_id": effect.id,
+                                "effect_name": effect.name,
+                                "effect_type": effect.effect_type.value,
+                                "rounds_remaining": effect.rounds_remaining,
+                                "requires_concentration": effect.requires_concentration,
+                                "character_id": str(character_id),
+                            }
+                        },
+                    )
                     if effect.decrement_duration():
                         expired_names.append(effect.name)
                         logger.info(f"Effect '{effect.name}' expired for character {character_id}")

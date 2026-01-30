@@ -348,6 +348,19 @@ You are reluctant and possibly defiant. You:
             old_loyalty = companion.loyalty  # type: ignore[assignment]
             companion.loyalty = max(0, min(100, companion.loyalty + loyalty_change))  # type: ignore[assignment,operator]
 
+            logger.debug(
+                f"Loyalty calculation for {companion.name}",
+                extra={"extra_data": {
+                    "companion_id": companion.id,
+                    "companion_name": companion.name,
+                    "old_loyalty": old_loyalty,
+                    "loyalty_change": loyalty_change,
+                    "new_loyalty": companion.loyalty,
+                    "was_clamped": (old_loyalty + loyalty_change) != companion.loyalty,
+                    "event_description": event_description[:100] if event_description else None
+                }}
+            )
+
             span.set_attribute("companion.name", companion.name)
             span.set_attribute("loyalty.old", old_loyalty)
             span.set_attribute("loyalty.new", companion.loyalty)  # type: ignore[arg-type]

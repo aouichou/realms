@@ -4,7 +4,6 @@ Links monsters to equipment, spells to classes, generates loot tables.
 Enables intelligent cross-referencing of D&D 5e content databases.
 """
 
-
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func, select
@@ -74,15 +73,15 @@ class ContentLinker:
             cr = float(monster.challenge_rating) if monster.challenge_rating else 0
             rarity = self._get_rarity_for_cr(cr)
 
-            logger.info(
-                f"RL-145: Getting equipment for {monster.name} (CR {cr}) → {rarity} rarity"
-            )
+            logger.info(f"RL-145: Getting equipment for {monster.name} (CR {cr}) → {rarity} rarity")
 
             # Get weapons/armor appropriate for monster type
             stmt = (
                 select(ItemCatalog)
                 .where(
-                    ItemCatalog.rarity.ilike(f"%{rarity}%"),  # Handles "common (requires attunement)" etc.
+                    ItemCatalog.rarity.ilike(
+                        f"%{rarity}%"
+                    ),  # Handles "common (requires attunement)" etc.
                     ItemCatalog.category.in_(["weapon", "armor", "shield"]),
                 )
                 .order_by(func.random())
@@ -93,6 +92,18 @@ class ContentLinker:
             items = result.scalars().all()
 
             logger.info(f"RL-145: Found {len(items)} equipment items for {monster.name}")
+            logger.debug(
+                f"RL-145: Entity matches for {monster.name}",
+                extra={
+                    "extra_data": {
+                        "monster_id": monster.id,
+                        "cr": cr,
+                        "target_rarity": rarity,
+                        "matched_items": [item.name for item in items],
+                        "item_categories": [item.category for item in items],
+                    }
+                },
+            )
 
             # Format results
             return [
@@ -174,6 +185,19 @@ class ContentLinker:
             items = result.scalars().all()
 
             logger.info(f"RL-145: Generated {len(items)} loot items (rarity: {rarity})")
+            logger.debug(
+                f"RL-145: Loot table generated",
+                extra={
+                    "extra_data": {
+                        "encounter_cr": encounter_cr,
+                        "target_rarity": rarity,
+                        "requested_items": num_items,
+                        "generated_items": len(items),
+                        "loot_names": [item.name for item in items],
+                        "include_consumables": include_consumables,
+                    }
+                },
+            )
 
             # Format results
             return [

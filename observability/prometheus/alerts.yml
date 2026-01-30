@@ -1,0 +1,214 @@
+groups:
+  - name: mistral_realms_critical
+    interval: 30s
+    rules:
+      # HTTP Error Rate
+      - alert: HighHTTPErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "High HTTP error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # HTTP Latency
+      - alert: HighHTTPLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2.0
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API latency detected"
+          description: "P95 latency is {{ $value | humanizeDuration }} (threshold: 2s)"
+
+      # LLM Service Errors
+      - alert: LLMServiceHighErrorRate
+        expr: rate(llm_requests_total{status="error"}[5m]) / rate(llm_requests_total[5m]) > 0.10
+        for: 2m
+        labels:
+          severity: critical
+          component: llm
+        annotations:
+          summary: "LLM service experiencing high error rate"
+          description: "LLM error rate is {{ $value | humanizePercentage }} for model {{ $labels.model }}"
+
+      # Database Query Performance
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m])) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "P95 query latency is {{ $value | humanizeDuration }} for {{ $labels.operation }}"
+
+  - name: mistral_realms_companion_system
+    interval: 30s
+    rules:
+      # Companion Response Time (RL-131)
+      - alert: CompanionResponseSlow
+        expr: histogram_quantile(0.95, rate(companion_response_duration_seconds_bucket[5m])) > 5.0
+        for: 3m
+        labels:
+          severity: warning
+          component: companion
+          feature: RL-131
+        annotations:
+          summary: "Companion AI responses are slow"
+          description: "P95 response time is {{ $value | humanizeDuration }} for {{ $labels.companion_name }} (threshold: 5s)"
+
+      # Companion Error Rate
+      - alert: CompanionHighErrorRate
+        expr: rate(companion_responses_total{status="error"}[5m]) / rate(companion_responses_total[5m]) > 0.10
+        for: 5m
+        labels:
+          severity: critical
+          component: companion
+          feature: RL-131
+        annotations:
+          summary: "High companion AI error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.companion_name }}"
+
+  - name: mistral_realms_spell_effects
+    interval: 30s
+    rules:
+      # Spell Effect Processing Time (RL-106)
+      - alert: SpellEffectProcessingSlow
+        expr: histogram_quantile(0.95, rate(effect_duration_ticks_bucket[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: effects
+          feature: RL-106
+        annotations:
+          summary: "Spell effect processing is slow"
+          description: "P95 processing time is {{ $value | humanizeDuration }} (threshold: 100ms)"
+
+      # Spell Cast Errors
+      - alert: SpellCastHighErrorRate
+        expr: rate(spell_casts_total{success="failure"}[5m]) / rate(spell_casts_total[5m]) > 0.15
+        for: 5m
+        labels:
+          severity: warning
+          component: spells
+          feature: RL-106
+        annotations:
+          summary: "High spell cast failure rate"
+          description: "Failure rate is {{ $value | humanizePercentage }}"
+
+  - name: mistral_realms_content_system
+    interval: 30s
+    rules:
+      # Content Enrichment Performance (RL-145)
+      - alert: ContentEnrichmentSlow
+        expr: rate(content_enrichments_total[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: content
+          feature: RL-145
+        annotations:
+          summary: "Content enrichment rate is low"
+          description: "Enrichment rate is {{ $value }} ops/sec (expected: >0.1)"
+
+      # Content Cache Performance
+      - alert: ContentCacheLowHitRate
+        expr: rate(enrichment_cache_performance{result="hit"}[5m]) / (rate(enrichment_cache_performance{result="hit"}[5m]) + rate(enrichment_cache_performance{result="miss"}[5m])) < 0.50
+        for: 10m
+        labels:
+          severity: info
+          component: content
+          feature: RL-145
+        annotations:
+          summary: "Low cache hit rate for content enrichment"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 50%)"
+
+  - name: mistral_realms_dm_tools
+    interval: 30s
+    rules:
+      # DM Tool Execution Time
+      - alert: DMToolExecutionSlow
+        expr: histogram_quantile(0.95, rate(dm_tool_duration_seconds_bucket[5m])) > 2.0
+        for: 5m
+        labels:
+          severity: warning
+          component: tools
+        annotations:
+          summary: "DM tool execution is slow"
+          description: "P95 execution time is {{ $value | humanizeDuration }} for {{ $labels.tool_name }}"
+
+      # DM Tool Error Rate
+      - alert: DMToolHighErrorRate
+        expr: rate(dm_tool_calls_total{status="error"}[5m]) / rate(dm_tool_calls_total[5m]) > 0.10
+        for: 5m
+        labels:
+          severity: warning
+          component: tools
+        annotations:
+          summary: "High DM tool error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.tool_name }}"
+
+  - name: mistral_realms_image_generation
+    interval: 30s
+    rules:
+      # Image Generation Time
+      - alert: ImageGenerationSlow
+        expr: histogram_quantile(0.95, rate(image_generation_duration_seconds_bucket[5m])) > 30.0
+        for: 3m
+        labels:
+          severity: info
+          component: images
+        annotations:
+          summary: "Image generation is slow"
+          description: "P95 generation time is {{ $value | humanizeDuration }} (threshold: 30s)"
+
+      # Image Generation Error Rate
+      - alert: ImageGenerationHighErrorRate
+        expr: rate(image_generations_total{status="failure"}[5m]) / rate(image_generations_total[5m]) > 0.20
+        for: 5m
+        labels:
+          severity: warning
+          component: images
+        annotations:
+          summary: "High image generation failure rate"
+          description: "Failure rate is {{ $value | humanizePercentage }}"
+
+  - name: mistral_realms_infrastructure
+    interval: 30s
+    rules:
+      # Database Connections
+      - alert: HighDatabaseConnections
+        expr: db_connections_active > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High number of active database connections"
+          description: "{{ $value }} active connections (threshold: 80)"
+
+      # Redis Cache Size
+      - alert: LargeImageCacheSize
+        expr: image_cache_size_bytes > 10737418240
+        for: 10m
+        labels:
+          severity: info
+          component: redis
+        annotations:
+          summary: "Image cache size is large"
+          description: "Cache size is {{ $value | humanize1024 }} (threshold: 10GB)"
+
+      # Rate Limiting
+      - alert: HighRateLimitViolations
+        expr: rate(rate_limit_exceeded_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: rate_limiting
+        annotations:
+          summary: "High rate of rate limit violations"
+          description: "{{ $value }} violations per second"

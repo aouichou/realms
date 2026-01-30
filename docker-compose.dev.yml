@@ -128,7 +128,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -154,6 +155,7 @@ services:
       - grafana-data:/var/lib/grafana
       - ./observability/grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./observability/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning/dashboards-config
     depends_on:
       - prometheus
     restart: unless-stopped

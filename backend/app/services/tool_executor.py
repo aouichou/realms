@@ -37,7 +37,7 @@ async def execute_tool(
         Dictionary with execution result and any state changes
     """
     logger.info(f"Executing tool: {tool_name} with args: {tool_arguments}")
-    
+
     start_time = time.time()
     status = "success"
 
@@ -91,11 +91,7 @@ async def execute_tool(
     finally:
         # Record metrics
         duration = time.time() - start_time
-        metrics.record_dm_tool_execution(
-            tool_name=tool_name,
-            status=status,
-            duration=duration
-        )
+        metrics.record_dm_tool_execution(tool_name=tool_name, status=status, duration=duration)
 
 
 async def _execute_request_player_roll(

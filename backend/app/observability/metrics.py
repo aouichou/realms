@@ -324,12 +324,8 @@ class MetricsCollector:
 
     def record_companion_response(self, companion_name: str, status: str, duration: float):
         """Record companion AI response metrics"""
-        companion_responses_total.labels(
-            companion_name=companion_name, status=status
-        ).inc()
-        companion_response_duration_seconds.labels(
-            companion_name=companion_name
-        ).observe(duration)
+        companion_responses_total.labels(companion_name=companion_name, status=status).inc()
+        companion_response_duration_seconds.labels(companion_name=companion_name).observe(duration)
 
     def record_companion_loyalty_change(self, direction: str):
         """Record companion loyalty change"""
@@ -342,9 +338,7 @@ class MetricsCollector:
     def record_spell_cast(self, spell_name: str, level: int, success: bool):
         """Record spell cast"""
         status = "success" if success else "failure"
-        spell_casts_total.labels(
-            spell_name=spell_name, level=str(level), success=status
-        ).inc()
+        spell_casts_total.labels(spell_name=spell_name, level=str(level), success=status).inc()
 
     def set_active_effects(self, effect_type: str, count: int):
         """Set active effects gauge for specific type"""
@@ -352,9 +346,7 @@ class MetricsCollector:
 
     def record_effect_application(self, effect_name: str, result: str):
         """Record effect application"""
-        effect_applications_total.labels(
-            effect_name=effect_name, result=result
-        ).inc()
+        effect_applications_total.labels(effect_name=effect_name, result=result).inc()
 
     def record_effect_duration(self, effect_name: str, ticks: int):
         """Record effect duration in ticks"""
