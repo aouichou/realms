@@ -4,7 +4,7 @@ AI Provider initialization and management.
 Initializes and registers all configured AI providers at application startup.
 """
 
-import logging
+
 from typing import Optional
 
 from app.config import settings
@@ -14,8 +14,9 @@ from app.services.gemini_service import GeminiService
 from app.services.mistral_provider import MistralProvider
 from app.services.openai_provider import OpenAIProvider
 from app.services.provider_selector import provider_selector
+from app.observability.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def initialize_providers():

@@ -4,7 +4,7 @@ Validates DM responses against reference knowledge using semantic retrieval.
 Implements trigger-based validation with silent regeneration on rule violations.
 """
 
-import logging
+
 import re
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -13,8 +13,9 @@ import numpy as np
 import torch
 
 from app.services.image_detection_service import ImageDetectionService
+from app.observability.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DMSupervisor:

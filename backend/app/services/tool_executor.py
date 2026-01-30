@@ -3,15 +3,15 @@ Tool execution service for Mistral DM tool calling.
 Executes game mechanics functions requested by the DM.
 """
 
-import logging
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.db.models.character import Character
+from app.observability.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def execute_tool(

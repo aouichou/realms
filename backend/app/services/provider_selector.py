@@ -5,7 +5,7 @@ Manages multiple AI providers, automatically selecting the best available
 provider and falling back to alternatives when rate limits or errors occur.
 """
 
-import logging
+
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -18,8 +18,9 @@ from app.services.ai_provider import (
     RateLimitError,
 )
 from app.services.context_transfer import ContextTransferService
+from app.observability.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ProviderSelector:

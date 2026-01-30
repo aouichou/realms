@@ -4,7 +4,7 @@ Links monsters to equipment, spells to classes, generates loot tables.
 Enables intelligent cross-referencing of D&D 5e content databases.
 """
 
-import logging
+
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func, select
@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.creature import Creature
 from app.db.models.item_catalog import ItemCatalog
+from app.observability.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ContentLinker:

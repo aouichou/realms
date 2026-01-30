@@ -4,7 +4,7 @@ Enables natural language search across items, monsters, and spells.
 Reuses sentence-transformer model from ImageDetectionService.
 """
 
-import logging
+
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -16,8 +16,9 @@ from app.db.models.creature import Creature
 from app.db.models.item_catalog import ItemCatalog
 from app.db.models.spell import Spell
 from app.services.image_detection_service import ImageDetectionService
+from app.observability.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class SemanticSearchService:

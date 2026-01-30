@@ -3,17 +3,20 @@ Companion AI service for generating companion NPC responses.
 Uses Google Gemini to provide distinct personality from DM.
 """
 
-import logging
 import random
+import time
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.character import Character
 from app.db.models.companion import Companion
+from app.observability.logger import get_logger
+from app.observability.metrics import metrics
+from app.observability.tracing import get_tracer, trace_async
 from app.services.gemini_service import GeminiService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CompanionService:
@@ -34,6 +37,7 @@ class CompanionService:
         self.gemini_service = gemini_service
         logger.info("CompanionService initialized with Google Gemini")
 
+    @trace_async("companion.generate_response")
     async def generate_companion_response(
         self,
         companion: Companion,
@@ -55,6 +59,9 @@ class CompanionService:
         Returns:
             Companion's response as text
         """
+        start_time = time.time()
+        tracer = get_tracer()
+        
         logger.info(f"Generating response for companion '{companion.name}'")
 
         # Build companion personality prompt
@@ -67,22 +74,47 @@ class CompanionService:
         )
 
         try:
-            # Generate response using Gemini
-            response = await self.gemini_service.generate_narration(
-                prompt=prompt,
-                max_tokens=500,
-                temperature=0.8,
-            )
+            # Generate response using Gemini with tracing
+            with tracer.start_as_current_span("companion.gemini_call") as span:
+                span.set_attribute("companion.name", companion.name)
+                span.set_attribute("companion.personality", companion.personality)
+                span.set_attribute("companion.loyalty", companion.loyalty or 50)  # type: ignore[arg-type]
+                
+                response = await self.gemini_service.generate_narration(
+                    prompt=prompt,
+                    max_tokens=500,
+                    temperature=0.8,
+                )
+                
+                span.set_attribute("response.length", len(response))
 
             # Add to companion's conversation memory
             companion.add_conversation_memory("dm", dm_narration)
             companion.add_conversation_memory("player", player_action)
             companion.add_conversation_memory("companion", response)
 
+            # Record metrics
+            duration = time.time() - start_time
+            if hasattr(metrics, 'companion_responses_total'):
+                metrics.companion_responses_total.labels(
+                    companion_name=companion.name, status="success"
+                ).inc()
+                metrics.companion_response_duration_seconds.labels(
+                    companion_name=companion.name
+                ).observe(duration)
+
             logger.info(f"Companion '{companion.name}' responded: {response[:100]}...")
             return response
 
         except Exception as e:
+            duration = time.time() - start_time
+            
+            # Record error metrics
+            if hasattr(metrics, 'companion_responses_total'):
+                metrics.companion_responses_total.labels(
+                    companion_name=companion.name, status="error"
+                ).inc()
+            
             logger.error(f"Failed to generate companion response: {e}")
             return self._get_fallback_response(companion)
 
@@ -247,6 +279,7 @@ You are reluctant and possibly defiant. You:
         else:
             return f"{companion.name} remains at your side."
 
+    @trace_async("companion.should_respond")
     async def should_companion_respond(
         self,
         companion: Companion,
@@ -255,34 +288,52 @@ You are reluctant and possibly defiant. You:
         combat_active: bool = False,
     ) -> bool:
         """Determine if companion should speak in current situation."""
-        companion_name_lower = companion.name.lower()
-        player_action_lower = player_action.lower()
-        dm_narration_lower = dm_narration.lower()
+        tracer = get_tracer()
+        
+        with tracer.start_as_current_span("companion.check_response_criteria") as span:
+            span.set_attribute("companion.name", companion.name)
+            span.set_attribute("combat_active", combat_active)
+            
+            companion_name_lower = companion.name.lower()
+            player_action_lower = player_action.lower()
+            dm_narration_lower = dm_narration.lower()
 
-        if combat_active and f"{companion_name_lower}'s turn" in dm_narration_lower:
-            return True
+            # Check combat turn
+            if combat_active and f"{companion_name_lower}'s turn" in dm_narration_lower:
+                span.set_attribute("reason", "combat_turn")
+                return True
 
-        if companion_name_lower in player_action_lower:
-            return True
+            # Check direct address
+            if companion_name_lower in player_action_lower:
+                span.set_attribute("reason", "direct_address")
+                return True
 
-        opinion_keywords = [
-            "what do you think",
-            "your opinion",
-            "companion",
-            "what should we",
-            "any ideas",
-        ]
-        if any(keyword in player_action_lower for keyword in opinion_keywords):
-            return True
+            # Check opinion keywords
+            opinion_keywords = [
+                "what do you think",
+                "your opinion",
+                "companion",
+                "what should we",
+                "any ideas",
+            ]
+            if any(keyword in player_action_lower for keyword in opinion_keywords):
+                span.set_attribute("reason", "opinion_request")
+                return True
 
-        if companion_name_lower in dm_narration_lower:
-            return True
+            # Check mentioned in narration
+            if companion_name_lower in dm_narration_lower:
+                span.set_attribute("reason", "mentioned_in_narration")
+                return True
 
-        if random.random() < 0.1:
-            return True
+            # Random chance (10%)
+            if random.random() < 0.1:
+                span.set_attribute("reason", "random_chance")
+                return True
 
-        return False
+            span.set_attribute("reason", "no_trigger")
+            return False
 
+    @trace_async("companion.update_loyalty")
     async def update_companion_loyalty(
         self,
         companion: Companion,
@@ -291,21 +342,30 @@ You are reluctant and possibly defiant. You:
         db: AsyncSession,
     ) -> None:
         """Update companion loyalty based on player actions."""
-        old_loyalty = companion.loyalty  # type: ignore[assignment]
-        companion.loyalty = max(0, min(100, companion.loyalty + loyalty_change))  # type: ignore[assignment,operator]
+        tracer = get_tracer()
+        
+        with tracer.start_as_current_span("companion.calculate_loyalty") as span:
+            old_loyalty = companion.loyalty  # type: ignore[assignment]
+            companion.loyalty = max(0, min(100, companion.loyalty + loyalty_change))  # type: ignore[assignment,operator]
+            
+            span.set_attribute("companion.name", companion.name)
+            span.set_attribute("loyalty.old", old_loyalty)
+            span.set_attribute("loyalty.new", companion.loyalty)  # type: ignore[arg-type]
+            span.set_attribute("loyalty.change", loyalty_change)
+            span.set_attribute("event", event_description[:100])
 
-        # Use setattr to properly update SQLAlchemy columns
-        from sqlalchemy.orm.attributes import flag_modified
+            # Use setattr to properly update SQLAlchemy columns
+            from sqlalchemy.orm.attributes import flag_modified
 
-        flag_modified(companion, "loyalty")
+            flag_modified(companion, "loyalty")
 
-        # Update relationship status based on new loyalty
-        if companion.loyalty >= 80:  # type: ignore[operator]
-            companion.relationship_status = "trusted"  # type: ignore[assignment]
-        elif companion.loyalty >= 60:  # type: ignore[operator]
-            companion.relationship_status = "friend"  # type: ignore[assignment]
-        elif companion.loyalty >= 40:  # type: ignore[operator]
-            companion.relationship_status = "ally"  # type: ignore[assignment]
+            # Update relationship status based on new loyalty
+            if companion.loyalty >= 80:  # type: ignore[operator]
+                companion.relationship_status = "trusted"  # type: ignore[assignment]
+            elif companion.loyalty >= 60:  # type: ignore[operator]
+                companion.relationship_status = "friend"  # type: ignore[assignment]
+            elif companion.loyalty >= 40:  # type: ignore[operator]
+                companion.relationship_status = "ally"  # type: ignore[assignment]
         elif companion.loyalty >= 20:  # type: ignore[operator]
             companion.relationship_status = "suspicious"  # type: ignore[assignment]
         else:

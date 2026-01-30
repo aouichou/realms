@@ -1,7 +1,7 @@
 """Scene Image Generation Service using Mistral AI Agents"""
 
 import hashlib
-import logging
+
 import os
 import time
 from datetime import datetime
@@ -16,8 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.generated_image import GeneratedImage
 from app.services.redis_service import session_service
+from app.observability.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Initialize Mistral client
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")

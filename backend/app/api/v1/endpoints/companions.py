@@ -3,7 +3,6 @@ API endpoints for companion management.
 Handles fetching, creating, and managing AI-driven companion NPCs.
 """
 
-import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -15,13 +14,16 @@ from app.db.models.character import Character
 from app.db.models.companion import Companion
 from app.db.models.user import User
 from app.middleware.auth import get_current_user
+from app.observability.logger import get_logger
+from app.observability.tracing import trace_async
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter()
 
 
 @router.get("/characters/{character_id}/companions")
+@trace_async("companions.get_character_companions")
 async def get_character_companions(
     character_id: int,
     db: AsyncSession = Depends(get_db),
@@ -61,6 +63,7 @@ async def get_character_companions(
 
 
 @router.get("/characters/{character_id}/companions/active")
+@trace_async("companions.get_active_companions")
 async def get_active_companions(
     character_id: int,
     db: AsyncSession = Depends(get_db),
@@ -104,6 +107,7 @@ async def get_active_companions(
 
 
 @router.get("/companions/{companion_id}")
+@trace_async("companions.get_companion")
 async def get_companion(
     companion_id: int,
     db: AsyncSession = Depends(get_db),
@@ -145,6 +149,7 @@ async def get_companion(
 
 
 @router.patch("/companions/{companion_id}/loyalty")
+@trace_async("companions.update_loyalty")
 async def update_companion_loyalty(
     companion_id: int,
     loyalty_change: int,
@@ -207,6 +212,7 @@ async def update_companion_loyalty(
 
 
 @router.patch("/companions/{companion_id}/active")
+@trace_async("companions.toggle_active")
 async def toggle_companion_active(
     companion_id: int,
     is_active: bool,
