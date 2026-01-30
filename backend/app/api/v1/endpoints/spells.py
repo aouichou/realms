@@ -10,8 +10,9 @@ from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config.spell_effects import get_effect_config, spell_creates_effect
 from app.db.base import get_db
-from app.db.models import Character, CharacterClass, CharacterSpell, Spell
+from app.db.models import Character, CharacterClass, CharacterSpell, GameSession, Spell
 from app.observability.logger import get_logger
 from app.observability.tracing import trace_async
 from app.schemas.spell import (
@@ -26,6 +27,7 @@ from app.schemas.spell import (
     SpellSlotsResponse,
 )
 from app.services.character_service import CharacterService
+from app.services.effects_service import EffectsService
 from app.services.memory_capture import MemoryCaptureService
 
 logger = get_logger(__name__)
@@ -603,6 +605,41 @@ async def cast_spell(
     damage_roll, total_damage = _calculate_spell_damage(spell, slot_level)
 
     await db.commit()
+
+    # Create active effect if spell has one
+    try:
+        if spell_creates_effect(spell.name):
+            effect_config = get_effect_config(spell.name)
+            if effect_config:
+                # Get session for the effect
+                result_session = await db.execute(
+                    select(GameSession)
+                    .where(GameSession.character_id == character_id)
+                    .order_by(GameSession.created_at.desc())
+                    .limit(1)
+                )
+                session = result_session.scalar_one_or_none()
+
+                await EffectsService.apply_effect(
+                    db=db,
+                    character_id=character_id,
+                    name=spell.name,
+                    effect_type=effect_config["effect_type"],
+                    duration_type=effect_config["duration_type"],
+                    session_id=session.id if session else None,
+                    description=effect_config.get("description"),
+                    source=f"{spell.name} spell",
+                    duration_value=effect_config.get("duration_value"),
+                    rounds_remaining=effect_config.get("rounds_remaining"),
+                    bonus_value=effect_config.get("bonus_value", 0),
+                    dice_bonus=effect_config.get("dice_bonus"),
+                    advantage=effect_config.get("advantage", False),
+                    disadvantage=effect_config.get("disadvantage", False),
+                    requires_concentration=effect_config.get("requires_concentration", False),
+                )
+                logger.info(f"Created active effect '{spell.name}' for character {character_id}")
+    except Exception as e:
+        logger.warning(f"Failed to create active effect for spell {spell.name}: {e}")
 
     # Capture spell casting as memory
     try:

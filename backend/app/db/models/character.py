@@ -161,10 +161,9 @@ class Character(Base):
         "CharacterCondition", back_populates="character", cascade="all, delete-orphan"
     )
     companions = relationship("Companion", back_populates="character", cascade="all, delete-orphan")
-    # TODO: Uncomment when active_effects is fully implemented
-    # active_effects = relationship(
-    #     "ActiveEffect", back_populates="character", cascade="all, delete-orphan"
-    # )
+    active_effects = relationship(
+        "ActiveEffect", back_populates="character", cascade="all, delete-orphan"
+    )
 
     # Indexes
     __table_args__ = (Index("ix_characters_user_type", "user_id", "character_type"),)

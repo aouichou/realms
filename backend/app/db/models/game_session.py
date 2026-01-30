@@ -67,6 +67,9 @@ class GameSession(Base):
     memories = relationship(
         "AdventureMemory", back_populates="session", cascade="all, delete-orphan"
     )
+    active_effects = relationship(
+        "ActiveEffect", back_populates="session", cascade="all, delete-orphan"
+    )
 
     # Indexes
     __table_args__ = (Index("ix_game_sessions_user_active", "user_id", "is_active"),)
