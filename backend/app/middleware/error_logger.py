@@ -84,6 +84,11 @@ class ErrorLoggerMiddleware(BaseHTTPMiddleware):
             "state": {
                 "request_id": getattr(request.state, "request_id", None),
                 "user_id": getattr(request.state, "user_id", None),
+                "character_id": getattr(request.state, "character_id", None),
+                "session_id": getattr(request.state, "session_id", None),
+                "companion_ids": getattr(request.state, "active_companion_ids", []),
+                "combat_session_id": getattr(request.state, "combat_session_id", None),
+                "in_combat": getattr(request.state, "in_combat", False),
             },
         }
         return error_dict

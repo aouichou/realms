@@ -61,7 +61,7 @@ class CompanionService:
         """
         start_time = time.time()
         tracer = get_tracer()
-        
+
         logger.info(f"Generating response for companion '{companion.name}'")
 
         # Build companion personality prompt
@@ -79,13 +79,13 @@ class CompanionService:
                 span.set_attribute("companion.name", companion.name)
                 span.set_attribute("companion.personality", companion.personality)
                 span.set_attribute("companion.loyalty", companion.loyalty or 50)  # type: ignore[arg-type]
-                
+
                 response = await self.gemini_service.generate_narration(
                     prompt=prompt,
                     max_tokens=500,
                     temperature=0.8,
                 )
-                
+
                 span.set_attribute("response.length", len(response))
 
             # Add to companion's conversation memory
@@ -108,13 +108,13 @@ class CompanionService:
 
         except Exception as e:
             duration = time.time() - start_time
-            
+
             # Record error metrics
             if hasattr(metrics, 'companion_responses_total'):
                 metrics.companion_responses_total.labels(
                     companion_name=companion.name, status="error"
                 ).inc()
-            
+
             logger.error(f"Failed to generate companion response: {e}")
             return self._get_fallback_response(companion)
 
@@ -289,11 +289,11 @@ You are reluctant and possibly defiant. You:
     ) -> bool:
         """Determine if companion should speak in current situation."""
         tracer = get_tracer()
-        
+
         with tracer.start_as_current_span("companion.check_response_criteria") as span:
             span.set_attribute("companion.name", companion.name)
             span.set_attribute("combat_active", combat_active)
-            
+
             companion_name_lower = companion.name.lower()
             player_action_lower = player_action.lower()
             dm_narration_lower = dm_narration.lower()
@@ -343,11 +343,11 @@ You are reluctant and possibly defiant. You:
     ) -> None:
         """Update companion loyalty based on player actions."""
         tracer = get_tracer()
-        
+
         with tracer.start_as_current_span("companion.calculate_loyalty") as span:
             old_loyalty = companion.loyalty  # type: ignore[assignment]
             companion.loyalty = max(0, min(100, companion.loyalty + loyalty_change))  # type: ignore[assignment,operator]
-            
+
             span.set_attribute("companion.name", companion.name)
             span.set_attribute("loyalty.old", old_loyalty)
             span.set_attribute("loyalty.new", companion.loyalty)  # type: ignore[arg-type]

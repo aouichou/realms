@@ -126,6 +126,124 @@ active_conversations = Gauge(
     registry=registry,
 )
 
+# Companion metrics
+companion_responses_total = Counter(
+    "companion_responses_total",
+    "Total companion AI responses generated",
+    ["companion_name", "status"],
+    registry=registry,
+)
+
+companion_response_duration_seconds = Histogram(
+    "companion_response_duration_seconds",
+    "Companion AI response generation time",
+    ["companion_name"],
+    buckets=(0.5, 1.0, 2.0, 5.0, 10.0),
+    registry=registry,
+)
+
+active_companions = Gauge(
+    "active_companions",
+    "Number of currently active companions",
+    registry=registry,
+)
+
+companion_loyalty_changes = Counter(
+    "companion_loyalty_changes",
+    "Total companion loyalty changes",
+    ["direction"],  # increase, decrease
+    registry=registry,
+)
+
+# Spell effect metrics
+spell_casts_total = Counter(
+    "spell_casts_total",
+    "Total spells cast",
+    ["spell_name", "level", "success"],
+    registry=registry,
+)
+
+active_effects_gauge = Gauge(
+    "active_effects",
+    "Number of currently active spell effects",
+    ["effect_type"],
+    registry=registry,
+)
+
+effect_applications_total = Counter(
+    "effect_applications_total",
+    "Total spell effects applied",
+    ["effect_name", "result"],  # success, failure, resisted
+    registry=registry,
+)
+
+effect_duration_ticks = Histogram(
+    "effect_duration_ticks",
+    "How long effects last (in ticks/rounds)",
+    ["effect_name"],
+    buckets=(1, 3, 5, 10, 20, 60),
+    registry=registry,
+)
+
+# Content enrichment metrics
+content_enrichments_total = Counter(
+    "content_enrichments_total",
+    "Total content enrichment operations",
+    ["entity_type"],  # spell, item, creature, location
+    registry=registry,
+)
+
+entity_links_created = Counter(
+    "entity_links_created",
+    "Total entity links created",
+    ["entity_type"],
+    registry=registry,
+)
+
+enrichment_cache_performance = Counter(
+    "enrichment_cache_performance",
+    "Content enrichment cache hits/misses",
+    ["result"],  # hit, miss
+    registry=registry,
+)
+
+# DM tool metrics
+dm_tool_calls_total = Counter(
+    "dm_tool_calls_total",
+    "Total DM tool executions",
+    ["tool_name", "status"],
+    registry=registry,
+)
+
+dm_tool_duration_seconds = Histogram(
+    "dm_tool_duration_seconds",
+    "DM tool execution time",
+    ["tool_name"],
+    buckets=(0.1, 0.5, 1.0, 2.0, 5.0),
+    registry=registry,
+)
+
+# Image generation metrics
+image_generations_total = Counter(
+    "image_generations_total",
+    "Total image generations requested",
+    ["status", "source"],  # status: success/failure/cached, source: mistral/cache
+    registry=registry,
+)
+
+image_generation_duration_seconds = Histogram(
+    "image_generation_duration_seconds",
+    "Image generation time",
+    buckets=(1.0, 5.0, 10.0, 20.0, 30.0, 60.0),
+    registry=registry,
+)
+
+image_cache_size_bytes = Gauge(
+    "image_cache_size_bytes",
+    "Total size of image cache",
+    registry=registry,
+)
+
 
 class MetricsCollector:
     """Helper class for collecting metrics"""
@@ -203,6 +321,72 @@ class MetricsCollector:
     def set_active_conversations(self, count: int):
         """Set active conversations gauge"""
         active_conversations.set(count)
+
+    def record_companion_response(self, companion_name: str, status: str, duration: float):
+        """Record companion AI response metrics"""
+        companion_responses_total.labels(
+            companion_name=companion_name, status=status
+        ).inc()
+        companion_response_duration_seconds.labels(
+            companion_name=companion_name
+        ).observe(duration)
+
+    def record_companion_loyalty_change(self, direction: str):
+        """Record companion loyalty change"""
+        companion_loyalty_changes.labels(direction=direction).inc()
+
+    def set_active_companions(self, count: int):
+        """Set active companions gauge"""
+        active_companions.set(count)
+
+    def record_spell_cast(self, spell_name: str, level: int, success: bool):
+        """Record spell cast"""
+        status = "success" if success else "failure"
+        spell_casts_total.labels(
+            spell_name=spell_name, level=str(level), success=status
+        ).inc()
+
+    def set_active_effects(self, effect_type: str, count: int):
+        """Set active effects gauge for specific type"""
+        active_effects_gauge.labels(effect_type=effect_type).set(count)
+
+    def record_effect_application(self, effect_name: str, result: str):
+        """Record effect application"""
+        effect_applications_total.labels(
+            effect_name=effect_name, result=result
+        ).inc()
+
+    def record_effect_duration(self, effect_name: str, ticks: int):
+        """Record effect duration in ticks"""
+        effect_duration_ticks.labels(effect_name=effect_name).observe(ticks)
+
+    def record_content_enrichment(self, entity_type: str):
+        """Record content enrichment operation"""
+        content_enrichments_total.labels(entity_type=entity_type).inc()
+
+    def record_entity_link(self, entity_type: str):
+        """Record entity link creation"""
+        entity_links_created.labels(entity_type=entity_type).inc()
+
+    def record_enrichment_cache(self, hit: bool):
+        """Record enrichment cache performance"""
+        result = "hit" if hit else "miss"
+        enrichment_cache_performance.labels(result=result).inc()
+
+    def record_dm_tool_execution(self, tool_name: str, status: str, duration: float):
+        """Record DM tool execution"""
+        dm_tool_calls_total.labels(tool_name=tool_name, status=status).inc()
+        dm_tool_duration_seconds.labels(tool_name=tool_name).observe(duration)
+
+    def record_image_generation(self, status: str, source: str, duration: float = None):
+        """Record image generation"""
+        image_generations_total.labels(status=status, source=source).inc()
+        if duration is not None:
+            image_generation_duration_seconds.observe(duration)
+
+    def set_image_cache_size(self, size_bytes: int):
+        """Set image cache size gauge"""
+        image_cache_size_bytes.set(size_bytes)
 
     def generate_metrics(self) -> bytes:
         """Generate Prometheus metrics in text format"""

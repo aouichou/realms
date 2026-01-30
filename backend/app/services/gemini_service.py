@@ -94,10 +94,10 @@ class GeminiService(AIProvider):
             raise ProviderUnavailableError(f"Gemini provider is unavailable: {self._last_error}")
 
         start_time = time.time()
-        
+
         # Estimate token counts (rough approximation: 1 token ≈ 0.75 words)
         prompt_tokens = int(len(prompt.split()) / 0.75)
-        
+
         # Add LLM tracing like MistralClient
         with trace_llm_call(
             model=self.model_name,

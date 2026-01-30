@@ -3,6 +3,7 @@ Tool execution service for Mistral DM tool calling.
 Executes game mechanics functions requested by the DM.
 """
 
+import time
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,10 +11,13 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.db.models.character import Character
 from app.observability.logger import get_logger
+from app.observability.metrics import metrics
+from app.observability.tracing import trace_async
 
 logger = get_logger(__name__)
 
 
+@trace_async("tools.execute")
 async def execute_tool(
     tool_name: str,
     tool_arguments: dict[str, Any],
@@ -33,6 +37,9 @@ async def execute_tool(
         Dictionary with execution result and any state changes
     """
     logger.info(f"Executing tool: {tool_name} with args: {tool_arguments}")
+    
+    start_time = time.time()
+    status = "success"
 
     try:
         if tool_name == "request_player_roll":
@@ -68,17 +75,27 @@ async def execute_tool(
         elif tool_name == "list_available_tools":
             return await _execute_list_available_tools(tool_arguments)
         else:
+            status = "error"
             logger.error(f"Unknown tool: {tool_name}")
             return {
                 "success": False,
                 "error": f"Unknown tool: {tool_name}",
             }
     except Exception as e:
+        status = "error"
         logger.error(f"Error executing tool {tool_name}: {str(e)}")
         return {
             "success": False,
             "error": str(e),
         }
+    finally:
+        # Record metrics
+        duration = time.time() - start_time
+        metrics.record_dm_tool_execution(
+            tool_name=tool_name,
+            status=status,
+            duration=duration
+        )
 
 
 async def _execute_request_player_roll(

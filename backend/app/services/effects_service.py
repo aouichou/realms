@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.observability.logger import get_logger
+from app.observability.tracing import get_tracer, trace_async
 from app.schemas.effects import ActiveEffect, EffectDuration, EffectType
 
 logger = get_logger(__name__)
@@ -22,6 +23,7 @@ class EffectsService:
     """Service for managing active effects on characters."""
 
     @staticmethod
+    @trace_async("effects.apply")
     async def apply_effect(
         db: AsyncSession,
         character_id: UUID,
@@ -62,6 +64,16 @@ class EffectsService:
         Returns:
             Created ActiveEffect instance
         """
+        tracer = get_tracer()
+        with tracer.start_as_current_span("effects.calculate") as span:
+            span.set_attribute("effect.name", name)
+            span.set_attribute("effect.type", effect_type.value)
+            span.set_attribute("effect.duration_type", duration_type.value)
+            span.set_attribute("effect.requires_concentration", requires_concentration)
+            span.set_attribute("character_id", str(character_id))
+            if duration_value:
+                span.set_attribute("effect.duration_value", duration_value)
+        
         # If requires concentration, end other concentration effects
         if requires_concentration:
             await EffectsService.break_concentration(db, character_id)
@@ -151,6 +163,7 @@ class EffectsService:
         return list(result.scalars().all())
 
     @staticmethod
+    @trace_async("effects.remove")
     async def remove_effect(db: AsyncSession, effect_id: int) -> bool:
         """
         Remove an active effect.
@@ -162,16 +175,23 @@ class EffectsService:
         Returns:
             True if removed, False if not found
         """
+        tracer = get_tracer()
         result = await db.execute(select(ActiveEffect).where(ActiveEffect.id == effect_id))
         effect = result.scalar_one_or_none()
 
-        if effect:
-            effect.is_active = False
-            await db.commit()
-            logger.info(f"Removed effect '{effect.name}' (ID: {effect_id})")
-            return True
-
-        return False
+        with tracer.start_as_current_span("effects.remove_execute") as span:
+            span.set_attribute("effect.id", effect_id)
+            if effect:
+                span.set_attribute("effect.name", effect.name)
+                span.set_attribute("effect.type", effect.effect_type.value)
+                span.set_attribute("character_id", str(effect.character_id))
+                effect.is_active = False
+                await db.commit()
+                logger.info(f"Removed effect '{effect.name}' (ID: {effect_id})")
+                return True
+            
+            span.set_attribute("effect.found", False)
+            return False
 
     @staticmethod
     async def break_concentration(db: AsyncSession, character_id: UUID) -> int:
@@ -208,6 +228,7 @@ class EffectsService:
         return count
 
     @staticmethod
+    @trace_async("effects.process_round_end")
     async def process_round_end(db: AsyncSession, character_id: UUID) -> list[str]:
         """
         Process end of combat round for a character.
@@ -221,17 +242,23 @@ class EffectsService:
         Returns:
             List of effect names that expired
         """
-        effects = await EffectsService.get_active_effects(db, character_id)
-        expired_names = []
+        tracer = get_tracer()
+        with tracer.start_as_current_span("effects.tick_processing") as span:
+            span.set_attribute("character_id", str(character_id))
+            
+            effects = await EffectsService.get_active_effects(db, character_id)
+            expired_names = []
+            span.set_attribute("effects.count", len(effects))
 
-        for effect in effects:
-            if effect.duration_type == EffectDuration.ROUNDS:
-                if effect.decrement_duration():
-                    expired_names.append(effect.name)
-                    logger.info(f"Effect '{effect.name}' expired for character {character_id}")
+            for effect in effects:
+                if effect.duration_type == EffectDuration.ROUNDS:
+                    if effect.decrement_duration():
+                        expired_names.append(effect.name)
+                        logger.info(f"Effect '{effect.name}' expired for character {character_id}")
 
-        await db.commit()
-        return expired_names
+            span.set_attribute("effects.expired_count", len(expired_names))
+            await db.commit()
+            return expired_names
 
     @staticmethod
     async def process_rest(
