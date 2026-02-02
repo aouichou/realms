@@ -41,7 +41,7 @@ interface Message {
 	companion_id?: string;
 	companion_name?: string;
 	companion_data?: {
-		id: string;
+		id: number;
 		name: string;
 		creature_name: string;
 		relationship_status: string;
@@ -50,6 +50,7 @@ interface Message {
 		max_hp: number;
 		ac: number;
 		avatar_url?: string;
+		personality: string;
 	};
 	tool_calls_made?: Array<{
 		name: string;
@@ -347,7 +348,7 @@ export default function GamePage() {
 						companion_id: comp.companion_id,
 						companion_name: comp.companion_name,
 						companion_data: {
-							id: comp.companion_id,
+							id: typeof comp.companion_id === 'string' ? parseInt(comp.companion_id) : comp.companion_id,
 							name: comp.companion_name,
 							creature_name: comp.creature_name || 'Companion',
 							relationship_status: comp.relationship_status,
@@ -356,6 +357,7 @@ export default function GamePage() {
 							max_hp: comp.max_hp || 0,
 							ac: comp.ac || 10,
 							avatar_url: comp.avatar_url,
+							personality: comp.personality || 'Loyal companion',
 						},
 					}));
 					setMessages(prev => [...prev, ...companionMessages]);

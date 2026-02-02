@@ -1029,7 +1029,17 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                 # Check if DM wants to use tools
                 if not assistant_message.tool_calls or len(assistant_message.tool_calls) == 0:
                     # No tools called - this is the final narrative
-                    narration = assistant_message.content or ""
+                    raw_content = assistant_message.content or ""
+                    # Convert to string if it's a list of content chunks
+                    narration = (
+                        raw_content
+                        if isinstance(raw_content, str)
+                        else " ".join(
+                            chunk.get("text", "")
+                            for chunk in raw_content
+                            if isinstance(chunk, dict)
+                        )
+                    )
 
                     # RL-140: Validate response with agentic supervisor (trigger-based)
                     if player_input:
