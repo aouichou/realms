@@ -95,7 +95,7 @@ class CompanionService:
 
             # Record metrics
             duration = time.time() - start_time
-            if hasattr(metrics, 'companion_responses_total'):
+            if hasattr(metrics, "companion_responses_total"):
                 metrics.companion_responses_total.labels(
                     companion_name=companion.name, status="success"
                 ).inc()
@@ -110,7 +110,7 @@ class CompanionService:
             duration = time.time() - start_time
 
             # Record error metrics
-            if hasattr(metrics, 'companion_responses_total'):
+            if hasattr(metrics, "companion_responses_total"):
                 metrics.companion_responses_total.labels(
                     companion_name=companion.name, status="error"
                 ).inc()
@@ -350,15 +350,17 @@ You are reluctant and possibly defiant. You:
 
             logger.debug(
                 f"Loyalty calculation for {companion.name}",
-                extra={"extra_data": {
-                    "companion_id": companion.id,
-                    "companion_name": companion.name,
-                    "old_loyalty": old_loyalty,
-                    "loyalty_change": loyalty_change,
-                    "new_loyalty": companion.loyalty,
-                    "was_clamped": (old_loyalty + loyalty_change) != companion.loyalty,
-                    "event_description": event_description[:100] if event_description else None
-                }}
+                extra={
+                    "extra_data": {
+                        "companion_id": companion.id,
+                        "companion_name": companion.name,
+                        "old_loyalty": old_loyalty,
+                        "loyalty_change": loyalty_change,
+                        "new_loyalty": companion.loyalty,
+                        "was_clamped": (old_loyalty + loyalty_change) != companion.loyalty,
+                        "event_description": event_description[:100] if event_description else None,
+                    }
+                },
             )
 
             span.set_attribute("companion.name", companion.name)
@@ -379,15 +381,15 @@ You are reluctant and possibly defiant. You:
                 companion.relationship_status = "friend"  # type: ignore[assignment]
             elif companion.loyalty >= 40:  # type: ignore[operator]
                 companion.relationship_status = "ally"  # type: ignore[assignment]
-        elif companion.loyalty >= 20:  # type: ignore[operator]
-            companion.relationship_status = "suspicious"  # type: ignore[assignment]
-        else:
-            companion.relationship_status = "just_met"  # type: ignore[assignment]
-        flag_modified(companion, "relationship_status")
+            elif companion.loyalty >= 20:  # type: ignore[operator]
+                companion.relationship_status = "suspicious"  # type: ignore[assignment]
+            else:
+                companion.relationship_status = "just_met"  # type: ignore[assignment]
+            flag_modified(companion, "relationship_status")
 
-        companion.add_important_event(
-            f"Loyalty changed from {old_loyalty} to {companion.loyalty}: {event_description}"  # type: ignore[str-format]
-        )
+            companion.add_important_event(
+                f"Loyalty changed from {old_loyalty} to {companion.loyalty}: {event_description}"  # type: ignore[str-format]
+            )
 
         await db.commit()
 

@@ -1,6 +1,7 @@
 from app.db.models.adventure import Adventure, AdventureMemory
 from app.db.models.character import Character, CharacterCondition, CharacterQuest, CharacterSpell
 from app.db.models.companion import Companion
+from app.db.models.companion_conversation import CompanionConversation
 from app.db.models.conversation import ConversationMessage
 from app.db.models.creature import Creature
 from app.db.models.encounter import CombatEncounter, Encounter
@@ -31,6 +32,7 @@ __all__ = [
     "Encounter",
     "CombatEncounter",
     "Companion",
+    "CompanionConversation",
     "Creature",
     "Item",
     "ItemCatalog",

@@ -3,11 +3,13 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { apiClient } from "@/lib/api-client";
-import { Eye, EyeOff, Shield, Users } from "lucide-react";
+import { Eye, EyeOff, MessageCircle, Send, Shield, Users, X } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Companion {
 	id: string;
@@ -156,7 +158,6 @@ export function CompanionListPanel({ characterId, onCompanionToggle, onCompanion
 		try {
 			const response = await apiClient.post('/api/v1/companions/chat', {
 				companion_id: companionId,
-				character_id: characterId,
 				message: userMessage.content,
 				share_with_dm: shareWithDM[companionId] || false,
 			});
@@ -164,16 +165,18 @@ export function CompanionListPanel({ characterId, onCompanionToggle, onCompanion
 			if (response.ok) {
 				const data = await response.json();
 				const companionMessage: CompanionMessage = {
-					id: (Date.now() + 1).toString(),
+					id: data.companion_message_id || (Date.now() + 1).toString(),
 					role: 'companion',
-					content: data.response,
+					content: data.companion_response,
 					timestamp: new Date().toISOString(),
 				};
 
 				setChatMessages(prev => ({
 					...prev,
-					[companionId]: [...(prev[companionId] || []), userMessage, companionMessage]
+					[companionId]: [...(prev[companionId] || []), companionMessage]
 				}));
+			} else {
+				console.error("Failed to send message");
 			}
 		} catch (err) {
 			console.error("Error sending chat message:", err);
@@ -462,8 +465,8 @@ export function CompanionListPanel({ characterId, onCompanionToggle, onCompanion
 													<div
 														key={msg.id}
 														className={`text-xs p-2 rounded ${msg.role === 'user'
-																? 'bg-teal-600/20 text-teal-100 ml-4'
-																: 'bg-slate-700/50 text-gray-300 mr-4'
+															? 'bg-teal-600/20 text-teal-100 ml-4'
+															: 'bg-slate-700/50 text-gray-300 mr-4'
 															}`}
 													>
 														<p className="font-semibold mb-1">
