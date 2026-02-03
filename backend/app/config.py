@@ -68,12 +68,12 @@ class Settings(BaseSettings):
     # Rate Limiting
     rate_limit_per_second: int = Field(default=1, description="Requests per second limit")
     rate_limit_burst: int = Field(default=3, description="Burst capacity for rate limiting")
-    rate_limit_per_minute: int = Field(default=60, description="Requests per minute limit")
-    rate_limit_per_hour: int = Field(default=1000, description="Requests per hour limit")
+    rate_limit_per_minute: int = Field(default=120, description="Requests per minute limit")
+    rate_limit_per_hour: int = Field(default=3000, description="Requests per hour limit")
     rate_limit_burst_threshold: int = Field(
-        default=20, description="Burst threshold for DDoS protection"
+        default=40, description="Burst threshold for DDoS protection"
     )
-    rate_limit_block_duration: int = Field(default=300, description="Block duration in seconds")
+    rate_limit_block_duration: int = Field(default=180, description="Block duration in seconds")
 
     # Redis
     redis_host: str = Field(default="redis", description="Redis host")

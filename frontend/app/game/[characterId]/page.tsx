@@ -1057,39 +1057,42 @@ export default function GamePage() {
 
 							{/* Dice Panel */}
 							{openPanel === 'dice' && (
-								<div className="space-y-4">
-									<div className="space-y-2">
-										<label className="text-sm text-white/80 font-body">{t('game.diceRoller.notation')}</label>
+								<div className="space-y-6">
+									<div className="space-y-3">
+										<label className="text-sm text-accent-200 font-body font-semibold">{t('game.diceRoller.notation')}</label>
 										<Input
 											value={diceNotation}
 											onChange={(e) => setDiceNotation(e.target.value)}
 											placeholder={t('game.diceRoller.placeholder')}
-											className="bg-white/5 border-white/10 text-white font-mono"
+											className="bg-accent-200/10 border-accent-600/30 text-accent-200 font-mono placeholder:text-accent-200/40 focus:border-accent-600"
 										/>
 									</div>
 
-									<div className="grid grid-cols-3 gap-2">
-										{['1d4', '1d6', '1d8', '1d10', '1d12', '1d20'].map((notation) => (
-											<Button
-												key={notation}
-												variant="outline"
-												onClick={() => {
-													setDiceNotation(notation);
-													setLastDiceResult(null);
-												}}
-												className="font-mono border-white/20 text-neutral-900 hover:bg-white/10 hover:text-white"
-											>
-												{notation}
-											</Button>
-										))}
+									<div className="space-y-2">
+										<p className="text-xs text-accent-200/70 font-body">Quick Roll:</p>
+										<div className="grid grid-cols-3 gap-2">
+											{['1d4', '1d6', '1d8', '1d10', '1d12', '1d20'].map((notation) => (
+												<Button
+													key={notation}
+													variant="outline"
+													onClick={() => {
+														setDiceNotation(notation);
+														setLastDiceResult(null);
+													}}
+													className="font-mono font-bold border-accent-600/30 bg-accent-200/5 text-accent-200 hover:bg-accent-600/20 hover:border-accent-600 hover:text-accent-200 transition-all"
+												>
+													🎲 {notation}
+												</Button>
+											))}
+										</div>
 									</div>
 
 									<Button
 										onClick={rollDice}
-										className="w-full font-body"
+										className="w-full font-body bg-accent-600 hover:bg-accent-400 text-primary-900 font-semibold shadow-lg"
 										size="lg"
 									>
-										{t('game.diceRoller.rollDice')}
+										🎲 {t('game.diceRoller.rollDice')}
 									</Button>
 
 									{lastDiceResult && (

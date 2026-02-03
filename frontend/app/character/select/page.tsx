@@ -137,8 +137,16 @@ export default function CharacterSelectPage() {
 			<div className="max-w-6xl mx-auto">
 				<div className="mb-8 flex items-center justify-between">
 					<div>
-						<h1 className="text-4xl font-display text-primary-900 mb-2">{t('character.select.title')}</h1>
-						<p className="text-neutral-500 font-body">{t('character.select.subtitle')}</p>
+						<h1
+							className="text-4xl font-display text-primary-900 mb-2"
+							style={{
+								WebkitTextStroke: '1.5px #d4a574',
+								textShadow: '0 0 20px rgba(212, 165, 116, 0.6), 2px 2px 4px rgba(0, 0, 0, 0.5)'
+							}}
+						>
+							{t('character.select.title')}
+						</h1>
+						<p className="text-accent-200/70 font-body">{t('character.select.subtitle')}</p>
 					</div>
 					<button
 						onClick={() => setShowLoadModal(true)}
@@ -199,19 +207,19 @@ export default function CharacterSelectPage() {
 										</div>
 									</div>
 									<div className="space-y-2 font-body text-sm">
-										<p className="text-neutral-700">
-											<span className="font-semibold">{t('character.select.race')}:</span> {character.race}
+										<p className="text-accent-200/90">
+											<span className="font-semibold text-accent-400">{t('character.select.race')}:</span> {character.race}
 										</p>
-										<p className="text-neutral-700">
-											<span className="font-semibold">{t('character.select.class')}:</span> {character.character_class}
+										<p className="text-accent-200/90">
+											<span className="font-semibold text-accent-400">{t('character.select.class')}:</span> {character.character_class}
 										</p>
-										<div className="flex items-center gap-2 text-neutral-700">
-											<span className="font-semibold">{t('character.select.hp')}:</span>										<div className="flex-1 bg-neutral-200 rounded-full h-2">
+										<div className="flex items-center gap-2 text-accent-200/90">
+											<span className="font-semibold text-accent-400">{t('character.select.hp')}:</span>										<div className="flex-1 bg-accent-200/20 rounded-full h-2">
 												<div
-													className="bg-red-500 h-2 rounded-full transition-all"
+													className="bg-red-400 h-2 rounded-full transition-all"
 													style={{ width: `${(character.hp_current / character.hp_max) * 100}%` }} />
 											</div>
-											<span className="text-xs">
+											<span className="text-xs text-accent-200">
 												{character.hp_current}/{character.hp_max}
 											</span>
 										</div>
@@ -223,7 +231,7 @@ export default function CharacterSelectPage() {
 						<div className="text-center">
 							<Link
 								href="/character/create"
-								className="inline-flex items-center gap-2 px-6 py-3 border-2 border-primary-900 text-primary-900 rounded-lg hover:bg-primary-900 hover:text-white transition-all font-body font-semibold"
+								className="inline-flex items-center gap-2 px-6 py-3 border-2 border-accent-600 bg-accent-600/10 text-accent-200 rounded-lg hover:bg-accent-600 hover:text-primary-900 transition-all font-body font-semibold"
 							>
 								<span>{t('character.select.createNew')}</span>
 								<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
