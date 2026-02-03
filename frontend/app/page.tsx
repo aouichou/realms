@@ -89,18 +89,18 @@ export default function Home() {
 						</Link>
 					</div>
 
-					<p className="text-sm text-neutral-500 font-body">
+					<p className="text-sm text-accent-200/70 font-body">
 						{t("home.or")}
 					</p>
 
 					<Link
-						href="/auth/login"
-						className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-accent-600 px-6 md:px-8 py-2 md:py-3 text-sm md:text-base font-body font-semibold text-accent-600 transition-all hover:bg-accent-600 hover:text-white hover:scale-105 hover:shadow-2xl shadow-lg active:scale-95"
+						href="/demo"
+						className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-accent-600 px-6 md:px-8 py-2 md:py-3 text-sm md:text-base font-body font-semibold text-accent-200 transition-all hover:bg-accent-600 hover:text-primary-900 hover:scale-105 hover:shadow-2xl shadow-lg active:scale-95"
 					>
-						{t("home.login")}
+						🎮 {t("home.tryDemo")}
 					</Link>
 
-					<p className="text-xs text-neutral-400 font-body max-w-md text-center mt-2">
+					<p className="text-xs text-accent-200/60 font-body max-w-md text-center mt-2">
 						{t("home.noEmailRequired")}
 					</p>
 				</div>
@@ -150,7 +150,7 @@ export default function Home() {
 			</main>
 
 			{/* Footer */}
-			<footer className="mt-16 text-sm font-body text-neutral-500">
+			<footer className="mt-16 text-sm font-body text-accent-200/60">
 				<p>{t("home.footer")}</p>
 			</footer>
 		</div>
