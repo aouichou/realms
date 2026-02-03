@@ -56,13 +56,13 @@ class TokenCounter:
         return total
 
     @classmethod
-    def fits_in_context(cls, messages: List[Dict], max_tokens: int = 3000) -> bool:
+    def fits_in_context(cls, messages: List[Dict], max_tokens: int = 28000) -> bool:
         """
         Check if messages fit in context window
 
         Args:
             messages: List of messages
-            max_tokens: Maximum allowed tokens (default 3000 for safety margin)
+            max_tokens: Maximum allowed tokens (default 28000, leaving 4K for response)
 
         Returns:
             True if messages fit, False otherwise
@@ -71,13 +71,13 @@ class TokenCounter:
         return token_count < max_tokens
 
     @classmethod
-    def truncate_to_fit(cls, messages: List[Dict], max_tokens: int = 3000) -> List[Dict]:
+    def truncate_to_fit(cls, messages: List[Dict], max_tokens: int = 28000) -> List[Dict]:
         """
         Remove oldest messages until fits in context window
 
         Strategy:
-        - Always keep first message (system prompt)
-        - Remove oldest messages from position 1 onwards
+        - Always keep ALL system messages (they contain critical DM instructions)
+        - Remove oldest user/assistant messages
         - Keep removing until under limit
 
         Args:
@@ -90,19 +90,27 @@ class TokenCounter:
         if cls.fits_in_context(messages, max_tokens):
             return messages
 
-        # Keep system message (first one) and start removing from position 1
-        truncated = messages.copy()
+        # Separate system messages from conversation messages
+        system_messages = [m for m in messages if m.get("role") == "system"]
+        conversation_messages = [m for m in messages if m.get("role") != "system"]
 
-        while not cls.fits_in_context(truncated, max_tokens) and len(truncated) > 2:
-            # Remove second message (keep system message at index 0)
-            if len(truncated) > 1:
-                removed = truncated.pop(1)
+        # Start with all system messages (NEVER truncate these!)
+        truncated = system_messages.copy()
+
+        # Add conversation messages one by one until we hit the limit
+        # Start from most recent and work backwards
+        for msg in reversed(conversation_messages):
+            test_messages = truncated + [msg]
+            if cls.fits_in_context(test_messages, max_tokens):
+                truncated.insert(len(system_messages), msg)
+            else:
+                # Log that we're dropping this message
                 logger.warning(
                     "Truncated message to fit context window",
                     extra={
                         "extra_data": {
-                            "removed_role": removed.get("role"),
-                            "content_preview": removed.get("content", "")[:50],
+                            "removed_role": msg.get("role"),
+                            "content_preview": msg.get("content", "")[:50],
                             "remaining_messages": len(truncated),
                             "estimated_tokens": cls.count_message_tokens(truncated),
                         }

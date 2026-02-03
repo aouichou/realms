@@ -1041,6 +1041,9 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                         )
                     )
 
+                    # Clean up any text-based tool calls that shouldn't be in narration
+                    narration = self._clean_text_tool_calls(narration)
+
                     # RL-140: Validate response with agentic supervisor (trigger-based)
                     if player_input:
                         try:
@@ -1186,6 +1189,40 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
             "tool_calls_made": tool_calls_made,
             "character_updates": character_updates,
         }
+
+    @staticmethod
+    def _clean_text_tool_calls(narration: str) -> str:
+        """Remove text-based tool calls from narration.
+
+        DM should use the actual tool calling API, but sometimes writes
+        tool calls as text (e.g., "request_player_roll(...)"). This removes
+        them to prevent showing internal mechanics to players.
+
+        Args:
+            narration: The DM's narration text
+
+        Returns:
+            Cleaned narration with tool calls removed
+        """
+        import re
+
+        # Pattern to match tool calls like: request_player_roll(...)
+        tool_pattern = r"(request_player_roll|roll_for_npc|update_character_hp|give_item|search_items|update_quest|create_quest)\s*\([^)]*\)"
+
+        # Remove tool calls and clean up extra whitespace/newlines
+        cleaned = re.sub(tool_pattern, "", narration)
+        # Clean up multiple newlines that might result from removal
+        cleaned = re.sub(r"\n\n\n+", "\n\n", cleaned)
+        # Clean up trailing/leading whitespace
+        cleaned = cleaned.strip()
+
+        if cleaned != narration:
+            logger.warning(
+                "Removed text-based tool call from narration. "
+                "DM should use actual tool calling API instead."
+            )
+
+        return cleaned
 
     @staticmethod
     def extract_roll_request(response_text: str) -> tuple[str, Optional[Dict]]:
@@ -1488,7 +1525,7 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
         if not TokenCounter.fits_in_context(messages):
             logger.warning(
                 f"Context window exceeded! "
-                f"{token_stats['total_tokens']} tokens > 3000 limit. "
+                f"{token_stats['total_tokens']} tokens > 28000 limit. "
                 f"Truncating..."
             )
             messages = TokenCounter.truncate_to_fit(messages)

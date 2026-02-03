@@ -19,7 +19,7 @@ class MessageSummarizer:
     SUMMARY_THRESHOLD = 20
 
     # Maximum tokens allowed before triggering summarization
-    MAX_CONTEXT_TOKENS = 3000
+    MAX_CONTEXT_TOKENS = 28000
 
     def __init__(self):
         """Initialize message summarizer"""

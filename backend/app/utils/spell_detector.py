@@ -7,7 +7,6 @@ import logging
 import re
 from typing import Optional
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.character import Character
@@ -72,9 +71,12 @@ async def detect_spell_cast(
     """
     Detect spell name and level from player action.
 
+    Uses character_spells table as source of truth, checking is_known or is_prepared
+    based on character class spellcasting type.
+
     Args:
         player_action: The player's action text
-        character: Character object with known_spells
+        character: Character object
         db: Database session
 
     Returns:
@@ -92,11 +94,50 @@ async def detect_spell_cast(
     if not player_action:
         return None, 0, None, None
 
-    # Get character's known spells list
-    character_spells = character.known_spells or []
-    if not character_spells:
-        logger.debug(f"Character {character.name} has no known spells")
-        return None, 0, None, None
+    # Determine spellcasting type based on class
+    # Spontaneous casters: Bard, Sorcerer, Warlock, Ranger (cast any known spell)
+    # Prepared casters: Cleric, Druid, Paladin, Wizard (can only cast prepared spells)
+    spontaneous_classes = {"Bard", "Sorcerer", "Warlock", "Ranger"}
+    is_spontaneous = character.character_class in spontaneous_classes
+
+    # Query character's spells from character_spells table
+    try:
+        from sqlalchemy import select
+
+        from app.db.models import CharacterSpell
+
+        # For spontaneous casters: check is_known
+        # For prepared casters: check is_prepared
+        if is_spontaneous:
+            result = await db.execute(
+                select(CharacterSpell).where(
+                    CharacterSpell.character_id == character.id, CharacterSpell.is_known
+                )
+            )
+        else:
+            result = await db.execute(
+                select(CharacterSpell).where(
+                    CharacterSpell.character_id == character.id, CharacterSpell.is_prepared
+                )
+            )
+
+        char_spells = result.scalars().all()
+        character_spell_ids = {str(cs.spell_id) for cs in char_spells}
+
+        if not character_spell_ids:
+            logger.debug(
+                f"Character {character.name} ({character.character_class}) has no "
+                f"{'known' if is_spontaneous else 'prepared'} spells"
+            )
+            # Continue anyway - we'll check against all spells and warn
+        else:
+            logger.debug(
+                f"Character {character.name} has {len(character_spell_ids)} "
+                f"{'known' if is_spontaneous else 'prepared'} spells"
+            )
+    except Exception as e:
+        logger.error(f"Failed to query character spells: {e}")
+        character_spell_ids = set()
 
     # Spell casting patterns
     cast_patterns = [
@@ -139,65 +180,62 @@ async def detect_spell_cast(
             if potential_spell.lower() in skip_words:
                 continue
 
-            # Check if it's in character's known spells (case-insensitive)
-            known_spell_match = None
-            for known_spell in character_spells:
-                if isinstance(known_spell, str) and known_spell.lower() == potential_spell.lower():
-                    known_spell_match = known_spell
-                    break
+            # Try to look up spell in database by name
+            result = await db.execute(select(Spell).where(Spell.name.ilike(potential_spell)))
+            spell = result.scalar_one_or_none()
 
-            if not known_spell_match:
-                # Try partial match (e.g., "fire bolt" vs "firebolt")
-                potential_spell_normalized = (
-                    potential_spell.lower().replace(" ", "").replace("-", "")
-                )
-                for known_spell in character_spells:
-                    if isinstance(known_spell, str):
-                        known_spell_normalized = (
-                            known_spell.lower().replace(" ", "").replace("-", "")
+            if spell:
+                # Found spell in database - verify character knows/prepared it
+                if character_spell_ids:
+                    spell_id_str = str(spell.id)
+                    if spell_id_str not in character_spell_ids:
+                        # Character doesn't know/prepared this spell
+                        caster_verb = "prepared" if not is_spontaneous else "known"
+                        logger.info(
+                            f"Character tried to cast un{caster_verb} spell: '{spell.name}' "
+                            f"(ID: {spell.id}, {character.character_class})"
                         )
-                        if known_spell_normalized == potential_spell_normalized:
-                            known_spell_match = known_spell
-                            break
-
-            if known_spell_match:
-                # Look up spell in database to get level
-                result = await db.execute(select(Spell).where(Spell.name.ilike(known_spell_match)))
-                spell = result.scalar_one_or_none()
-
-                if spell:
-                    logger.info(
-                        f"Detected spell cast: {spell.name} (Level {spell.level}) "
-                        f"by {character.name}"
-                    )
-                    return spell.name, spell.level, None, None
+                        warning = f"⚠️ You haven't {caster_verb} the spell '{spell.name}'"
+                        return None, 0, warning, None
                 else:
-                    # Spell in known_spells but not in database
+                    # No spells configured - allow any spell but warn
                     logger.warning(
-                        f"Spell '{known_spell_match}' in character's known_spells "
-                        f"but not found in database"
+                        f"Character {character.name} ({character.character_class}) "
+                        f"has no spells configured. Allowing {spell.name} cast."
                     )
 
-            # No exact match - try fuzzy matching for typos
-            if not known_spell_match:
-                closest_spell = find_closest_spell(potential_spell, character_spells)
+                logger.info(
+                    f"Detected spell cast: {spell.name} (Level {spell.level}) "
+                    f"by {character.name} ({character.character_class})"
+                )
+                return spell.name, spell.level, None, None
+
+            # Spell not found by exact name - try fuzzy matching against character's spells
+            if character_spell_ids:
+                # Load all character's spells for fuzzy matching
+                result = await db.execute(
+                    select(Spell).where(Spell.id.in_([int(sid) for sid in character_spell_ids]))
+                )
+                available_spells = result.scalars().all()
+                available_spell_names = [s.name for s in available_spells]
+
+                closest_spell = find_closest_spell(potential_spell, available_spell_names)
                 if closest_spell:
                     # Found a close match - suggest it
                     logger.info(
                         f"Fuzzy match found: '{potential_spell}' -> '{closest_spell}' "
                         f"for {character.name}"
                     )
-                    # Look up the suggested spell
                     result = await db.execute(select(Spell).where(Spell.name.ilike(closest_spell)))
                     spell = result.scalar_one_or_none()
                     if spell:
                         suggestion = f"Did you mean '{spell.name}'?"
                         return spell.name, spell.level, None, suggestion
-                else:
-                    # Pattern matched but spell unknown
-                    logger.info(f"Unknown spell attempted: '{potential_spell}' by {character.name}")
-                    warning = f"You don't know the spell '{potential_spell}'"
-                    return None, 0, warning, None
+
+            # Pattern matched but spell not found or not known
+            logger.info(f"Unknown spell attempted: '{potential_spell}' by {character.name}")
+            warning = f"⚠️ The spell '{potential_spell}' doesn't exist or you don't know it"
+            return None, 0, warning, None
 
     # No spell detected
     return None, 0, None, None

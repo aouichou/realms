@@ -4,7 +4,6 @@ Validates DM responses against reference knowledge using semantic retrieval.
 Implements trigger-based validation with silent regeneration on rule violations.
 """
 
-
 import re
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -12,8 +11,8 @@ from typing import Dict, List, Optional
 import numpy as np
 import torch
 
-from app.services.image_detection_service import ImageDetectionService
 from app.observability.logger import get_logger
+from app.services.image_detection_service import ImageDetectionService
 
 logger = get_logger(__name__)
 
@@ -86,6 +85,12 @@ class DMSupervisor:
                 "pattern": r"(roll|rolled|rolls|score|scores|get|gets)\s+(a\s+)?\d{1,2}(\s+|$)",
                 "explanation": "DM should not narrate specific roll numbers without using tools",
                 "relevant_sections": ["Dice Rolling Protocol", "Tool Usage Rules"],
+            },
+            {
+                "name": "text_based_tool_call",
+                "pattern": r"(request_player_roll|roll_for_npc|update_character_hp|give_item|search_items|update_quest|create_quest)\s*\([^)]+\)",
+                "explanation": "DM must use actual tool calling API, not write tool calls as text in narration",
+                "relevant_sections": ["Tool Usage Rules", "Common Mistakes"],
             },
         ]
 
