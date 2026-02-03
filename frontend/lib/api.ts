@@ -6,6 +6,7 @@ export interface Message {
 	role: "user" | "assistant";
 	content: string;
 	timestamp: Date;
+	scene_image_url?: string;
 }
 
 export interface NarrateRequest {

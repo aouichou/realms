@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
-import { authService } from '@/lib/auth';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ export default function RegisterPage() {
 	const router = useRouter();
 	const { showToast } = useToast();
 	const { t } = useTranslation();
+	const { register } = useAuth();
 	const [formData, setFormData] = useState({
 		email: '',
 		username: '',
@@ -41,7 +42,7 @@ export default function RegisterPage() {
 		setIsLoading(true);
 
 		try {
-			await authService.register(formData.email, formData.username, formData.password);
+			await register(formData.email, formData.username, formData.password);
 			showToast(t('auth.register.accountCreated'), 'success');
 			router.push('/character/create');
 		} catch (error: any) {

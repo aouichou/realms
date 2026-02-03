@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useToast } from "@/components/ui/toast";
 import { apiClient } from "@/lib/api-client";
-import { authService } from "@/lib/auth";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { Sparkles, User, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -23,13 +23,14 @@ export default function DemoPage() {
 	const router = useRouter();
 	const { showToast } = useToast();
 	const { t } = useTranslation();
+	const { createGuest } = useAuth();
 	const [isStarting, setIsStarting] = useState(false);
 
 	const startInstantDemo = async () => {
 		setIsStarting(true);
 		try {
 			// 1. Create guest account
-			const { user } = await authService.createGuest();
+			await createGuest();
 
 			// 2. Create demo character (pre-configured)
 			const characterResponse = await apiClient.post('/api/v1/characters', {
@@ -84,7 +85,7 @@ export default function DemoPage() {
 		setIsStarting(true);
 		try {
 			// Create guest account and go to character creation
-			await authService.createGuest();
+			await createGuest();
 			showToast(t("demo.welcomeCreate"), "success");
 			router.push('/character/create');
 		} catch (error) {
@@ -100,10 +101,10 @@ export default function DemoPage() {
 				{/* Header */}
 				<div className="text-center mb-12">
 					<h1 className="font-display text-6xl text-primary-100 mb-4 animate-fadeIn">
-					{t("demo.title")}
-				</h1>
-				<p className="text-xl text-neutral-300 font-body animate-fadeIn animation-delay-200">
-					{t("demo.subtitle")}
+						{t("demo.title")}
+					</h1>
+					<p className="text-xl text-neutral-300 font-body animate-fadeIn animation-delay-200">
+						{t("demo.subtitle")}
 					</p>
 					<p className="text-neutral-400 mt-2 animate-fadeIn animation-delay-300">
 						No signup required • Start playing immediately
@@ -129,7 +130,7 @@ export default function DemoPage() {
 								<ul className="space-y-2 text-sm text-neutral-300">
 									<li className="flex items-start gap-2">
 										<span className="text-green-400 mt-0.5">✓</span>
-									<span>{t("demo.quickStart.prebuiltCharacter")}</span>
+										<span>{t("demo.quickStart.prebuiltCharacter")}</span>
 									</li>
 									<li className="flex items-start gap-2">
 										<span className="text-green-400 mt-0.5">✓</span>

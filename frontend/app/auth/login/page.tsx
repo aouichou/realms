@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/toast';
-import { authService } from '@/lib/auth';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ export default function LoginPage() {
 	const router = useRouter();
 	const { showToast } = useToast();
 	const { t } = useTranslation();
+	const { login, createGuest } = useAuth();
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +25,7 @@ export default function LoginPage() {
 		setIsLoading(true);
 
 		try {
-			await authService.login(email, password);
+			await login(email, password);
 			showToast(t('auth.login.welcomeBack'), 'success');
 			router.push('/character/select');
 		} catch (error: any) {
@@ -38,7 +39,7 @@ export default function LoginPage() {
 		setIsLoading(true);
 
 		try {
-			await authService.createGuest();
+			await createGuest();
 			showToast(t('auth.login.welcomeAdventurer'), 'success');
 			router.push('/character/create');
 		} catch (error: any) {

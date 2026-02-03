@@ -1,19 +1,42 @@
 "use client";
 
-import { LanguageSelector } from "@/components/LanguageSelector";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
 	const { t } = useTranslation();
+	const router = useRouter();
+	const { user, isLoading } = useAuth();
+
+	// Redirect authenticated users to character selection
+	useEffect(() => {
+		if (!isLoading && user) {
+			router.push('/character/select');
+		}
+	}, [user, isLoading, router]);
+
+	// Show loading state while checking auth
+	if (isLoading) {
+		return (
+			<div className="flex min-h-screen items-center justify-center bg-background">
+				<div className="text-center">
+					<div className="text-4xl mb-4 animate-bounce">⚔️</div>
+					<p className="text-lg font-body text-neutral-500">Loading...</p>
+				</div>
+			</div>
+		);
+	}
+
+	// Don't render home page if user is authenticated (will redirect)
+	if (user) {
+		return null;
+	}
 
 	return (
 		<div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-			{/* Language Selector - Top Right */}
-			<div className="fixed top-4 right-4 z-50">
-				<LanguageSelector />
-			</div>
-
 			<main className="flex flex-col items-center gap-6 md:gap-8 text-center max-w-4xl w-full">
 				{/* Logo/Title with fade-in animation */}
 				<div className="flex flex-col items-center gap-3 md:gap-4 animate-fadeIn">

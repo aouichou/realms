@@ -1,6 +1,8 @@
+import { AppHeader } from "@/components/AppHeader";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ToastProvider } from "@/components/ui/toast";
+import { AuthProvider } from "@/lib/contexts/AuthContext";
 import type { Metadata } from "next";
 import { Cinzel, UnifrakturMaguntia } from "next/font/google";
 import "./globals.css";
@@ -34,9 +36,12 @@ export default function RootLayout({
 			>
 				<ErrorBoundary>
 					<QueryProvider>
-						<ToastProvider>
-							{children}
-						</ToastProvider>
+						<AuthProvider>
+							<ToastProvider>
+								<AppHeader />
+								{children}
+							</ToastProvider>
+						</AuthProvider>
 					</QueryProvider>
 				</ErrorBoundary>
 			</body>

@@ -1,19 +1,15 @@
 'use client';
 
-import CompanionMessage from '@/components/CompanionMessage';
-import NPCRollResult from '@/components/NPCRollResult';
+import { ChatMessage } from '@/components/ChatMessage';
 import { SpellWarningContainer } from '@/components/SpellWarningContainer';
-import { ToolCallsBadgeContainer } from '@/components/ToolCallBadge';
-import { TypewriterText } from '@/components/TypewriterText';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api-client';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import Image from 'next/image';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { lazy, useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 
 // Lazy load heavy components for better initial load
 const AbilityCheckPanel = lazy(() => import('@/components/AbilityCheckPanel').then(mod => ({ default: mod.AbilityCheckPanel })));
@@ -22,7 +18,6 @@ const CompanionListPanel = lazy(() => import('@/components/CompanionListPanel').
 const EnhancedCharacterSheet = lazy(() => import('@/components/EnhancedCharacterSheet').then(mod => ({ default: mod.EnhancedCharacterSheet })));
 const ImageGalleryPanel = lazy(() => import('@/components/ImageGalleryPanel').then(mod => ({ default: mod.ImageGalleryPanel })));
 const InventoryPanel = lazy(() => import('@/components/InventoryPanel').then(mod => ({ default: mod.InventoryPanel })));
-const LanguageSelector = lazy(() => import('@/components/LanguageSelector').then(mod => ({ default: mod.LanguageSelector })));
 const QuestCompleteModal = lazy(() => import('@/components/QuestCompleteModal').then(mod => ({ default: mod.QuestCompleteModal })));
 const SceneImage = lazy(() => import('@/components/SceneImage').then(mod => ({ default: mod.SceneImage })));
 const SpellsPanel = lazy(() => import('@/components/SpellsPanel').then(mod => ({ default: mod.SpellsPanel })));
@@ -120,6 +115,7 @@ const formatSkillLabel = (skill?: string) => {
 
 export default function GamePage() {
 	const params = useParams();
+	const router = useRouter();
 	const { t } = useTranslation();
 	const searchParams = useSearchParams();
 	const characterId = params.characterId as string;
@@ -248,7 +244,12 @@ export default function GamePage() {
 			const response = await apiClient.get(`/api/v1/conversations/${sessionId}`);
 			if (response.ok) {
 				const data = await response.json();
-				setMessages(data.messages || []);
+				// Map messages to ensure proper field types and timestamp conversion
+				const loadedMessages = (data.messages || []).map((msg: any) => ({
+					...msg,
+					timestamp: msg.created_at || msg.timestamp,
+				}));
+				setMessages(loadedMessages);
 			}
 		} catch (error) {
 			console.error('Error loading conversation history:', error);
@@ -363,15 +364,15 @@ export default function GamePage() {
 					setMessages(prev => [...prev, ...companionMessages]);
 				}
 
-				// Store pending roll requests if DM asks for rolls
+				// Handle roll requests: clear any pending, then set new ones if requested
 				if (data.roll_requests && data.roll_requests.length > 0) {
 					setPendingRollQueue(data.roll_requests);
 					setPendingRollRequest(data.roll_requests[0]);
 				} else if (data.roll_request) {
 					setPendingRollQueue([]);
 					setPendingRollRequest(data.roll_request);
-				} else if (rollResult) {
-					// Clear pending request after sending result
+				} else {
+					// No roll request in response, clear any pending
 					setPendingRollQueue([]);
 					setPendingRollRequest(null);
 				}
@@ -523,12 +524,15 @@ export default function GamePage() {
 
 				setInputValue('');
 
+				// Always clear the previous roll request first
+				setPendingRollRequest(null);
+				setPendingRollQueue([]);
+
 				// Store new roll request(s) if DM asks for another
 				if (data.roll_requests && data.roll_requests.length > 0) {
 					setPendingRollQueue(data.roll_requests);
 					setPendingRollRequest(data.roll_requests[0]);
 				} else if (data.roll_request) {
-					setPendingRollQueue([]);
 					setPendingRollRequest(data.roll_request);
 				}
 			}
@@ -809,9 +813,6 @@ export default function GamePage() {
 									</span>
 								</div>
 							</div>
-							<div className="ml-4">
-								<LanguageSelector />
-							</div>
 						</div>
 					)}
 
@@ -839,95 +840,7 @@ export default function GamePage() {
 					) : (
 						<div className="flex-1 overflow-y-auto space-y-3 mb-4">
 							{messages.map((message) => (
-								<div key={message.id}>
-									{/* Regular user/assistant messages */}
-									{(message.role === 'user' || message.role === 'assistant') && (
-										<div
-											className={`p-3 md:p-4 rounded-lg backdrop-blur-md ${message.role === 'user'
-												? 'bg-accent-400/20 border border-accent-400/30 ml-6 md:ml-12'
-												: 'bg-white/10 border border-white/20 mr-6 md:mr-12'
-												}`}
-										>
-											<div className="flex items-center gap-2 mb-2">
-												<span className="font-display text-sm text-white">
-													{message.role === 'user' ? 'You' : 'Dungeon Master'}
-												</span>
-												{message.role === 'assistant' && (
-													<span className="text-xs font-body font-bold tracking-wide
-                                   bg-accent-400 text-primary-900 px-2 py-0.5 rounded">
-														AI
-													</span>
-												)}
-											</div>
-
-											{/* RL-129: Tool calls badge (optional showcase) */}
-											{message.tool_calls_made && message.tool_calls_made.length > 0 && (
-												<ToolCallsBadgeContainer toolCalls={message.tool_calls_made} />
-											)}
-
-											{/* RL-133: Display NPC roll results */}
-											{message.tool_calls_made
-												?.filter(call => call.name === 'roll_for_npc' && call.result?.success)
-												.map((call, idx) => (
-													<NPCRollResult
-														key={`npc-roll-${idx}`}
-														roll={call.result as any}
-													/>
-												))}
-
-											<div className="text-narrative text-white font-body leading-relaxed whitespace-pre-line">
-												{message.role === 'assistant' ? (
-													<TypewriterText text={message.content} speed={120}>
-														{(displayedText, isComplete, showCursor) => (
-															<>
-																<ReactMarkdown
-																	components={{
-																		h3: ({ children }) => (
-																			<h3 className="text-xl font-display text-white mt-3 mb-2">{children}</h3>
-																		),
-																		strong: ({ children }) => (
-																			<strong className="font-semibold text-white">{children}</strong>
-																		),
-																		em: ({ children }) => (
-																			<em className="italic text-white/90">{children}</em>
-																		),
-																		ul: ({ children }) => (
-																			<ul className="list-disc list-inside space-y-1">{children}</ul>
-																		),
-																		ol: ({ children }) => (
-																			<ol className="list-decimal list-inside space-y-1">{children}</ol>
-																		),
-																		li: ({ children }) => (
-																			<li className="ml-4">{children}</li>
-																		),
-																	}}
-																>
-																	{displayedText}
-																</ReactMarkdown>
-																{showCursor && (
-																	<span className="inline-block w-1 h-4 ml-0.5 bg-purple-400 animate-pulse" />
-																)}
-															</>
-														)}
-													</TypewriterText>
-												) : (
-													message.content
-												)}
-											</div>
-										</div>
-									)}
-
-									{/* RL-131: Companion messages */}
-									{message.role === 'companion' && message.companion_data && (
-										<div className="mr-6 md:mr-12">
-											<CompanionMessage
-												companion={message.companion_data}
-												message={message.content}
-												showStats={true}
-											/>
-										</div>
-									)}
-								</div>
+								<ChatMessage key={message.id} message={message} enableTypewriter={true} />
 							))}
 							{/* Show "DM is thinking..." message while loading */}
 							{isLoading && (
