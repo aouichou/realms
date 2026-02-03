@@ -129,6 +129,7 @@ export default function GamePage() {
 	const [openPanel, setOpenPanel] = useState<PanelType>(null);
 	const [diceNotation, setDiceNotation] = useState('1d20');
 	const [lastDiceResult, setLastDiceResult] = useState<any>(null);
+	const [companionCount, setCompanionCount] = useState<number>(0);
 	/**
 	 * Current roll request being processed by the player.
 	 * When null, no roll is pending.
@@ -757,14 +758,16 @@ export default function GamePage() {
 						{t('game.panels.checks')}
 					</button>
 
-					{/* Companion Button */}
-					<button
-						onClick={() => togglePanel('companion')}
-						className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
+					{/* Companion Button - Only show if companions exist */}
+					{companionCount > 0 && (
+						<button
+							onClick={() => togglePanel('companion')}
+							className="w-full p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20
                      hover:bg-white/20 transition-all text-white font-body text-sm"
-					>
-						{t('game.panels.companion')}
-					</button>
+						>
+							{t('game.panels.companion')}
+						</button>
+					)}
 
 					{/* Image Gallery Button */}
 					<button
@@ -1035,6 +1038,7 @@ export default function GamePage() {
 										onCompanionToggle={(companionId, isActive) => {
 											console.log(`Companion ${companionId} ${isActive ? 'activated' : 'deactivated'}`);
 										}}
+										onCompanionCountChange={setCompanionCount}
 									/>
 								</div>
 							)}

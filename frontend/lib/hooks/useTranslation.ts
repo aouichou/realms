@@ -13,6 +13,7 @@ const translations: Record<Language, any> = {
 			signIn: "Sign In",
 			register: "Register",
 			login: "Login",
+			tryDemo: "Try Demo",
 			or: "or",
 			noEmailRequired: "No email required for demo • All progress auto-saved • Claim account anytime",
 			features: {
@@ -567,6 +568,7 @@ const translations: Record<Language, any> = {
 			signIn: "Se connecter",
 			register: "S'inscrire",
 			login: "Connexion",
+			tryDemo: "Essayer la démo",
 			or: "ou",
 			noEmailRequired: "Aucun e-mail requis pour la démo • Toute progression auto-sauvegardée • Réclamez un compte à tout moment",
 			features: {
