@@ -348,12 +348,12 @@ export default function CharacterCreation() {
 	};
 
 	return (
-		<div className="min-h-screen bg-background p-8">
+		<div className="min-h-screen bg-linear-to-br from-primary-900 via-secondary-600 to-primary-900 p-8">
 			<div className="max-w-4xl mx-auto">
-				<h1 className="font-display text-5xl text-primary-900 mb-2 text-center">
+				<h1 className="font-display text-5xl text-accent-200 mb-2 text-center">
 					{t('characterCreation.title')}
 				</h1>
-				<p className="text-center text-muted-foreground mb-8 font-body">
+				<p className="text-center text-accent-200/70 mb-8 font-body">
 					{t('characterCreation.subtitle')}
 				</p>
 

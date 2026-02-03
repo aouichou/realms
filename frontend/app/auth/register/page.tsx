@@ -53,8 +53,8 @@ export default function RegisterPage() {
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-linear-to-br from-neutral-900 via-neutral-800 to-neutral-900 p-4">
-			<Card className="w-full max-w-md">
+		<div className="min-h-screen flex items-center justify-center bg-linear-to-br from-primary-900 via-secondary-600 to-primary-900 p-4">
+			<Card className="w-full max-w-md border-neutral-500/20 shadow-2xl">
 				<CardHeader className="space-y-2 text-center">
 					<CardTitle className="font-display text-3xl">{t('auth.register.title')}</CardTitle>
 					<CardDescription className="font-body">
@@ -121,18 +121,18 @@ export default function RegisterPage() {
 
 						<Button
 							type="submit"
-							className="w-full font-body"
+							className="w-full font-body bg-accent-600 hover:bg-accent-400 text-primary-900 font-semibold"
 							disabled={isLoading}
 						>
 							{isLoading ? 'Creating Account...' : 'Create Account'}
 						</Button>
 					</form>
 
-					<p className="text-center text-sm text-muted-foreground font-body">
+					<p className="text-center text-sm text-accent-200/70 font-body">
 						{t('auth.register.haveAccount')}{' '}
 						<Link
 							href="/auth/login"
-							className="text-primary hover:underline font-medium"
+							className="text-accent-400 hover:text-accent-200 hover:underline font-semibold"
 						>
 							{t('auth.register.signInHere')}
 						</Link>

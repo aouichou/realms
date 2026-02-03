@@ -176,7 +176,7 @@ export default function AdventurePreview({
 								</div>
 							</div>
 							<div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
-								<Target className="h-5 w-5 text-blue-500 mt-0.5" />
+								<Target className="h-5 w-5 text-accent-400 mt-0.5" />
 								<div>
 									<div className="font-semibold text-sm">Your Goal</div>
 									<div className="text-xs text-muted-foreground">
@@ -185,7 +185,7 @@ export default function AdventurePreview({
 								</div>
 							</div>
 							<div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
-								<Gem className="h-5 w-5 text-purple-500 mt-0.5" />
+								<Gem className="h-5 w-5 text-accent-400 mt-0.5" />
 								<div>
 									<div className="font-semibold text-sm">Treasures</div>
 									<div className="text-xs text-muted-foreground">

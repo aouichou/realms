@@ -244,7 +244,7 @@ export function EnhancedCharacterSheet({
 						<div className="grid grid-cols-3 gap-4">
 							<div className="text-center">
 								<div className="flex items-center justify-center gap-1 mb-1">
-									<Shield className="w-4 h-4 text-blue-500" />
+									<Shield className="w-4 h-4 text-accent-400" />
 									<p className="text-sm text-muted-foreground">AC</p>
 								</div>
 								<p className="text-2xl font-bold">{stats.armor_class}</p>
@@ -263,7 +263,7 @@ export function EnhancedCharacterSheet({
 							</div>
 							<div className="text-center">
 								<div className="flex items-center justify-center gap-1 mb-1">
-									<Sparkles className="w-4 h-4 text-purple-500" />
+									<Sparkles className="w-4 h-4 text-accent-400" />
 									<p className="text-sm text-muted-foreground">Spell DC</p>
 								</div>
 								<p className="text-2xl font-bold">{stats.spell_save_dc}</p>

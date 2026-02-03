@@ -74,7 +74,7 @@ export function SpellWarning({ message, type = 'warning', onDismiss, duration = 
 
 			<button
 				onClick={handleDismiss}
-				className="shrink-0 text-neutral-500 hover:text-neutral-900 transition-colors"
+				className="shrink-0 text-accent-200/70 hover:text-accent-200 transition-colors"
 				aria-label="Dismiss"
 			>
 				<X className="w-4 h-4" />

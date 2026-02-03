@@ -134,23 +134,23 @@ body {
   --radius: 0.625rem;
 
   /* Modern Grimoire Theme */
-  --background: #ffffff;
-  --foreground: #2d1b2e;
+  --background: #2d1b2e;
+  --foreground: #f2d0a9;
 
-  --card: #ffffff;
-  --card-foreground: #2d1b2e;
+  --card: rgba(242, 208, 169, 0.05);
+  --card-foreground: #f2d0a9;
 
-  --popover: #ffffff;
-  --popover-foreground: #2d1b2e;
+  --popover: rgba(242, 208, 169, 0.1);
+  --popover-foreground: #f2d0a9;
 
   --primary: #2d1b2e;
-  --primary-foreground: #ffffff;
+  --primary-foreground: #f2d0a9;
 
   --secondary: #3a506b;
   --secondary-foreground: #ffffff;
 
-  --muted: #e9ecef;
-  --muted-foreground: #a9927d;
+  --muted: rgba(169, 146, 125, 0.2);
+  --muted-foreground: rgba(242, 208, 169, 0.5);
 
   --accent: #d4a574;
   --accent-foreground: #2d1b2e;
@@ -158,8 +158,8 @@ body {
   --destructive: #e53e3e;
   --destructive-foreground: #ffffff;
 
-  --border: #e9ecef;
-  --input: #e9ecef;
+  --border: rgba(201, 147, 74, 0.3);
+  --input: rgba(242, 208, 169, 0.1);
   --ring: #d4a574;
 
   --chart-1: #d4a574;

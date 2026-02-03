@@ -50,8 +50,8 @@ export default function LoginPage() {
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-linear-to-br from-neutral-900 via-neutral-800 to-neutral-900 p-4">
-			<Card className="w-full max-w-md">
+		<div className="min-h-screen flex items-center justify-center bg-linear-to-br from-primary-900 via-secondary-600 to-primary-900 p-4">
+			<Card className="w-full max-w-md border-neutral-500/20 shadow-2xl">
 				<CardHeader className="space-y-2 text-center">
 					<CardTitle className="font-display text-3xl">{t('auth.login.title')}</CardTitle>
 					<CardDescription className="font-body">
@@ -87,7 +87,7 @@ export default function LoginPage() {
 
 						<Button
 							type="submit"
-							className="w-full font-body"
+							className="w-full font-body bg-accent-600 hover:bg-accent-400 text-primary-900 font-semibold"
 							disabled={isLoading}
 						>
 							{isLoading ? t('auth.login.signingIn') : t('auth.login.signIn')}
@@ -107,18 +107,18 @@ export default function LoginPage() {
 
 					<Button
 						variant="outline"
-						className="w-full font-body"
+						className="w-full font-body border-accent-600 text-accent-600 hover:bg-accent-600 hover:text-primary-900"
 						onClick={handleGuestMode}
 						disabled={isLoading}
 					>
 						{t('auth.login.guestMode')}
 					</Button>
 
-					<p className="text-center text-sm text-muted-foreground font-body">
+					<p className="text-center text-sm text-accent-200/70 font-body">
 						{t('auth.login.noAccount')}{' '}
 						<Link
 							href="/auth/register"
-							className="text-primary hover:underline font-medium"
+							className="text-accent-400 hover:text-accent-200 hover:underline font-semibold"
 						>
 							{t('auth.login.registerHere')}
 						</Link>

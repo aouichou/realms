@@ -20,10 +20,10 @@ export default function AdventurePage() {
 	}, [router]);
 
 	return (
-		<div className="flex min-h-screen items-center justify-center">
+		<div className="flex min-h-screen items-center justify-center bg-linear-to-br from-primary-900 via-secondary-600 to-primary-900">
 			<div className="text-center">
-				<div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-900 mx-auto mb-4"></div>
-				<p className="text-neutral-500">Loading...</p>
+				<div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-accent-400 mx-auto mb-4"></div>
+				<p className="text-accent-200">Loading...</p>
 			</div>
 		</div>
 	);

@@ -186,18 +186,18 @@ export default function AdventureSelectionPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-background p-8">
+		<div className="min-h-screen bg-linear-to-br from-primary-900 via-secondary-600 to-primary-900 p-8">
 			<div className="max-w-6xl mx-auto">
 				{/* Header */}
 				<div className="text-center mb-8">
-					<h1 className="font-display text-5xl text-primary-900 mb-2">
+					<h1 className="font-display text-5xl text-accent-200 mb-2">
 						{t('adventure.select.title')}
 					</h1>
-					<p className="text-muted-foreground font-body text-lg">
-						{t('adventure.select.welcome')}, <span className="font-semibold text-primary-600">{character.name}</span> the{" "}
-						<span className="font-semibold">{character.race} {character.character_class}</span>
+					<p className="text-accent-200/80 font-body text-lg">
+						{t('adventure.select.welcome')}, <span className="font-semibold text-accent-400">{character.name}</span> the{" "}
+						<span className="font-semibold text-accent-400">{character.race} {character.character_class}</span>
 					</p>
-					<p className="text-muted-foreground mt-2">
+					<p className="text-accent-200/70 mt-2">
 						{t('adventure.select.subtitle')}
 					</p>
 				</div>
@@ -249,7 +249,7 @@ export default function AdventureSelectionPage() {
 											</div>
 										</CardHeader>
 										<CardContent>
-											<p className="text-sm text-muted-foreground mb-4">
+											<p className="text-sm text-accent-200/70 mb-4">
 												{adventure.description}
 											</p>
 											{!isAppropriateLevel && (
@@ -286,12 +286,12 @@ export default function AdventureSelectionPage() {
 					{/* Custom Adventure Tab */}
 					<TabsContent value="custom">					{customAdventures.length > 0 && (
 						<div className="mb-8">
-							<h2 className="text-2xl font-display text-primary-900 mb-4">{t('adventure.select.customTitle')}</h2>
+							<h2 className="text-2xl font-display text-accent-200 mb-4">{t('adventure.select.customTitle')}</h2>
 							<div className="grid gap-4 md:grid-cols-2">
 								{customAdventures.map((adventure) => (
 									<Card
 										key={adventure.id}
-										className="cursor-pointer transition-all hover:border-primary hover:shadow-lg"
+										className="cursor-pointer transition-all hover:border-accent-600 hover:shadow-lg border-accent-600/30"
 										onClick={() => setGeneratedAdventure(adventure)}
 									>
 										<CardHeader>
@@ -301,7 +301,7 @@ export default function AdventureSelectionPage() {
 											</CardDescription>
 										</CardHeader>
 										<CardContent>
-											<p className="text-sm text-muted-foreground line-clamp-3">
+											<p className="text-sm text-accent-200/70 line-clamp-3">
 												{adventure.description}
 											</p>
 											<div className="flex gap-2 mt-3">

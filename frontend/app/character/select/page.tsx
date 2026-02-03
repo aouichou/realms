@@ -107,10 +107,10 @@ export default function CharacterSelectPage() {
 
 	if (loading) {
 		return (
-			<div className="flex min-h-screen items-center justify-center">
+			<div className="flex min-h-screen items-center justify-center bg-linear-to-br from-primary-900 via-secondary-600 to-primary-900">
 				<div className="text-center">
-					<div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-900 mx-auto mb-4"></div>
-					<p className="text-neutral-500">{t('character.select.loading')}</p>
+					<div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-accent-400 mx-auto mb-4"></div>
+					<p className="text-accent-200">{t('character.select.loading')}</p>
 				</div>
 			</div>
 		);
@@ -118,12 +118,12 @@ export default function CharacterSelectPage() {
 
 	if (error) {
 		return (
-			<div className="flex min-h-screen items-center justify-center">
+			<div className="flex min-h-screen items-center justify-center bg-linear-to-br from-primary-900 via-secondary-600 to-primary-900">
 				<div className="text-center max-w-md">
-					<p className="text-red-500 mb-4">{error}</p>
+					<p className="text-error-500 mb-4">{error}</p>
 					<button
 						onClick={() => fetchCharacters()}
-						className="px-6 py-2 bg-primary-900 text-white rounded-lg hover:bg-accent-600"
+						className="px-6 py-2 bg-accent-600 text-primary-900 rounded-lg hover:bg-accent-400 font-body font-semibold"
 					>
 						{t('character.select.retry')}
 					</button>
@@ -133,7 +133,7 @@ export default function CharacterSelectPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-background p-4 md:p-8">
+		<div className="min-h-screen bg-linear-to-br from-primary-900 via-secondary-600 to-primary-900 p-4 md:p-8">
 			<div className="max-w-6xl mx-auto">
 				<div className="mb-8 flex items-center justify-between">
 					<div>
@@ -142,7 +142,7 @@ export default function CharacterSelectPage() {
 					</div>
 					<button
 						onClick={() => setShowLoadModal(true)}
-						className="inline-flex items-center gap-2 px-6 py-3 border-2 border-accent-600 text-accent-600 rounded-lg hover:bg-accent-600 hover:text-white transition-all font-body font-semibold"
+						className="inline-flex items-center gap-2 px-6 py-3 border-2 border-accent-600 bg-accent-600/10 text-accent-200 rounded-lg hover:bg-accent-600 hover:text-primary-900 transition-all font-body font-semibold"
 					>
 						<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -153,10 +153,10 @@ export default function CharacterSelectPage() {
 
 				{characters.length === 0 ? (
 					<div className="text-center py-16">
-						<p className="text-neutral-500 mb-6 font-body">{t('character.select.noCharacters')}</p>
+						<p className="text-accent-200/70 mb-6 font-body">{t('character.select.noCharacters')}</p>
 						<Link
 							href="/character/create"
-							className="inline-flex items-center gap-2 px-8 py-4 bg-primary-900 text-white rounded-lg hover:bg-accent-600 transition-all hover:scale-105 font-body font-semibold"
+							className="inline-flex items-center gap-2 px-8 py-4 bg-accent-600 text-primary-900 rounded-lg hover:bg-accent-400 transition-all hover:scale-105 font-body font-semibold"
 						>
 							<span>{t('character.select.createFirst')}</span>
 							<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,14 +171,14 @@ export default function CharacterSelectPage() {
 								<div
 									key={character.id}
 									onClick={() => selectCharacter(character.id)}
-									className="bg-white border-2 border-neutral-200 rounded-lg p-6 cursor-pointer transition-all hover:border-accent-600 hover:shadow-lg hover:scale-105"
+									className="bg-accent-200/10 backdrop-blur-sm border-2 border-accent-600/30 rounded-lg p-6 cursor-pointer transition-all hover:border-accent-600 hover:bg-accent-200/20 hover:shadow-lg hover:scale-105"
 								>
 									<div className="flex items-center justify-between mb-4">
 										<div>
-											<h3 className="text-2xl font-display text-primary-900">{character.name}</h3>
+											<h3 className="text-2xl font-display text-accent-200">{character.name}</h3>
 										</div>
 										<div className="flex items-center gap-2">
-											<span className="text-sm font-body text-neutral-500 bg-neutral-100 px-3 py-1 rounded-full">
+											<span className="text-sm font-body text-accent-400 bg-accent-600/20 px-3 py-1 rounded-full font-semibold">
 												{t('character.select.level')} {character.level}
 											</span>
 											<button

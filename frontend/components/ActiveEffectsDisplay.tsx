@@ -65,9 +65,9 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 			case 'condition':
 				return <AlertCircle className="h-4 w-4 text-orange-500" />;
 			case 'concentration':
-				return <Zap className="h-4 w-4 text-blue-500" />;
+				return <Zap className="h-4 w-4 text-accent-400" />;
 			default:
-				return <Sparkles className="h-4 w-4 text-purple-500" />;
+				return <Sparkles className="h-4 w-4 text-accent-400" />;
 		}
 	};
 
@@ -80,9 +80,9 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 			case 'condition':
 				return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
 			case 'concentration':
-				return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+				return 'bg-accent-400/10 text-accent-400 border-accent-400/20';
 			default:
-				return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
+				return 'bg-accent-400/10 text-accent-400 border-accent-400/20';
 		}
 	};
 
