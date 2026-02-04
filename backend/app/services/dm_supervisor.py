@@ -76,14 +76,14 @@ class DMSupervisor:
             },
             {
                 "name": "spell_effect_without_save",
-                "pattern": r"(spell|magic).{0,100}(taking effect|takes effect|takes hold|works|succeeds|affects|charms|enchants|controls)",
+                "pattern": r"(cast|casting).{0,50}(command|charm|sleep|hold|fear|suggestion).{0,150}(eyes widen|leans? in|complies|obeys|nods|agrees|tells? you|reveals?|answers?|whispers?|says|voice drop|responding)",
                 "explanation": "Spell effects on NPCs require saving throw using roll_for_npc",
                 "relevant_sections": ["Spell Mechanics", "roll_for_npc", "Saving Throws"],
             },
             {
                 "name": "charm_effect_narrated",
-                "pattern": r"(charmed|charm person|detect thoughts|mind.{0,50}(reading|probe|detect)).{0,100}(friendly|warm|smile|open|revealing|thinking|thoughts)",
-                "explanation": "Charm/mind spells require NPC Wisdom saving throw via roll_for_npc",
+                "pattern": r"(spell).{0,100}(bartender|guard|npc|creature|he|she|they).{0,100}(leans? in|tells? you|reveals?|whispers?|voice drop|eyes widen|responding|compelled|influenced)",
+                "explanation": "Charm/mind spells require NPC Wisdom saving throw via roll_for_npc before narrating NPC reaction",
                 "relevant_sections": ["Spell Mechanics", "Saving Throws"],
             },
             {
@@ -298,22 +298,43 @@ class DMSupervisor:
         response_lower = dm_response.lower()
 
         # Check for spell effects without saving throws
-        spell_keywords = ["spell", "cast", "magic", "charm", "enchant", "detect thoughts"]
-        effect_keywords = [
+        spell_keywords = [
+            "spell",
+            "cast",
+            "magic",
+            "charm",
+            "enchant",
+            "detect thoughts",
+            "command",
+        ]
+        # NPCs responding to spells = spell worked = need save
+        npc_response_keywords = [
             "taking effect",
             "takes effect",
             "works",
             "succeeds",
             "affects",
             "charms",
+            "eyes widen",
+            "leans in",
+            "lean in",
+            "complies",
+            "obeys",
+            "nods",
+            "tells you",
+            "tell you",
+            "reveals",
+            "whispers",
+            "voice drop",
+            "voice dropping",
         ]
 
         if any(word in response_lower for word in spell_keywords):
-            if any(effect in response_lower for effect in effect_keywords):
+            if any(effect in response_lower for effect in npc_response_keywords):
                 # Spell narrated as succeeding - should have requested save
                 if "roll_for_npc" not in tool_names and "request_player_roll" not in tool_names:
                     issues.append(
-                        "Narrated spell effect without requesting saving throw via roll_for_npc"
+                        "Narrated spell effect/NPC response without requesting saving throw via roll_for_npc"
                     )
 
         # Check for damage mentions without update_character_hp
