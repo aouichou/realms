@@ -885,7 +885,7 @@ export default function GamePage() {
 					)}
 
 					{/* Input */}
-					{pendingRollRequest && (
+					{pendingRollRequest && !isLoading && (
 						<div className="mb-3 p-3 bg-accent-400/20 border border-accent-400/30 rounded-lg backdrop-blur-md">
 							<div className="flex items-start gap-2">
 								<span className="text-xl">🎲</span>
