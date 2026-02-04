@@ -1175,6 +1175,19 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                     if "character_update" in tool_result:
                         character_updates.update(tool_result["character_update"])
 
+                    # CRITICAL: If tool requested a player roll, stop here and return
+                    # DM must wait for player to roll before continuing
+                    if "roll_request" in tool_result:
+                        logger.info(
+                            "Roll request detected in tool result - stopping iteration to wait for player roll"
+                        )
+                        return {
+                            "narration": assistant_message.content or "What would you like to do?",
+                            "tool_calls_made": tool_calls_made,
+                            "character_updates": character_updates,
+                            "roll_request": tool_result["roll_request"],
+                        }
+
                     # Add tool result to messages
                     current_messages.append(  # type: ignore[arg-type]
                         {
