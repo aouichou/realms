@@ -76,7 +76,7 @@ class DMSupervisor:
             },
             {
                 "name": "spell_effect_without_save",
-                "pattern": r"(cast|casting).{0,50}(command|charm|sleep|hold|fear|suggestion).{0,150}(eyes widen|leans? in|complies|obeys|nods|agrees|tells? you|reveals?|answers?|whispers?|says|voice drop|responding)",
+                "pattern": r"(cast|casting|spell).{0,100}(eyes widen|leans? in|complies|obeys|feel.{0,30}(weight|power|magic|spell)|movements? slow|burdened|affected|influenced|compelled)",
                 "explanation": "Spell effects on NPCs require saving throw using roll_for_npc",
                 "relevant_sections": ["Spell Mechanics", "roll_for_npc", "Saving Throws"],
             },
@@ -339,6 +339,14 @@ class DMSupervisor:
             "whispers",
             "voice drop",
             "voice dropping",
+            "feel the weight",
+            "feel the power",
+            "feel the magic",
+            "movements slow",
+            "movement slowing",
+            "burdened",
+            "affected",
+            "influenced",
         ]
 
         if any(word in response_lower for word in spell_keywords):
