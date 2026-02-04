@@ -27,11 +27,11 @@ interface RitualCastingDialogProps {
 }
 
 export function RitualCastingDialog({
-	spell,
-	open,
-	onOpenChange,
-	onCastAsRitual,
-	onCastNormally,
+spell,
+open,
+onOpenChange,
+onCastAsRitual,
+onCastNormally,
 }: RitualCastingDialogProps) {
 	const { t } = useTranslation();
 	const [casting, setCasting] = useState(false);
@@ -81,12 +81,12 @@ export function RitualCastingDialog({
 	const ritualTime = getRitualCastingTime(spell.casting_time);
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
 						<Sparkles className="h-5 w-5 text-accent-400" />
-						{t('ritualCasting.title', { spell: spell.name })}
+						Cast {spell.name} as Ritual?
 					</DialogTitle>
 					<DialogDescription>
 						{t('ritualCasting.description')}
@@ -120,55 +120,61 @@ export function RitualCastingDialog({
 										<ul className="text-sm list-disc list-inside space-y-1">
 											<li>{t('ritualCasting.drawback1')}</li>
 											<li>{t('ritualCasting.drawback2')}</li>
+										</ul>
 
-											<div className="bg-muted p-3 rounded-md">
-												<p className="text-sm font-semibold mb-1">{spell.name}</p>
-												<p className="text-xs text-muted-foreground">
-													{spell.description.slice(0, 200)}...
-												</p>
-											</div>
+										<div className="bg-muted p-3 rounded-md">
+											<p className="text-sm font-semibold mb-1">{spell.name}</p>
+											<p className="text-xs text-muted-foreground">
+												{spell.description.slice(0, 200)}...
+											</p>
+										</div>
 									</div>
+								</AlertDescription>
+							</Alert>
+						</div>
+					</DialogDescription>
+				</DialogHeader>
 
-									<DialogFooter className="flex-col sm:flex-col gap-2">
-										<Button
-											onClick={handleRitualCast}
-											disabled={casting}
-											className="w-full"
-											variant="secondary"
-										>
-											<Clock className="mr-2 h-4 w-4" />
-											{t('ritualCasting.castAsRitual', { time: ritualTime })}
-										</Button>
+				<DialogFooter className="flex-col sm:flex-col gap-2">
+					<Button
+						onClick={handleRitualCast}
+						disabled={casting}
+						className="w-full"
+						variant="secondary"
+					>
+						<Clock className="mr-2 h-4 w-4" />
+						Cast as Ritual ({ritualTime})
+					</Button>
 
-										<Button
-											onClick={handleNormalCast}
-											disabled={casting}
-											className="w-full"
-										>
-											{t('ritualCasting.castNormally')} ({spell.casting_time})
-										</Button>
+					<Button
+						onClick={handleNormalCast}
+						disabled={casting}
+						className="w-full"
+					>
+						{t('ritualCasting.castNormally')} ({spell.casting_time})
+					</Button>
 
-										<Button
-											onClick={() => onOpenChange(false)}
-											variant="outline"
-											disabled={casting}
-											className="w-full"
-										>
-											{t('common.cancel')}
-										</Button>
-									</DialogFooter>
-								</DialogContent>
-							</Dialog>
-							);
+					<Button
+						onClick={() => onOpenChange(false)}
+						variant="outline"
+						disabled={casting}
+						className="w-full"
+					>
+						{t('common.cancel')}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
 }
 
-							// Component to add ritual tag to spell cards
-							export function RitualBadge() {
-	const {t} = useTranslation();
-							return (
-							<Badge variant="secondary" className="flex items-center gap-1">
-								<Sparkles className="h-3 w-3" />
-								{t('ritualCasting.ritual')}
-							</Badge>
-							);
+// Component to add ritual tag to spell cards
+export function RitualBadge() {
+	const { t } = useTranslation();
+	return (
+<Badge variant="secondary" className="flex items-center gap-1">
+			<Sparkles className="h-3 w-3" />
+			{t('ritualCasting.ritual')}
+		</Badge>
+	);
 }

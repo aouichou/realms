@@ -120,10 +120,7 @@ export function ConcentrationTracker({
 						<AlertDescription>
 							<p className="font-semibold mb-2">{t('concentrationTracker.saveRequired')}</p>
 							<p className="text-xs mb-2">
-								{t('concentrationTracker.damageTaken', {
-									damage: damageTaken.toString(),
-									dc: calculateConcentrationDC(damageTaken).toString(),
-								})}
+								{`Took ${damageTaken} damage. DC ${calculateConcentrationDC(damageTaken)} Constitution save required.`}
 							</p>
 							<div className="flex gap-2">
 								<Button
@@ -132,18 +129,8 @@ export function ConcentrationTracker({
 										const result = rollConcentrationSave();
 										alert(
 											result.success
-												? t('concentrationTracker.successMessage', {
-													roll: result.roll.toString(),
-													modifier: constitutionModifier.toString(),
-													total: result.total.toString(),
-													dc: result.dc.toString(),
-												})
-												: t('concentrationTracker.failMessage', {
-													roll: result.roll.toString(),
-													modifier: constitutionModifier.toString(),
-													total: result.total.toString(),
-													dc: result.dc.toString(),
-												})
+												? `Success! Rolled ${result.roll} + ${constitutionModifier} = ${result.total} (DC ${result.dc})`
+												: `Failed! Rolled ${result.roll} + ${constitutionModifier} = ${result.total} (DC ${result.dc}). Concentration broken!`
 										);
 										setShowSavePrompt(false);
 									}}

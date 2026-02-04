@@ -638,7 +638,7 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 						<DialogDescription>
 							{selectedSpell?.level === 0
 								? t('game.spells.cantripNoSlot')
-								: t('game.spells.consumeSlot', { level: selectedSpell?.level })}
+								: t('game.spells.consumesSlot').replace('{level}', String(selectedSpell?.level))}
 						</DialogDescription>
 					</DialogHeader>
 
