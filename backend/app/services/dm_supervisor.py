@@ -75,6 +75,18 @@ class DMSupervisor:
                 "relevant_sections": ["Dice Rolling Protocol", "roll_for_npc"],
             },
             {
+                "name": "spell_effect_without_save",
+                "pattern": r"(spell|magic).{0,100}(taking effect|takes effect|takes hold|works|succeeds|affects|charms|enchants|controls)",
+                "explanation": "Spell effects on NPCs require saving throw using roll_for_npc",
+                "relevant_sections": ["Spell Mechanics", "roll_for_npc", "Saving Throws"],
+            },
+            {
+                "name": "charm_effect_narrated",
+                "pattern": r"(charmed|charm person|detect thoughts|mind.{0,50}(reading|probe|detect)).{0,100}(friendly|warm|smile|open|revealing|thinking|thoughts)",
+                "explanation": "Charm/mind spells require NPC Wisdom saving throw via roll_for_npc",
+                "relevant_sections": ["Spell Mechanics", "Saving Throws"],
+            },
+            {
                 "name": "damage_without_tool",
                 "pattern": r"(take|takes|deals?|suffering?|loses?)\s+\d+\s+(damage|hp|hit points)",
                 "explanation": "Must use update_character_hp when mentioning damage",
@@ -284,6 +296,25 @@ class DMSupervisor:
         issues = []
         tool_names = [tc.get("name") for tc in (tool_calls or [])]
         response_lower = dm_response.lower()
+
+        # Check for spell effects without saving throws
+        spell_keywords = ["spell", "cast", "magic", "charm", "enchant", "detect thoughts"]
+        effect_keywords = [
+            "taking effect",
+            "takes effect",
+            "works",
+            "succeeds",
+            "affects",
+            "charms",
+        ]
+
+        if any(word in response_lower for word in spell_keywords):
+            if any(effect in response_lower for effect in effect_keywords):
+                # Spell narrated as succeeding - should have requested save
+                if "roll_for_npc" not in tool_names and "request_player_roll" not in tool_names:
+                    issues.append(
+                        "Narrated spell effect without requesting saving throw via roll_for_npc"
+                    )
 
         # Check for damage mentions without update_character_hp
         if any(
