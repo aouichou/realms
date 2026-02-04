@@ -29,7 +29,7 @@ class ImageDetectionService:
 
     # Multilingual model: supports 50+ languages, ~420MB
     MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
-    SIMILARITY_THRESHOLD = 0.35  # Lowered from 0.45 for better detection
+    SIMILARITY_THRESHOLD = 0.5  # Balanced threshold for significant scenes only
 
     # OPTIMIZATION: Threads for CPU inference (adjust based on container resources)
     # Default to 2 threads for typical container limits, or use all cores if available

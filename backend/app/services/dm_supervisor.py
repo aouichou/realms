@@ -104,6 +104,18 @@ class DMSupervisor:
                 "explanation": "DM must use actual tool calling API, not write tool calls as text in narration",
                 "relevant_sections": ["Tool Usage Rules", "Common Mistakes"],
             },
+            {
+                "name": "attack_without_roll",
+                "pattern": r"(you|player).{0,100}(attack|hit|strike|punch|slash|stab|shoot).{0,100}(connects|hits|strikes|lands|bites deep|finds its mark)",
+                "explanation": "Player attacks require request_player_roll for attack roll, then damage roll if hit",
+                "relevant_sections": ["Combat", "request_player_roll", "Attack Rolls"],
+            },
+            {
+                "name": "combat_without_initiative",
+                "pattern": r"(combat|fight|battle|attack).{0,150}(begins|starts|erupts|emerges|appears)",
+                "explanation": "Combat must start with initiative rolls for player and all enemies",
+                "relevant_sections": ["Combat", "Initiative", "roll_for_npc"],
+            },
         ]
 
         self._load_reference_knowledge()
@@ -336,6 +348,33 @@ class DMSupervisor:
                     issues.append(
                         "Narrated spell effect/NPC response without requesting saving throw via roll_for_npc"
                     )
+
+        # Check for player attacks without attack roll request
+        attack_keywords = ["attack", "hit", "strike", "punch", "slash", "stab", "shoot", "swing"]
+        attack_success = ["hits", "connects", "strikes", "lands", "bites deep", "finds its mark"]
+
+        if any(word in response_lower for word in attack_keywords):
+            if any(success in response_lower for success in attack_success):
+                # Attack narrated as hitting - should have requested attack roll first
+                if "request_player_roll" not in tool_names:
+                    issues.append(
+                        "Narrated player attack hitting without requesting attack roll via request_player_roll"
+                    )
+
+        # Check for combat starting without initiative
+        combat_start = [
+            "combat begins",
+            "fight begins",
+            "battle starts",
+            "enemies attack",
+            "attacks you",
+        ]
+        if any(phrase in response_lower for phrase in combat_start):
+            # Combat started - should have initiative rolls
+            if "request_player_roll" not in tool_names and "roll_for_npc" not in tool_names:
+                issues.append(
+                    "Combat started without requesting initiative rolls for player and enemies"
+                )
 
         # Check for damage mentions without update_character_hp
         if any(
