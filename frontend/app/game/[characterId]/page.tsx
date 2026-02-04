@@ -616,8 +616,13 @@ export default function GamePage() {
 
 		setIsStartingSession(true);
 		try {
-			// Check if this is a new session (no messages yet)
-			if (messages.length === 0) {
+			// First, check if messages exist in the database (to avoid race condition)
+			const historyResponse = await apiClient.get(`/api/v1/conversations/${sessionId}`);
+			const historyData = historyResponse.ok ? await historyResponse.json() : { messages: [] };
+			const existingMessages = historyData.messages || [];
+
+			// Check if this is a new session (no messages in DB)
+			if (existingMessages.length === 0) {
 				// This is the first time - trigger the initial DM message
 				const response = await apiClient.post('/api/v1/conversations/start', {
 					session_id: sessionId,
@@ -632,9 +637,18 @@ export default function GamePage() {
 						timestamp: new Date().toISOString(),
 					};
 					setMessages([dmMessage]);
+				} else {
+					throw new Error(`Failed to start conversation: ${response.status}`);
 				}
 			} else {
-				// Continuing an existing session - ask DM for summary
+				// Session already has messages - load them and continue
+				const loadedMessages = existingMessages.map((msg: any) => ({
+					...msg,
+					timestamp: msg.created_at || msg.timestamp,
+				}));
+				setMessages(loadedMessages);
+
+				// Optionally ask DM for a summary
 				const response = await apiClient.post('/api/v1/conversations/action', {
 					character_id: characterId,
 					session_id: sessionId,

@@ -141,16 +141,21 @@ async def detect_spell_cast(
 
     # Spell casting patterns
     cast_patterns = [
-        r"(?:cast|use|invoke|channel)\s+['\"]?([a-zA-Z\s'-]+?)['\"]?\s+(?:at|on|to|toward)",
-        r"(?:cast|use|invoke|channel)\s+['\"]?([a-zA-Z\s'-]+?)['\"]?(?:\.|!|$)",
+        r'(?:cast|use|invoke|channel)\s+["\']([a-zA-Z\s\'-]+?)["\']',  # Quoted spell names
+        r"(?:cast|use|invoke|channel)\s+([a-zA-Z\s'-]+?)\s+(?:at|on|to|toward)",
+        r"(?:cast|use|invoke|channel)\s+([a-zA-Z\s'-]+?)(?:\.|!|$)",
         r"I\s+['\"]?([a-zA-Z\s'-]+?)['\"]?\s+(?:at|on|the|to)",  # "I Fireball the orc"
     ]
 
+    logger.info(f"Spell detection running on action: {player_action[:100]}")
+
     for pattern in cast_patterns:
         matches = re.finditer(pattern, player_action, re.IGNORECASE)
+        logger.debug(f"Trying pattern: {pattern}")
 
         for match in matches:
             potential_spell = match.group(1).strip()
+            logger.info(f"Potential spell detected: '{potential_spell}'")
 
             # Skip common non-spell words
             skip_words = {
