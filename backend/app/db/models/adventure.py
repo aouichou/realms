@@ -6,12 +6,19 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+try:
+    from pgvector.sqlalchemy import Vector
+except ImportError:
+    # Fallback if pgvector is not installed
+    from sqlalchemy import ARRAY, Float
+
+    Vector = lambda dim: ARRAY(Float)  # noqa: E731
+
 from sqlalchemy import (
     ARRAY,
     Boolean,
     DateTime,
     Enum,
-    Float,
     ForeignKey,
     Integer,
     String,
@@ -91,8 +98,8 @@ class AdventureMemory(Base):
 
     # Content and embedding
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    # Embedding stored as array of floats (double precision[] in PostgreSQL)
-    embedding: Mapped[Optional[list[float]]] = mapped_column(ARRAY(Float), nullable=True)
+    # Embedding stored as vector(1024) in PostgreSQL via pgvector extension
+    embedding: Mapped[Optional[list[float]]] = mapped_column(Vector(1024), nullable=True)
 
     # Importance scoring (1-10 scale)
     importance: Mapped[int] = mapped_column(Integer, default=5, nullable=False, index=True)

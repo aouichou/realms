@@ -269,7 +269,7 @@ export default function AdventureSelectionPage() {
 								size="lg"
 								onClick={() => selectedPreset && startPresetAdventure(selectedPreset)}
 								disabled={!selectedPreset || isLoading}
-								className="px-8"
+								className="px-8 border-2 border-accent-600 shadow-lg hover:border-accent-400 transition-colors"
 							>
 								{isLoading ? (
 									<LoadingSpinner />

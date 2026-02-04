@@ -209,7 +209,12 @@ export default function AdventurePreview({
 				<Button variant="outline" onClick={onCancel} disabled={startingAdventure}>
 					Cancel
 				</Button>
-				<Button onClick={handleStart} disabled={startingAdventure} size="lg">
+				<Button
+					onClick={handleStart}
+					disabled={startingAdventure}
+					size="lg"
+					className="border-2 border-accent-600 shadow-lg hover:border-accent-400 transition-colors"
+				>
 					<Play className="h-5 w-5 mr-2" />
 					{startingAdventure ? "Starting Adventure..." : "Start Adventure"}
 				</Button>
