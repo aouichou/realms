@@ -4,17 +4,16 @@ AI Provider initialization and management.
 Initializes and registers all configured AI providers at application startup.
 """
 
-
 from typing import Optional
 
 from app.config import settings
+from app.observability.logger import get_logger
 from app.services.ai_provider import AIProvider
 from app.services.anthropic_provider import AnthropicProvider
 from app.services.gemini_service import GeminiService
 from app.services.mistral_provider import MistralProvider
 from app.services.openai_provider import OpenAIProvider
 from app.services.provider_selector import provider_selector
-from app.observability.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -89,6 +88,7 @@ async def create_provider(name: str, config: dict) -> Optional[AIProvider]:
                 temperature=config.get("temperature", 0.7),
                 rate_limit=config.get("rate_limit", 1.0),
                 priority=config["priority"],
+                rate_limit_cooldown=config.get("rate_limit_cooldown", 60),  # Default 60s cooldown
             )
         elif name == "openai":
             return OpenAIProvider(

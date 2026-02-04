@@ -31,6 +31,7 @@ class MistralProvider(AIProvider):
         temperature: float = 0.7,
         rate_limit: float = 1.0,
         priority: int = 2,
+        rate_limit_cooldown: int = 60,  # Seconds to wait after rate limit
     ):
         super().__init__(name="mistral", priority=priority)
         self.client = Mistral(api_key=api_key)
@@ -38,7 +39,9 @@ class MistralProvider(AIProvider):
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.rate_limit = rate_limit
+        self.rate_limit_cooldown = rate_limit_cooldown
         self.last_request_time = 0.0
+        self.rate_limited_at = 0.0  # Timestamp when rate limit occurred
         self.request_lock = asyncio.Lock()
 
         logger.info(f"Initialized Mistral provider with model: {model}")
@@ -111,11 +114,23 @@ class MistralProvider(AIProvider):
             logger.error(f"Mistral generation error: {error_msg}")
             metrics.record_llm_request(model=model, status="error", duration=0.0)
 
-            if "rate_limit" in error_msg.lower() or "429" in error_msg:
+            # Check for rate limit (429 status or rate_limit in message)
+            if (
+                "rate_limit" in error_msg.lower()
+                or "429" in error_msg
+                or "status 429" in error_msg.lower()
+            ):
                 self.set_status(ProviderStatus.RATE_LIMITED, error_msg)
+                self.rate_limited_at = time.time()  # Record when rate limit occurred
                 from app.services.ai_provider import RateLimitError
 
-                raise RateLimitError(f"Mistral rate limit exceeded: {error_msg}")
+                logger.warning(
+                    f"Mistral rate limited - will switch to fallback provider for {self.rate_limit_cooldown}s"
+                )
+                raise RateLimitError(
+                    f"Mistral rate limit exceeded: {error_msg}",
+                    retry_after=self.rate_limit_cooldown,
+                )
 
             self.set_status(ProviderStatus.ERROR, error_msg)
             from app.services.ai_provider import ProviderUnavailableError
@@ -171,11 +186,23 @@ class MistralProvider(AIProvider):
             logger.error(f"Mistral chat error: {error_msg}")
             metrics.record_llm_request(model=model, status="error", duration=0.0)
 
-            if "rate_limit" in error_msg.lower() or "429" in error_msg:
+            # Check for rate limit (429 status or rate_limit in message)
+            if (
+                "rate_limit" in error_msg.lower()
+                or "429" in error_msg
+                or "status 429" in error_msg.lower()
+            ):
                 self.set_status(ProviderStatus.RATE_LIMITED, error_msg)
+                self.rate_limited_at = time.time()  # Record when rate limit occurred
                 from app.services.ai_provider import RateLimitError
 
-                raise RateLimitError(f"Mistral rate limit exceeded: {error_msg}")
+                logger.warning(
+                    f"Mistral rate limited - will switch to fallback provider for {self.rate_limit_cooldown}s"
+                )
+                raise RateLimitError(
+                    f"Mistral rate limit exceeded: {error_msg}",
+                    retry_after=self.rate_limit_cooldown,
+                )
 
             self.set_status(ProviderStatus.ERROR, error_msg)
             from app.services.ai_provider import ProviderUnavailableError
@@ -183,5 +210,27 @@ class MistralProvider(AIProvider):
             raise ProviderUnavailableError(f"Mistral provider error: {error_msg}")
 
     async def is_available(self) -> bool:
-        """Check if Mistral provider is available"""
-        return self._status == ProviderStatus.AVAILABLE or self._status == ProviderStatus.ERROR
+        """
+        Check if Mistral provider is available.
+
+        If rate-limited, automatically becomes available after cooldown period.
+        """
+        # If rate limited, check if cooldown period has elapsed
+        if self._status == ProviderStatus.RATE_LIMITED:
+            if self.rate_limited_at > 0:
+                elapsed = time.time() - self.rate_limited_at
+                if elapsed >= self.rate_limit_cooldown:
+                    logger.info(
+                        f"Mistral cooldown period elapsed ({elapsed:.1f}s), marking as available"
+                    )
+                    self.set_status(ProviderStatus.AVAILABLE)
+                    self.rate_limited_at = 0.0
+                    return True
+                else:
+                    remaining = self.rate_limit_cooldown - elapsed
+                    logger.debug(f"Mistral still in cooldown ({remaining:.1f}s remaining)")
+                    return False
+            return False
+
+        # Rate-limited providers should be unavailable to trigger fallback
+        return self._status == ProviderStatus.AVAILABLE
