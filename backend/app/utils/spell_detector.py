@@ -275,7 +275,16 @@ def can_cast_spell(character: Character, spell_level: int) -> tuple[bool, str]:
     if slot_key not in spell_slots:
         return False, f"Character doesn't have {spell_level}th level spell slots"
 
-    remaining_slots = spell_slots.get(slot_key, 0)
+    slot_data = spell_slots.get(slot_key)
+
+    # Handle both old format (int) and new format ({used: X, total: Y})
+    if isinstance(slot_data, dict):
+        used = slot_data.get("used", 0)
+        total = slot_data.get("total", 0)
+        remaining_slots = total - used
+    else:
+        # Old format: just an integer
+        remaining_slots = slot_data if slot_data else 0
 
     if remaining_slots <= 0:
         return False, f"No {spell_level}th level spell slots remaining"
@@ -328,11 +337,21 @@ def consume_spell_slot(character: Character, spell_level: int) -> tuple[bool, Op
     slot_key = str(spell_level)
 
     if slot_key in spell_slots:
-        spell_slots[slot_key] -= 1
+        slot_data = spell_slots[slot_key]
+
+        # Handle both old format (int) and new format ({used: X, total: Y})
+        if isinstance(slot_data, dict):
+            slot_data["used"] = slot_data.get("used", 0) + 1
+            remaining = slot_data.get("total", 0) - slot_data["used"]
+        else:
+            # Old format: decrement integer
+            spell_slots[slot_key] -= 1
+            remaining = spell_slots[slot_key]
+
         character.spell_slots = spell_slots  # Reassign to trigger SQLAlchemy detection
         logger.info(
             f"Consumed {spell_level}th level spell slot for {character.name}. "
-            f"Remaining: {spell_slots[slot_key]}"
+            f"Remaining: {remaining}"
         )
         return True, None
 
