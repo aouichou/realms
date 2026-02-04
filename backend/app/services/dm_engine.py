@@ -1061,6 +1061,21 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                                     tool_calls=tool_calls_made,
                                 )
 
+                                # Log validation details for debugging
+                                logger.info(
+                                    f"RL-140: Validation result - valid={validation['valid']}, "
+                                    f"confidence={validation['confidence']:.2f}, "
+                                    f"should_regenerate={validation['should_regenerate']}, "
+                                    f"issues={len(validation['issues'])}, "
+                                    f"mistakes={len(validation['mistakes'])}"
+                                )
+                                if validation["issues"]:
+                                    logger.warning(f"RL-140: Issues found: {validation['issues']}")
+                                if validation["mistakes"]:
+                                    logger.warning(
+                                        f"RL-140: Mistakes detected: {[m['type'] for m in validation['mistakes']]}"
+                                    )
+
                                 # If validation failed and we should regenerate (silent correction)
                                 if validation["should_regenerate"]:
                                     logger.warning(
