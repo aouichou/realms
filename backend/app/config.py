@@ -148,7 +148,7 @@ class Settings(BaseSettings):
                 "max_tokens": self.gemini_max_tokens,
                 "temperature": self.gemini_temperature,
                 "thinking_level": self.gemini_thinking_level,
-                "priority": 1,  # Primary (best free tier with thinking)
+                "priority": 2,  # Fallback (was primary during development)
             },
             "mistral": {
                 "enabled": bool(self.mistral_api_key),
@@ -157,7 +157,7 @@ class Settings(BaseSettings):
                 "max_tokens": self.mistral_max_tokens,
                 "temperature": self.mistral_temperature,
                 "rate_limit": self.rate_limit_per_second,
-                "priority": 2,  # Fallback
+                "priority": 1,  # Primary provider for production
             },
             "openai": {
                 "enabled": bool(self.openai_api_key),
