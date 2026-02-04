@@ -28,8 +28,11 @@ class EmbeddingService:
             List of 1024 floats (Mistral embedding dimension) or None on failure
         """
         try:
-            # Mistral embeddings API (newer SDK uses client.embeddings.create)
-            embeddings_response = self.client.embeddings.create(
+            import asyncio
+
+            # Wrap synchronous Mistral API call in asyncio.to_thread for proper async
+            embeddings_response = await asyncio.to_thread(
+                self.client.embeddings.create,
                 model=self.model,
                 inputs=[text],
             )
@@ -54,8 +57,11 @@ class EmbeddingService:
             List of embeddings (may contain None for failures)
         """
         try:
-            # Batch request (newer SDK uses client.embeddings.create)
-            embeddings_response = self.client.embeddings.create(
+            import asyncio
+
+            # Wrap synchronous Mistral API call in asyncio.to_thread for proper async
+            embeddings_response = await asyncio.to_thread(
+                self.client.embeddings.create,
                 model=self.model,
                 inputs=texts,
             )

@@ -224,6 +224,14 @@ class MemoryService:
         Returns:
             Formatted string with relevant memories
         """
+        from app.observability.logger import get_logger
+
+        logger = get_logger(__name__)
+
+        logger.info(
+            f"RAG: Searching memories for session {session_id}, query: '{current_situation[:100]}...'"
+        )
+
         # Search for relevant memories
         memories = await MemoryService.search_memories(
             db=db,
@@ -234,7 +242,13 @@ class MemoryService:
         )
 
         if not memories:
+            logger.info("RAG: No relevant memories found (importance >= 6)")
             return "No relevant past events found."
+
+        logger.info(
+            f"RAG: Retrieved {len(memories)} relevant memories: "
+            + ", ".join([f"{m.event_type.value}(importance={m.importance})" for m in memories])
+        )
 
         # Format memories for AI context
         formatted = []

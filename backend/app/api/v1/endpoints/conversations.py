@@ -737,23 +737,118 @@ async def send_player_action(
 
         # Capture dialogue memory
         try:
-            # Extract NPC names from narration (basic heuristic)
-            npcs = []
-            for line in result["narration"].split("\n"):
-                if ":" in line:
-                    potential_npc = line.split(":")[0].strip()
-                    if potential_npc and len(potential_npc) < 30:
-                        npcs.append(potential_npc)
+            # Enhanced memory capture system - detect event types automatically
+            from app.db.models import EventType
 
-            # Capture the interaction
-            await MemoryCaptureService.capture_dialogue(
-                db=db,
-                session_id=session_id,
-                npc_name=npcs[0] if npcs else "Unknown",
-                dialogue=f"{action_text}\n{result['narration'][:500]}",
-            )
+            narration_lower = result["narration"].lower()
+            action_lower = action_text.lower()
+            combined_text = f"{action_text} {result['narration']}"
+
+            # Detect event type and capture appropriately
+            event_captured = False
+
+            # 1. Combat events (high priority)
+            combat_keywords = [
+                "attack",
+                "damage",
+                "hit",
+                "combat",
+                "initiative",
+                "strike",
+                "defeat",
+                "victory",
+                "flee",
+            ]
+            if any(
+                keyword in narration_lower or keyword in action_lower for keyword in combat_keywords
+            ):
+                # Extract combatant names (basic NPC detection)
+                combatants = []
+                for word in result["narration"].split():
+                    if word and word[0].isupper() and len(word) > 2:
+                        combatants.append(word.strip(",.!?"))
+
+                # Determine outcome
+                outcome = "in_progress"
+                if any(
+                    word in narration_lower for word in ["victory", "defeated", "won", "triumph"]
+                ):
+                    outcome = "victory"
+                elif any(word in narration_lower for word in ["defeat", "died", "death", "fallen"]):
+                    outcome = "defeat"
+                elif any(word in narration_lower for word in ["flee", "retreat", "escape"]):
+                    outcome = "flee"
+
+                await MemoryCaptureService.capture_combat_event(
+                    db=db,
+                    session_id=session_id,
+                    combatant_names=combatants[:5],  # Limit to 5
+                    outcome=outcome,
+                    details=f"{action_text} - {result['narration'][:300]}",
+                    importance=8 if "victory" in outcome or "defeat" in outcome else 7,
+                )
+                event_captured = True
+                logger.info(f"Captured COMBAT memory: {outcome}, combatants: {combatants[:3]}")
+
+            # 2. NPC Dialogue (already handled above, but enhance)
+            if not event_captured:
+                npcs = []
+                for line in result["narration"].split("\n"):
+                    if ":" in line:
+                        potential_npc = line.split(":")[0].strip()
+                        if potential_npc and len(potential_npc) < 30 and potential_npc[0].isupper():
+                            npcs.append(potential_npc)
+
+                if npcs:
+                    await MemoryCaptureService.capture_dialogue(
+                        db=db,
+                        session_id=session_id,
+                        npc_name=npcs[0],
+                        dialogue=f"{action_text[:200]} - {result['narration'][:400]}",
+                    )
+                    event_captured = True
+                    logger.info(f"Captured DIALOGUE memory with NPC: {npcs[0]}")
+
+            # 3. Discovery/Location changes (important for continuity)
+            discovery_keywords = [
+                "discover",
+                "find",
+                "found",
+                "notice",
+                "see",
+                "arrive",
+                "enter",
+                "reach",
+            ]
+            if not event_captured and any(
+                keyword in narration_lower for keyword in discovery_keywords
+            ):
+                await MemoryService.store_memory(
+                    db=db,
+                    session_id=session_id,
+                    event_type="discovery",
+                    content=f"Discovery: {action_text} - {result['narration'][:400]}",
+                    importance=6,
+                    tags=["discovery", "exploration"],
+                )
+                event_captured = True
+                logger.info("Captured DISCOVERY memory")
+
+            # 4. Generic important interaction (fallback)
+            if not event_captured and len(result["narration"]) > 100:
+                # Store as general interaction if DM response is substantial
+                await MemoryService.store_memory(
+                    db=db,
+                    session_id=session_id,
+                    event_type="npc_interaction",
+                    content=f"{action_text[:150]} - {result['narration'][:350]}",
+                    importance=5,
+                    tags=["interaction"],
+                )
+                logger.debug("Captured generic INTERACTION memory")
+
         except Exception as e:
-            logger.warning(f"Failed to capture dialogue memory: {e}")
+            logger.warning(f"Failed to capture event memory: {e}", exc_info=True)
 
     # Generate companion responses if any active companions (RL-131)
     companion_responses = []
