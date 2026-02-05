@@ -200,7 +200,6 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 		try {
 			const response = await apiClient.get(`/api/v1/spells/character/${characterId}/slots`);
 			const data = await response.json();
-			console.log('Spell slots fetched:', data);
 			setSpellSlots(data.spell_slots || {});
 		} catch (error) {
 			console.error("Failed to fetch spell slots:", error);
@@ -219,8 +218,6 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 				await fetchSpellSlots();
 				setCastDialogOpen(false);
 				setSelectedSpell(null);
-				// Show cast result (you could add a toast notification here)
-				console.log("Spell cast result:", data);
 			}
 		} catch (error) {
 			console.error("Failed to cast spell:", error);
@@ -313,7 +310,6 @@ export function SpellsPanel({ characterId }: SpellsPanelProps) {
 		// Check if spell slots are available
 		const slots = spellSlots[spell.level.toString()];
 		const canCast = slots && slots.used < slots.total;
-		console.log(`Can cast ${spell.name} (level ${spell.level})?`, canCast, 'slots:', slots);
 		return canCast;
 	};
 

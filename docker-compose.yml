@@ -57,6 +57,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-realms_password}
       - ENVIRONMENT=production
       - DEBUG=False
+      - LOG_LEVEL=WARNING
       - USE_TRUE_RANDOMNESS=${USE_TRUE_RANDOMNESS:-True}
       - RANDOM_ORG_URL=${RANDOM_ORG_URL:-https://www.random.org/integers/}
       - RANDOM_POOL_SIZE=${RANDOM_POOL_SIZE:-200}

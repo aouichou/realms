@@ -29,31 +29,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	}, []);
 
 	const initializeAuth = async () => {
-		console.log('[AuthContext] Initializing auth...');
 		try {
 			// With httpOnly cookies, we can't check tokens from client
 			// Instead, try to get current user - backend validates cookie
-			console.log('[AuthContext] Checking auth with backend...');
-
 			const currentUser = await authService.getCurrentUser();
 
 			if (currentUser) {
 				// Valid session, user is logged in
-				console.log('[AuthContext] User authenticated:', currentUser.username);
 				setUser(currentUser);
 			} else {
 				// No valid session - try to refresh
-				console.log('[AuthContext] No valid session, attempting refresh...');
 				const refreshed = await authService.refreshToken();
 
 				if (refreshed) {
 					// Refresh successful, get user again
-					console.log('[AuthContext] Token refreshed successfully');
 					const refreshedUser = await authService.getCurrentUser();
 					setUser(refreshedUser);
 				} else {
 					// Refresh failed - user needs to log in
-					console.log('[AuthContext] Token refresh failed, user not authenticated');
 					await authService.logout();
 				}
 			}
@@ -62,7 +55,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			await authService.logout();
 		} finally {
 			setIsLoading(false);
-			console.log('[AuthContext] Auth initialization complete');
 		}
 	};
 

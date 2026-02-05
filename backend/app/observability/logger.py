@@ -71,7 +71,14 @@ def get_logger(name: str) -> logging.Logger:
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(StructuredFormatter())
         logger.addHandler(handler)
-        logger.setLevel(logging.INFO)
+
+        # Set log level from config (defaults to INFO)
+        # In production, set LOG_LEVEL=WARNING to reduce noise
+        # In development, use DEBUG for detailed logging
+        from app.config import settings
+
+        log_level = getattr(logging, settings.log_level.upper(), logging.INFO)
+        logger.setLevel(log_level)
         logger.propagate = False
 
     return logger
