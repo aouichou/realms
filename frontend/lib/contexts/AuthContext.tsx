@@ -11,7 +11,7 @@ interface AuthContextType {
 	isGuest: boolean;
 	login: (email: string, password: string) => Promise<void>;
 	register: (email: string, username: string, password: string) => Promise<void>;
-	logout: () => void;
+	logout: () => Promise<void>;
 	createGuest: () => Promise<void>;
 	refreshUser: () => Promise<void>;
 }
@@ -31,32 +31,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	const initializeAuth = async () => {
 		console.log('[AuthContext] Initializing auth...');
 		try {
-			// Check if we have any tokens
-			const accessToken = localStorage.getItem('access_token');
-			const guestToken = localStorage.getItem('guest_token');
+			// With httpOnly cookies, we can't check tokens from client
+			// Instead, try to get current user - backend validates cookie
+			console.log('[AuthContext] Checking auth with backend...');
 
-			console.log('[AuthContext] Tokens found:', {
-				hasAccessToken: !!accessToken,
-				hasGuestToken: !!guestToken
-			});
-
-			if (!accessToken && !guestToken) {
-				// No tokens at all - user needs to log in or create guest
-				console.log('[AuthContext] No tokens found, user not authenticated');
-				setIsLoading(false);
-				return;
-			}
-
-			// Try to get current user
 			const currentUser = await authService.getCurrentUser();
 
 			if (currentUser) {
-				// Valid token, user is logged in
+				// Valid session, user is logged in
 				console.log('[AuthContext] User authenticated:', currentUser.username);
 				setUser(currentUser);
 			} else {
-				// Token invalid - try to refresh
-				console.log('[AuthContext] Token invalid, attempting refresh...');
+				// No valid session - try to refresh
+				console.log('[AuthContext] No valid session, attempting refresh...');
 				const refreshed = await authService.refreshToken();
 
 				if (refreshed) {
@@ -65,14 +52,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					const refreshedUser = await authService.getCurrentUser();
 					setUser(refreshedUser);
 				} else {
-					// Refresh failed - clear everything
-					console.log('[AuthContext] Token refresh failed, logging out');
-					authService.logout();
+					// Refresh failed - user needs to log in
+					console.log('[AuthContext] Token refresh failed, user not authenticated');
+					await authService.logout();
 				}
 			}
 		} catch (error) {
 			console.error('[AuthContext] Failed to initialize auth:', error);
-			authService.logout();
+			await authService.logout();
 		} finally {
 			setIsLoading(false);
 			console.log('[AuthContext] Auth initialization complete');
@@ -94,8 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		setUser(user);
 	};
 
-	const logout = () => {
-		authService.logout();
+	const logout = async () => {
+		await authService.logout();
 		setUser(null);
 		router.push('/');
 	};

@@ -34,6 +34,7 @@ export const authService = {
 		const response = await fetch(`${API_URL}/api/v1/auth/guest`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
+			credentials: 'include', // Send/receive cookies
 		});
 
 		if (!response.ok) {
@@ -42,8 +43,7 @@ export const authService = {
 
 		const data = await response.json();
 
-		// Store tokens in localStorage
-		localStorage.setItem('access_token', data.access_token);
+		// Store guest metadata (not tokens - those are in httpOnly cookies)
 		if (data.guest_token) {
 			localStorage.setItem('guest_token', data.guest_token);
 			localStorage.setItem('guest_created_at', Date.now().toString());
@@ -70,6 +70,7 @@ export const authService = {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ email, username, password }),
+			credentials: 'include', // Send/receive cookies
 		});
 
 		if (!response.ok) {
@@ -79,13 +80,7 @@ export const authService = {
 
 		const data = await response.json();
 
-		// Store tokens
-		localStorage.setItem('access_token', data.access_token);
-		if (data.refresh_token) {
-			localStorage.setItem('refresh_token', data.refresh_token);
-		}
-
-		// Clear guest data if any
+		// Clear guest metadata (tokens now in httpOnly cookies)
 		localStorage.removeItem('guest_token');
 		localStorage.removeItem('guest_created_at');
 
@@ -109,6 +104,7 @@ export const authService = {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ email, password }),
+			credentials: 'include', // Send/receive cookies
 		});
 
 		if (!response.ok) {
@@ -118,13 +114,7 @@ export const authService = {
 
 		const data = await response.json();
 
-		// Store tokens
-		localStorage.setItem('access_token', data.access_token);
-		if (data.refresh_token) {
-			localStorage.setItem('refresh_token', data.refresh_token);
-		}
-
-		// Clear guest data
+		// Clear guest metadata (tokens now in httpOnly cookies)
 		localStorage.removeItem('guest_token');
 		localStorage.removeItem('guest_created_at');
 
@@ -154,6 +144,7 @@ export const authService = {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ guest_token: guestToken, email, password }),
+			credentials: 'include', // Send/receive cookies
 		});
 
 		if (!response.ok) {
@@ -163,13 +154,7 @@ export const authService = {
 
 		const data = await response.json();
 
-		// Update tokens
-		localStorage.setItem('access_token', data.access_token);
-		if (data.refresh_token) {
-			localStorage.setItem('refresh_token', data.refresh_token);
-		}
-
-		// Clear guest data
+		// Clear guest metadata (tokens now in httpOnly cookies)
 		localStorage.removeItem('guest_token');
 		localStorage.removeItem('guest_created_at');
 
@@ -186,22 +171,13 @@ export const authService = {
 	 * Get current user info
 	 */
 	async getCurrentUser(): Promise<User | null> {
-		const token = localStorage.getItem('access_token');
-
-		if (!token) {
-			return null;
-		}
-
 		try {
 			const response = await fetch(`${API_URL}/api/v1/auth/me`, {
-				headers: {
-					Authorization: `Bearer ${token}`,
-				},
+				credentials: 'include', // Send httpOnly cookies
 			});
 
 			if (!response.ok) {
-				// Token is invalid
-				this.logout();
+				// Session expired or invalid
 				return null;
 			}
 
@@ -213,20 +189,16 @@ export const authService = {
 	},
 
 	/**
-	 * Refresh access token using refresh token
+	 * Refresh access token using refresh token from httpOnly cookie
 	 */
 	async refreshToken(): Promise<AuthTokens | null> {
-		const refreshToken = localStorage.getItem('refresh_token');
-
-		if (!refreshToken) {
-			return null;
-		}
-
 		try {
+			// Backend reads refresh_token from httpOnly cookie
 			const response = await fetch(`${API_URL}/api/v1/auth/refresh`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ refresh_token: refreshToken }),
+				body: JSON.stringify({ refresh_token: '' }), // Empty body, cookie used
+				credentials: 'include', // Send httpOnly cookies
 			});
 
 			if (!response.ok) {
@@ -237,12 +209,7 @@ export const authService = {
 
 			const data = await response.json();
 
-			// Store new tokens
-			localStorage.setItem('access_token', data.access_token);
-			if (data.refresh_token) {
-				localStorage.setItem('refresh_token', data.refresh_token);
-			}
-
+			// Tokens are set in httpOnly cookies by backend
 			return {
 				access_token: data.access_token,
 				refresh_token: data.refresh_token,
@@ -255,11 +222,20 @@ export const authService = {
 	},
 
 	/**
-	 * Logout (clear all auth data)
+	 * Logout (call backend to clear cookies and clear client data)
 	 */
-	logout(): void {
-		localStorage.removeItem('access_token');
-		localStorage.removeItem('refresh_token');
+	async logout(): Promise<void> {
+		try {
+			// Call backend logout endpoint to clear httpOnly cookies
+			await fetch(`${API_URL}/api/v1/auth/logout`, {
+				method: 'POST',
+				credentials: 'include',
+			});
+		} catch (error) {
+			console.error('Logout error:', error);
+		}
+
+		// Clear client-side data (guest metadata, preferences remain)
 		localStorage.removeItem('guest_token');
 		localStorage.removeItem('guest_created_at');
 	},
@@ -288,23 +264,21 @@ export const authService = {
 
 	/**
 	 * Get authorization header for API requests
+	 * @deprecated Tokens now in httpOnly cookies, no header needed
 	 */
 	getAuthHeader(): HeadersInit {
-		const token = localStorage.getItem('access_token');
-
-		if (!token) {
-			return {};
-		}
-
-		return {
-			Authorization: `Bearer ${token}`,
-		};
+		// No longer needed - cookies sent automatically
+		return {};
 	},
 
 	/**
 	 * Check if user is authenticated
+	 * @deprecated Cannot check from client - use getCurrentUser() instead
 	 */
 	isAuthenticated(): boolean {
-		return !!localStorage.getItem('access_token');
+		// Cannot determine from client side with httpOnly cookies
+		// Use getCurrentUser() to check server-side auth status
+		console.warn('isAuthenticated() deprecated - use getCurrentUser() instead');
+		return false;
 	},
 };

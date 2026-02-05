@@ -74,12 +74,12 @@ def decode_token(token: str) -> dict:
 
 def set_auth_cookies(response: Response, access_token: str, refresh_token: Optional[str] = None):
     """Set httpOnly cookies for authentication tokens
-    
+
     Args:
         response: FastAPI Response object
         access_token: JWT access token
         refresh_token: Optional JWT refresh token
-    
+
     Security:
         - httponly=True: Prevents JavaScript access (XSS protection)
         - secure=True: HTTPS only in production
@@ -95,7 +95,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: Optio
         secure=IS_PRODUCTION,  # HTTPS only in production
         samesite="lax",  # CSRF protection
     )
-    
+
     # Set refresh token cookie if provided
     if refresh_token:
         response.set_cookie(
@@ -110,7 +110,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: Optio
 
 def clear_auth_cookies(response: Response):
     """Clear authentication cookies (logout)
-    
+
     Args:
         response: FastAPI Response object
     """

@@ -1,6 +1,7 @@
 'use client';
 
 import { SaveSlotsModal } from '@/components/SaveSlotsModal';
+import { apiFetch } from '@/lib/api-client';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -31,17 +32,8 @@ export default function CharacterSelectPage() {
 
 	const fetchCharacters = async () => {
 		try {
-			const token = localStorage.getItem('access_token');
-			if (!token) {
-				router.push('/auth/login');
-				return;
-			}
-
-			const response = await fetch('http://localhost:8000/api/v1/characters', {
-				headers: {
-					'Authorization': `Bearer ${token}`,
-				},
-			});
+			// apiFetch automatically sends httpOnly cookies
+			const response = await apiFetch('/api/v1/characters');
 
 			if (response.status === 401) {
 				router.push('/auth/login');
@@ -74,17 +66,9 @@ export default function CharacterSelectPage() {
 
 		try {
 			setDeletingId(characterId);
-			const token = localStorage.getItem('access_token');
-			if (!token) {
-				router.push('/auth/login');
-				return;
-			}
-
-			const response = await fetch(`http://localhost:8000/api/v1/characters/${characterId}`, {
+			// apiFetch automatically sends httpOnly cookies
+			const response = await apiFetch(`/api/v1/characters/${characterId}`, {
 				method: 'DELETE',
-				headers: {
-					'Authorization': `Bearer ${token}`,
-				},
 			});
 
 			if (response.status === 401) {

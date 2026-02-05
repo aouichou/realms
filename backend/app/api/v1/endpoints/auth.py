@@ -3,7 +3,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import create_access_token, create_refresh_token, set_auth_cookies, clear_auth_cookies
+from app.core.security import (
+    clear_auth_cookies,
+    create_access_token,
+    create_refresh_token,
+    set_auth_cookies,
+)
 from app.db.base import get_db
 from app.db.models import User
 from app.middleware.auth import get_current_user
@@ -128,7 +133,9 @@ async def create_guest(response: Response, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/claim-guest", response_model=TokenResponse)
-async def claim_guest(claim_data: ClaimGuestAccount, response: Response, db: AsyncSession = Depends(get_db)):
+async def claim_guest(
+    claim_data: ClaimGuestAccount, response: Response, db: AsyncSession = Depends(get_db)
+):
     """Claim a guest account with email and password
 
     Converts a guest account to a registered account,
@@ -163,7 +170,9 @@ async def claim_guest(claim_data: ClaimGuestAccount, response: Response, db: Asy
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_data: RefreshTokenRequest, response: Response, db: AsyncSession = Depends(get_db)):
+async def refresh_token(
+    refresh_data: RefreshTokenRequest, response: Response, db: AsyncSession = Depends(get_db)
+):
     """Refresh access token using refresh token
 
     Args:

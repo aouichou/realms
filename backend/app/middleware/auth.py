@@ -21,27 +21,27 @@ def get_token_from_request(
     access_token_cookie: Optional[str] = Cookie(None, alias=COOKIE_ACCESS_TOKEN_NAME),
 ) -> Optional[str]:
     """Extract token from either cookie or Authorization header
-    
+
     Priority:
         1. httpOnly cookie (preferred for security)
         2. Authorization header (backward compatibility)
-    
+
     Args:
         request: FastAPI request object
         credentials: HTTP Bearer credentials from Authorization header
         access_token_cookie: Access token from httpOnly cookie
-    
+
     Returns:
         JWT token string or None
     """
     # Priority 1: Check cookie (preferred)
     if access_token_cookie:
         return access_token_cookie
-    
+
     # Priority 2: Check Authorization header (backward compatibility)
     if credentials:
         return credentials.credentials
-    
+
     return None
 
 

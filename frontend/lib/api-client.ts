@@ -26,11 +26,10 @@ const processQueue = (error: any = null) => {
 };
 
 /**
- * Enhanced fetch that automatically includes JWT token from localStorage
+ * Enhanced fetch that automatically sends httpOnly cookies for authentication
  * and handles token refresh on 401 responses
  */
 export async function apiFetch(endpoint: string, options: FetchOptions = {}): Promise<Response> {
-	const token = localStorage.getItem('access_token');
 	const language = localStorage.getItem('dm_language') || 'en';
 
 	const headers: Record<string, string> = {
@@ -39,15 +38,13 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}): Pr
 		...options.headers,
 	};
 
-	if (token) {
-		headers['Authorization'] = `Bearer ${token}`;
-	}
-
 	const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
 
+	// Include credentials to send httpOnly cookies
 	const response = await fetch(url, {
 		...options,
 		headers,
+		credentials: 'include',
 	});
 
 	// Handle 401 - Unauthorized (token expired)

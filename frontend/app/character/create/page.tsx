@@ -158,15 +158,6 @@ export default function CharacterCreation() {
 
 		setIsSubmitting(true);
 
-		// Get authentication token
-		const token = localStorage.getItem('access_token');
-		if (!token) {
-			showToast(t('characterCreation.toasts.notAuthenticated'), 'error');
-			setIsSubmitting(false);
-			router.push('/');
-			return;
-		}
-
 		const characterData = {
 			name: name.trim(),
 			character_class: selectedClass,
@@ -176,6 +167,7 @@ export default function CharacterCreation() {
 		};
 
 		try {
+			// apiClient automatically sends httpOnly cookies
 			const response = await apiClient.post('/api/v1/characters', characterData);
 
 			if (response.ok) {

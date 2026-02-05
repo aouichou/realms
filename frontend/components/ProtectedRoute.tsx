@@ -25,22 +25,11 @@ export function ProtectedRoute({ children, requireRegistered = false }: Protecte
 
 	const checkAuth = async () => {
 		try {
-			// Check for access token
-			const token = localStorage.getItem('access_token');
-
-			if (!token) {
-				// No token, redirect to login
-				router.push('/login?redirect=' + encodeURIComponent(router.asPath));
-				return;
-			}
-
-			// Validate token by fetching current user
+			// Validate auth by fetching current user (backend checks httpOnly cookie)
 			const currentUser = await authService.getCurrentUser();
 
 			if (!currentUser) {
-				// Invalid token, redirect to login
-				localStorage.removeItem('access_token');
-				localStorage.removeItem('refresh_token');
+				// No valid session, redirect to login
 				router.push('/login?redirect=' + encodeURIComponent(router.asPath));
 				return;
 			}
