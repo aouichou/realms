@@ -1049,101 +1049,104 @@ export default function GamePage() {
 									<CompanionListPanel
 										characterId={characterId}
 										onCompanionToggle={() => {
-										// Companion toggled
-							)}
-
-									{/* Image Gallery Panel */}
-									{openPanel === 'images' && (
-										<div className="bg-neutral-900 rounded-lg h-full">
-											<ImageGalleryPanel
-												images={messages
-													.filter(m => m.scene_image_url)
-													.map(m => ({
-														url: m.scene_image_url!,
-														timestamp: m.timestamp,
-														caption: m.content.substring(0, 100),
-													}))
-												}
-											/>
-										</div>
-									)}
-
-									{/* Dice Panel */}
-									{openPanel === 'dice' && (
-										<div className="space-y-6">
-											<div className="space-y-3">
-												<label className="text-sm text-accent-200 font-body font-semibold">{t('game.diceRoller.notation')}</label>
-												<Input
-													value={diceNotation}
-													onChange={(e) => setDiceNotation(e.target.value)}
-													placeholder={t('game.diceRoller.placeholder')}
-													className="bg-accent-200/10 border-accent-600/30 text-accent-200 font-mono placeholder:text-accent-200/40 focus:border-accent-600"
-												/>
-											</div>
-
-											<div className="space-y-2">
-												<p className="text-xs text-accent-200/70 font-body">Quick Roll:</p>
-												<div className="grid grid-cols-3 gap-2">
-													{['1d4', '1d6', '1d8', '1d10', '1d12', '1d20'].map((notation) => (
-														<Button
-															key={notation}
-															variant="outline"
-															onClick={() => {
-																setDiceNotation(notation);
-																setLastDiceResult(null);
-															}}
-															className="font-mono font-bold border-accent-600/30 bg-accent-200/5 text-accent-200 hover:bg-accent-600/20 hover:border-accent-600 hover:text-accent-200 transition-all"
-														>
-															🎲 {notation}
-														</Button>
-													))}
-												</div>
-											</div>
-
-											<Button
-												onClick={rollDice}
-												className="w-full font-body bg-accent-600 hover:bg-accent-400 text-primary-900 font-semibold shadow-lg"
-												size="lg"
-											>
-												🎲 {t('game.diceRoller.rollDice')}
-											</Button>
-
-											{lastDiceResult && (
-												<Card className="bg-accent-400/20 border-accent-400/30">
-													<CardContent className="p-4">
-														<div className="text-center">
-															<p className="text-sm text-white/80 font-body mb-2">
-																{lastDiceResult.notation}
-															</p>
-															<p className="text-4xl font-bold text-accent-400 font-display mb-2">
-																{lastDiceResult.total}
-															</p>
-															{lastDiceResult.individual_rolls && (
-																<p className="text-xs text-white/60 font-mono">
-																	{t('game.diceRoller.rolls')} {lastDiceResult.individual_rolls.map((r: any) => r.roll).join(', ')}
-																	{lastDiceResult.modifier !== 0 && ` (${lastDiceResult.modifier >= 0 ? '+' : ''}${lastDiceResult.modifier})`}
-																</p>
-															)}
-														</div>
-													</CardContent>
-												</Card>
-											)}
-										</div>
-									)}
+											// Companion toggled
+										}}
+									/>
 								</div>
 							)}
 
-							{/* Quest Complete Modal */}
-							{questCompleteData && (
-								<QuestCompleteModal
-									isOpen={showQuestCompleteModal}
-									questTitle={questCompleteData.title}
-									rewards={questCompleteData.rewards}
-									onClose={() => setShowQuestCompleteModal(false)}
-									onClaimRewards={claimQuestRewards}
-								/>
+							{/* Image Gallery Panel */}
+							{openPanel === 'images' && (
+								<div className="bg-neutral-900 rounded-lg h-full">
+									<ImageGalleryPanel
+										images={messages
+											.filter(m => m.scene_image_url)
+											.map(m => ({
+												url: m.scene_image_url!,
+												timestamp: m.timestamp,
+												caption: m.content.substring(0, 100),
+											}))
+										}
+									/>
+								</div>
+							)}
+
+							{/* Dice Panel */}
+							{openPanel === 'dice' && (
+								<div className="space-y-6">
+									<div className="space-y-3">
+										<label className="text-sm text-accent-200 font-body font-semibold">{t('game.diceRoller.notation')}</label>
+										<Input
+											value={diceNotation}
+											onChange={(e) => setDiceNotation(e.target.value)}
+											placeholder={t('game.diceRoller.placeholder')}
+											className="bg-accent-200/10 border-accent-600/30 text-accent-200 font-mono placeholder:text-accent-200/40 focus:border-accent-600"
+										/>
+									</div>
+
+									<div className="space-y-2">
+										<p className="text-xs text-accent-200/70 font-body">Quick Roll:</p>
+										<div className="grid grid-cols-3 gap-2">
+											{['1d4', '1d6', '1d8', '1d10', '1d12', '1d20'].map((notation) => (
+												<Button
+													key={notation}
+													variant="outline"
+													onClick={() => {
+														setDiceNotation(notation);
+														setLastDiceResult(null);
+													}}
+													className="font-mono font-bold border-accent-600/30 bg-accent-200/5 text-accent-200 hover:bg-accent-600/20 hover:border-accent-600 hover:text-accent-200 transition-all"
+												>
+													🎲 {notation}
+												</Button>
+											))}
+										</div>
+									</div>
+
+									<Button
+										onClick={rollDice}
+										className="w-full font-body bg-accent-600 hover:bg-accent-400 text-primary-900 font-semibold shadow-lg"
+										size="lg"
+									>
+										🎲 {t('game.diceRoller.rollDice')}
+									</Button>
+
+									{lastDiceResult && (
+										<Card className="bg-accent-400/20 border-accent-400/30">
+											<CardContent className="p-4">
+												<div className="text-center">
+													<p className="text-sm text-white/80 font-body mb-2">
+														{lastDiceResult.notation}
+													</p>
+													<p className="text-4xl font-bold text-accent-400 font-display mb-2">
+														{lastDiceResult.total}
+													</p>
+													{lastDiceResult.individual_rolls && (
+														<p className="text-xs text-white/60 font-mono">
+															{t('game.diceRoller.rolls')} {lastDiceResult.individual_rolls.map((r: any) => r.roll).join(', ')}
+															{lastDiceResult.modifier !== 0 && ` (${lastDiceResult.modifier >= 0 ? '+' : ''}${lastDiceResult.modifier})`}
+														</p>
+													)}
+												</div>
+											</CardContent>
+										</Card>
+									)}
+								</div>
 							)}
 						</div>
+					)}
+
+				{/* Quest Complete Modal */}
+				{questCompleteData && (
+					<QuestCompleteModal
+						isOpen={showQuestCompleteModal}
+						questTitle={questCompleteData.title}
+						rewards={questCompleteData.rewards}
+						onClose={() => setShowQuestCompleteModal(false)}
+						onClaimRewards={claimQuestRewards}
+					/>
+				)}
+			</div>
 		</div>
-			);
+	);
 }
