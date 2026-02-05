@@ -2,26 +2,61 @@
 
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decode_token
+from app.core.security import COOKIE_ACCESS_TOKEN_NAME, decode_token
 from app.db.base import get_db
 from app.db.models import User
 from app.services.auth_service import get_user_by_id
 
-# Bearer token scheme
-security = HTTPBearer()
+# Bearer token scheme (backward compatibility)
+security = HTTPBearer(auto_error=False)
+
+
+def get_token_from_request(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    access_token_cookie: Optional[str] = Cookie(None, alias=COOKIE_ACCESS_TOKEN_NAME),
+) -> Optional[str]:
+    """Extract token from either cookie or Authorization header
+    
+    Priority:
+        1. httpOnly cookie (preferred for security)
+        2. Authorization header (backward compatibility)
+    
+    Args:
+        request: FastAPI request object
+        credentials: HTTP Bearer credentials from Authorization header
+        access_token_cookie: Access token from httpOnly cookie
+    
+    Returns:
+        JWT token string or None
+    """
+    # Priority 1: Check cookie (preferred)
+    if access_token_cookie:
+        return access_token_cookie
+    
+    # Priority 2: Check Authorization header (backward compatibility)
+    if credentials:
+        return credentials.credentials
+    
+    return None
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
+    token: Optional[str] = Depends(get_token_from_request),
 ) -> User:
     """Get current authenticated user from JWT token"""
 
-    token = credentials.credentials
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     # Decode token
     payload = decode_token(token)

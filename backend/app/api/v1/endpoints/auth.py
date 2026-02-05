@@ -1,9 +1,9 @@
 """Authentication API endpoints"""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import create_access_token, create_refresh_token
+from app.core.security import create_access_token, create_refresh_token, set_auth_cookies, clear_auth_cookies
 from app.db.base import get_db
 from app.db.models import User
 from app.middleware.auth import get_current_user
@@ -27,11 +27,12 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
 @router.post("/register", response_model=TokenResponse)
-async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(user_data: UserCreate, response: Response, db: AsyncSession = Depends(get_db)):
     """Register a new user account
 
     Args:
         user_data: User registration data (email, username, password)
+        response: FastAPI Response object for setting cookies
         db: Database session
 
     Returns:
@@ -48,17 +49,21 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
+    # Set httpOnly cookies for XSS protection
+    set_auth_cookies(response, access_token, refresh_token)
+
     return TokenResponse(
         access_token=access_token, refresh_token=refresh_token, user=UserResponse.from_orm(user)
     )
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(login_data: UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(login_data: UserLogin, response: Response, db: AsyncSession = Depends(get_db)):
     """Login with email and password
 
     Args:
         login_data: Login credentials (email, password)
+        response: FastAPI Response object for setting cookies
         db: Database session
 
     Returns:
@@ -80,19 +85,23 @@ async def login(login_data: UserLogin, db: AsyncSession = Depends(get_db)):
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
+    # Set httpOnly cookies for XSS protection
+    set_auth_cookies(response, access_token, refresh_token)
+
     return TokenResponse(
         access_token=access_token, refresh_token=refresh_token, user=UserResponse.from_orm(user)
     )
 
 
 @router.post("/guest", response_model=GuestTokenResponse)
-async def create_guest(db: AsyncSession = Depends(get_db)):
+async def create_guest(response: Response, db: AsyncSession = Depends(get_db)):
     """Create a guest account for anonymous play
 
     No authentication required. Creates a temporary account
     that can be claimed later with email/password.
 
     Args:
+        response: FastAPI Response object for setting cookies
         db: Database session
 
     Returns:
@@ -110,13 +119,16 @@ async def create_guest(db: AsyncSession = Depends(get_db)):
             detail="Failed to generate guest token",
         )
 
+    # Set httpOnly cookie for guest access token
+    set_auth_cookies(response, access_token, None)
+
     return GuestTokenResponse(
         access_token=access_token, guest_token=user.guest_token, user=UserResponse.from_orm(user)
     )
 
 
 @router.post("/claim-guest", response_model=TokenResponse)
-async def claim_guest(claim_data: ClaimGuestAccount, db: AsyncSession = Depends(get_db)):
+async def claim_guest(claim_data: ClaimGuestAccount, response: Response, db: AsyncSession = Depends(get_db)):
     """Claim a guest account with email and password
 
     Converts a guest account to a registered account,
@@ -124,6 +136,7 @@ async def claim_guest(claim_data: ClaimGuestAccount, db: AsyncSession = Depends(
 
     Args:
         claim_data: Guest token and new credentials
+        response: FastAPI response object (for cookies)
         db: Database session
 
     Returns:
@@ -141,17 +154,21 @@ async def claim_guest(claim_data: ClaimGuestAccount, db: AsyncSession = Depends(
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
+    # Set httpOnly cookies for security
+    set_auth_cookies(response, access_token, refresh_token)
+
     return TokenResponse(
         access_token=access_token, refresh_token=refresh_token, user=UserResponse.from_orm(user)
     )
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_data: RefreshTokenRequest, db: AsyncSession = Depends(get_db)):
+async def refresh_token(refresh_data: RefreshTokenRequest, response: Response, db: AsyncSession = Depends(get_db)):
     """Refresh access token using refresh token
 
     Args:
         refresh_data: Refresh token request data
+        response: FastAPI response object (for cookies)
         db: Database session
 
     Returns:
@@ -189,6 +206,9 @@ async def refresh_token(refresh_data: RefreshTokenRequest, db: AsyncSession = De
         access_token = create_access_token(data={"sub": str(user.id)})
         new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
+        # Set httpOnly cookies (token rotation)
+        set_auth_cookies(response, access_token, new_refresh_token)
+
         return TokenResponse(
             access_token=access_token,
             refresh_token=new_refresh_token,
@@ -201,6 +221,20 @@ async def refresh_token(refresh_data: RefreshTokenRequest, db: AsyncSession = De
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         )
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    """Logout user by clearing authentication cookies
+
+    Args:
+        response: FastAPI response object (for cookies)
+
+    Returns:
+        Success message
+    """
+    clear_auth_cookies(response)
+    return {"message": "Successfully logged out"}
 
 
 @router.get("/me", response_model=UserResponse)
