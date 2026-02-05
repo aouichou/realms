@@ -644,9 +644,49 @@ async def send_player_action(
         "warnings": spell_warnings if spell_warnings else None,
     }
 
-    # Check for legacy roll request format (keep for backward compatibility)
+    # Check for tool-based roll request format (from request_player_roll tool)
     if result.get("roll_request") and player_roll_request is None:
-        response_data["roll_request"] = result["roll_request"]
+        tool_roll = result["roll_request"]
+
+        # Transform tool executor format to RollRequest schema the frontend expects
+        # Tool executor returns: {type, ability_or_skill, dc, advantage, disadvantage, description}
+        # Frontend expects: {type, dice, ability, skill, dc, advantage, disadvantage, description}
+
+        # Map roll_type to frontend type
+        roll_type_map = {
+            "ability_check": "check",
+            "saving_throw": "save",
+            "attack": "attack",
+        }
+        frontend_type = roll_type_map.get(tool_roll["type"], tool_roll["type"])
+
+        # Parse ability_or_skill into ability and skill
+        ability_or_skill = tool_roll.get("ability_or_skill", "")
+        ability = None
+        skill = None
+
+        # Abilities are uppercase (STR, DEX, CON, INT, WIS, CHA)
+        abilities = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
+
+        if tool_roll["type"] == "saving_throw":
+            # For saves, ability_or_skill is the ability
+            ability = ability_or_skill if ability_or_skill in abilities else None
+        elif tool_roll["type"] == "ability_check":
+            # For checks, ability_or_skill is usually a skill
+            # We capitalize first letter for consistency
+            skill = ability_or_skill.lower() if ability_or_skill else None
+        # For attacks, ability_or_skill is "melee" or "ranged" which we don't need to map
+
+        response_data["roll_request"] = {
+            "type": frontend_type,
+            "dice": "1d20",  # Standard roll dice
+            "ability": ability,
+            "skill": skill,
+            "dc": tool_roll.get("dc"),
+            "advantage": tool_roll.get("advantage", False),
+            "disadvantage": tool_roll.get("disadvantage", False),
+            "description": tool_roll.get("description", ""),
+        }
 
     # Generate scene image for significant moments (BEFORE saving messages)
     # Uses semantic similarity detection - works in any language (French, English, etc.)
@@ -738,11 +778,8 @@ async def send_player_action(
         # Capture dialogue memory
         try:
             # Enhanced memory capture system - detect event types automatically
-            from app.db.models import EventType
-
             narration_lower = result["narration"].lower()
             action_lower = action_text.lower()
-            combined_text = f"{action_text} {result['narration']}"
 
             # Detect event type and capture appropriately
             event_captured = False
