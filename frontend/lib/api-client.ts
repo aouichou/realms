@@ -2,6 +2,8 @@
  * Centralized API client with automatic authentication handling
  */
 
+import { getHeadersWithCsrf } from './csrf';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface FetchOptions extends RequestInit {
@@ -32,11 +34,20 @@ const processQueue = (error: any = null) => {
 export async function apiFetch(endpoint: string, options: FetchOptions = {}): Promise<Response> {
 	const language = localStorage.getItem('dm_language') || 'en';
 
-	const headers: Record<string, string> = {
+	// Add CSRF token for state-changing requests
+	const method = (options.method || 'GET').toUpperCase();
+	const needsCsrf = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+
+	let headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 		'Accept-Language': language,
 		...options.headers,
 	};
+
+	// Add CSRF token to headers if needed (except for auth endpoints which generate new tokens)
+	if (needsCsrf && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/register') && !endpoint.includes('/auth/guest')) {
+		headers = getHeadersWithCsrf(headers);
+	}
 
 	const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
 
@@ -90,6 +101,21 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}): Pr
 			processQueue(error);
 			isRefreshing = false;
 			throw error;
+		}
+	}
+
+	// Handle 403 - CSRF validation failed
+	if (response.status === 403) {
+		const contentType = response.headers.get('content-type');
+		if (contentType && contentType.includes('application/json')) {
+			const errorData = await response.clone().json();
+			if (errorData.error === 'CSRFValidationError') {
+				// CSRF token is missing or invalid, refresh page to get new token
+				if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+					console.error('CSRF validation failed. Refreshing page to get new token.');
+					window.location.reload();
+				}
+			}
 		}
 	}
 

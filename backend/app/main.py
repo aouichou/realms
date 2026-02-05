@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.v1.router import api_router
 from app.config import settings
 from app.db.base import close_db, engine
+from app.middleware.csrf import CSRFProtectionMiddleware
 from app.middleware.error_logger import ErrorLoggerMiddleware
 from app.middleware.https import HTTPSEnforcementMiddleware
 from app.middleware.language import LanguageMiddleware
@@ -119,6 +120,9 @@ app.add_middleware(
 
 # HTTPS enforcement (redirects HTTP to HTTPS in production)
 app.add_middleware(HTTPSEnforcementMiddleware, hsts_max_age=31536000)  # 1 year
+
+# CSRF protection middleware (must be after CORS, before rate limiting)
+app.add_middleware(CSRFProtectionMiddleware)
 
 # Error logging middleware (captures errors to file - must be early in chain)
 app.add_middleware(ErrorLoggerMiddleware)

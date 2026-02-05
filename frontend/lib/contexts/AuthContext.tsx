@@ -1,8 +1,9 @@
 "use client";
 
 import { authService, type User } from "@/lib/auth";
+import { willExpireSoon } from "@/lib/jwt";
 import { useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 
 interface AuthContextType {
 	user: User | null;
@@ -21,12 +22,58 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
 	const [user, setUser] = useState<User | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
+	const [accessToken, setAccessToken] = useState<string | null>(null); // Store token for expiry checking
+	const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 	const router = useRouter();
 
 	// Check auth status on mount and try to restore session
 	useEffect(() => {
 		initializeAuth();
+
+		// Cleanup refresh timer on unmount
+		return () => {
+			if (refreshTimerRef.current) {
+				clearInterval(refreshTimerRef.current);
+			}
+		};
 	}, []);
+
+	// Proactive token refresh - check every minute
+	useEffect(() => {
+		if (!accessToken || !user) {
+			return;
+		}
+
+		// Clear existing timer
+		if (refreshTimerRef.current) {
+			clearInterval(refreshTimerRef.current);
+		}
+
+		// Set up periodic check (every 60 seconds)
+		refreshTimerRef.current = setInterval(async () => {
+			// Check if token will expire in the next 5 minutes
+			if (willExpireSoon(accessToken, 5 * 60 * 1000)) {
+				try {
+					const refreshed = await authService.refreshToken();
+					if (refreshed && refreshed.access_token) {
+						setAccessToken(refreshed.access_token);
+					} else {
+						// Refresh failed, logout
+						await logout();
+					}
+				} catch (error) {
+					console.error('[AuthContext] Proactive token refresh failed:', error);
+					await logout();
+				}
+			}
+		}, 60 * 1000); // Check every minute
+
+		return () => {
+			if (refreshTimerRef.current) {
+				clearInterval(refreshTimerRef.current);
+			}
+		};
+	}, [accessToken, user]);
 
 	const initializeAuth = async () => {
 		try {
@@ -59,23 +106,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	};
 
 	const login = async (email: string, password: string) => {
-		const { user } = await authService.login(email, password);
+		const { user, tokens } = await authService.login(email, password);
 		setUser(user);
+		setAccessToken(tokens.access_token); // Store for expiry checking
 	};
 
 	const register = async (email: string, username: string, password: string) => {
-		const { user } = await authService.register(email, username, password);
+		const { user, tokens } = await authService.register(email, username, password);
 		setUser(user);
+		setAccessToken(tokens.access_token); // Store for expiry checking
 	};
 
 	const createGuest = async () => {
-		const { user } = await authService.createGuest();
+		const { user, tokens } = await authService.createGuest();
 		setUser(user);
+		setAccessToken(tokens.access_token); // Store for expiry checking
 	};
 
 	const logout = async () => {
 		await authService.logout();
 		setUser(null);
+		setAccessToken(null);
+
+		// Clear refresh timer
+		if (refreshTimerRef.current) {
+			clearInterval(refreshTimerRef.current);
+		}
+
 		router.push('/');
 	};
 

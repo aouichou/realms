@@ -12,6 +12,7 @@ from app.core.security import (
 from app.db.base import get_db
 from app.db.models import User
 from app.middleware.auth import get_current_user
+from app.middleware.csrf import generate_csrf_token, set_csrf_cookie
 from app.schemas.auth import (
     ClaimGuestAccount,
     GuestTokenResponse,
@@ -57,6 +58,11 @@ async def register(user_data: UserCreate, response: Response, db: AsyncSession =
     # Set httpOnly cookies for XSS protection
     set_auth_cookies(response, access_token, refresh_token)
 
+    # Generate and set CSRF token for CSRF protection
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
+    response.headers["X-CSRF-Token"] = csrf_token  # Send in header for initial setup
+
     return TokenResponse(
         access_token=access_token, refresh_token=refresh_token, user=UserResponse.from_orm(user)
     )
@@ -93,6 +99,11 @@ async def login(login_data: UserLogin, response: Response, db: AsyncSession = De
     # Set httpOnly cookies for XSS protection
     set_auth_cookies(response, access_token, refresh_token)
 
+    # Generate and set CSRF token for CSRF protection
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
+    response.headers["X-CSRF-Token"] = csrf_token  # Send in header for initial setup
+
     return TokenResponse(
         access_token=access_token, refresh_token=refresh_token, user=UserResponse.from_orm(user)
     )
@@ -126,6 +137,11 @@ async def create_guest(response: Response, db: AsyncSession = Depends(get_db)):
 
     # Set httpOnly cookie for guest access token
     set_auth_cookies(response, access_token, None)
+
+    # Generate and set CSRF token for CSRF protection
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
+    response.headers["X-CSRF-Token"] = csrf_token  # Send in header for initial setup
 
     return GuestTokenResponse(
         access_token=access_token, guest_token=user.guest_token, user=UserResponse.from_orm(user)
@@ -163,6 +179,11 @@ async def claim_guest(
 
     # Set httpOnly cookies for security
     set_auth_cookies(response, access_token, refresh_token)
+
+    # Generate and set CSRF token for CSRF protection
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
+    response.headers["X-CSRF-Token"] = csrf_token  # Send in header for initial setup
 
     return TokenResponse(
         access_token=access_token, refresh_token=refresh_token, user=UserResponse.from_orm(user)

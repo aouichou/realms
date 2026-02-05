@@ -16,6 +16,16 @@ from app.observability.logger import get_logger
 logger = get_logger(__name__)
 
 
+# Endpoint-specific rate limits (requests per minute)
+ENDPOINT_RATE_LIMITS = {
+    "/api/v1/auth/login": {"requests_per_minute": 5, "description": "login attempts"},
+    "/api/v1/auth/register": {"requests_per_minute": 3, "description": "registration attempts"},
+    "/api/v1/auth/refresh": {"requests_per_minute": 10, "description": "token refreshes"},
+    "/api/v1/image/generate": {"requests_per_hour": 5, "description": "image generations"},
+    "/api/v1/adventure/start": {"requests_per_hour": 10, "description": "adventure starts"},
+}
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """
     Rate limiting middleware with multiple strategies.
@@ -74,7 +84,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 del self.blocked_ips[identifier]
         return False
 
-    def _check_rate_limit(self, identifier: str) -> Tuple[bool, str, int]:
+    def _check_rate_limit(self, identifier: str, endpoint: str = "") -> Tuple[bool, str, int]:
         """
         Check if request should be allowed.
 
@@ -101,13 +111,39 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
             return False, "burst_protection", self.block_duration
 
-        # Check per-minute limit
+        # Check endpoint-specific rate limits first
+        if endpoint in ENDPOINT_RATE_LIMITS:
+            limits = ENDPOINT_RATE_LIMITS[endpoint]
+
+            # Check per-minute limit for endpoint
+            if "requests_per_minute" in limits:
+                minute_requests = [ts for ts in request_times if now - ts < 60]
+                if len(minute_requests) >= limits["requests_per_minute"]:
+                    retry_after = 60 - (now - minute_requests[0])
+                    logger.warning(
+                        f"Endpoint rate limit exceeded for {identifier} on {endpoint}: "
+                        f"{len(minute_requests)}/{limits['requests_per_minute']} {limits['description']}"
+                    )
+                    return False, f"endpoint_limit_{limits['description']}", int(retry_after)
+
+            # Check per-hour limit for endpoint
+            if "requests_per_hour" in limits:
+                hour_requests = request_times
+                if len(hour_requests) >= limits["requests_per_hour"]:
+                    retry_after = 3600 - (now - hour_requests[0])
+                    logger.warning(
+                        f"Endpoint hourly limit exceeded for {identifier} on {endpoint}: "
+                        f"{len(hour_requests)}/{limits['requests_per_hour']} {limits['description']}"
+                    )
+                    return False, f"endpoint_limit_hour_{limits['description']}", int(retry_after)
+
+        # Check global per-minute limit
         minute_requests = [ts for ts in request_times if now - ts < 60]
         if len(minute_requests) >= self.requests_per_minute:
             retry_after = 60 - (now - minute_requests[0])
             return False, "rate_limit_minute", int(retry_after)
 
-        # Check per-hour limit
+        # Check global per-hour limit
         hour_requests = request_times
         if len(hour_requests) >= self.requests_per_hour:
             retry_after = 3600 - (now - hour_requests[0])
@@ -136,8 +172,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 headers={"Retry-After": str(self.block_duration)},
             )
 
-        # Check rate limits
-        allowed, reason, retry_after = self._check_rate_limit(identifier)
+        # Check rate limits (pass endpoint for specific limits)
+        allowed, reason, retry_after = self._check_rate_limit(identifier, request.url.path)
 
         if not allowed:
             logger.warning(

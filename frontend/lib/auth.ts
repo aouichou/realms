@@ -1,5 +1,6 @@
 /** Authentication context and utilities for frontend */
 import { API_URL } from './api-client';
+import { clearCsrfToken, setCsrfTokenFromHeader } from './csrf';
 
 export interface User {
 	id: string;
@@ -43,6 +44,9 @@ export const authService = {
 
 		const data = await response.json();
 
+		// Capture CSRF token from response
+		setCsrfTokenFromHeader(response.headers);
+
 		// Store guest metadata (not tokens - those are in httpOnly cookies)
 		if (data.guest_token) {
 			localStorage.setItem('guest_token', data.guest_token);
@@ -80,6 +84,9 @@ export const authService = {
 
 		const data = await response.json();
 
+		// Capture CSRF token from response headers
+		setCsrfTokenFromHeader(response.headers);
+
 		// Clear guest metadata (tokens now in httpOnly cookies)
 		localStorage.removeItem('guest_token');
 		localStorage.removeItem('guest_created_at');
@@ -113,6 +120,9 @@ export const authService = {
 		}
 
 		const data = await response.json();
+
+		// Capture CSRF token from response headers
+		setCsrfTokenFromHeader(response.headers);
 
 		// Clear guest metadata (tokens now in httpOnly cookies)
 		localStorage.removeItem('guest_token');
@@ -153,6 +163,9 @@ export const authService = {
 		}
 
 		const data = await response.json();
+
+		// Capture CSRF token from response headers
+		setCsrfTokenFromHeader(response.headers);
 
 		// Clear guest metadata (tokens now in httpOnly cookies)
 		localStorage.removeItem('guest_token');
@@ -234,6 +247,9 @@ export const authService = {
 		} catch (error) {
 			console.error('Logout error:', error);
 		}
+
+		// Clear CSRF token (server will clear cookie)
+		clearCsrfToken();
 
 		// Clear client-side data (guest metadata, preferences remain)
 		localStorage.removeItem('guest_token');
