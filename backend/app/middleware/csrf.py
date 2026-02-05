@@ -110,7 +110,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
             # Both must be present
             if not cookie_token or not header_token:
                 logger.warning(
-                    f"CSRF validation failed: Missing token",
+                    "CSRF validation failed: Missing token",
                     extra={
                         "path": request.url.path,
                         "method": request.method,
@@ -129,7 +129,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
             # Tokens must match (constant-time comparison)
             if not secrets.compare_digest(cookie_token, header_token):
                 logger.warning(
-                    f"CSRF validation failed: Token mismatch",
+                    "CSRF validation failed: Token mismatch",
                     extra={
                         "path": request.url.path,
                         "method": request.method,

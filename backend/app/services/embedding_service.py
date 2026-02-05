@@ -5,6 +5,10 @@ from typing import List
 
 from mistralai import Mistral
 
+from app.observability.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class EmbeddingService:
     """Service for generating embeddings using Mistral AI"""
@@ -44,7 +48,7 @@ class EmbeddingService:
             raise ValueError("No embedding returned from Mistral API")
 
         except Exception as e:
-            print(f"Error generating embedding: {e}")
+            logger.error(f"Error generating embedding: {e}")
             return None
 
     async def generate_embeddings_batch(self, texts: List[str]) -> List[List[float] | None]:
@@ -70,7 +74,7 @@ class EmbeddingService:
             return [data.embedding for data in embeddings_response.data]
 
         except Exception as e:
-            print(f"Error generating batch embeddings: {e}")
+            logger.error(f"Error generating batch embeddings: {e}")
             return [None] * len(texts)
 
 
