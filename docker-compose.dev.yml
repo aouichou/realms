@@ -57,6 +57,10 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3-flash-preview}
       - GEMINI_THINKING_LEVEL=${GEMINI_THINKING_LEVEL:-high}
+      - QWEN_API_KEY=${QWEN_API_KEY}
+      - QWEN_MODEL=${QWEN_MODEL:-qwen-max}
+      - QWEN_MAX_TOKENS=${QWEN_MAX_TOKENS:-2048}
+      - QWEN_TEMPERATURE=${QWEN_TEMPERATURE:-0.7}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - POSTGRES_HOST=postgres

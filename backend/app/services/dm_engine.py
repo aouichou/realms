@@ -6,6 +6,7 @@ Handles D&D narrative generation with focused storytelling in multiple languages
 import json
 import re
 import time
+import uuid
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
@@ -23,6 +24,15 @@ from app.services.token_counter import TokenCounter
 from app.services.tool_executor import execute_tool
 
 logger = get_logger(__name__)
+
+
+def _json_serializer(obj):
+    """Custom JSON serializer for objects not serializable by default json code"""
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
 class DMEngine:
@@ -978,7 +988,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
         player_input: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Call Mistral DM with tool calling support.
+        Call AI provider DM with tool calling support (uses provider_selector priority).
 
         This implements the two-stage tool calling flow:
         1. DM calls tools → we execute them
@@ -994,15 +1004,13 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
         Returns:
             Dictionary with narration, tool calls made, and character updates
         """
-        from mistralai import Mistral
-
-        from app.config import settings
         from app.services.dm_supervisor import get_dm_supervisor
 
-        mistral_client = Mistral(api_key=settings.mistral_api_key)
         tool_calls_made = []
         character_updates = {}
         iteration = 0
+        selected_provider_name = "unknown"  # Track actual provider used
+        selected_provider_model = "unknown"
 
         # Initial call with tools
         current_messages = messages.copy()
@@ -1012,17 +1020,62 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
             logger.info(f"Tool calling iteration {iteration}/{max_iterations}")
 
             try:
-                # Call Mistral with tools
-                import asyncio
+                # Get current provider for tool calling
+                provider = await self.provider_selector.select_provider()
+                provider_name = provider.name
+                selected_provider_name = provider_name  # Track for logging
+                selected_provider_model = getattr(provider, "model", "default")
 
-                response = await asyncio.to_thread(
-                    mistral_client.chat.complete,
-                    model=settings.mistral_model,
-                    messages=current_messages,  # type: ignore[arg-type]
-                    tools=GAME_MASTER_TOOLS,  # type: ignore[arg-type]
-                    temperature=0.7,
-                    max_tokens=2048,
-                )
+                # Call provider with tools (supports Qwen, Mistral, others with OpenAI-compatible APIs)
+                if provider_name == "qwen":
+                    # Qwen uses AsyncOpenAI client
+                    from app.services.qwen_provider import QwenProvider
+
+                    if isinstance(provider, QwenProvider):
+                        response = await provider.client.chat.completions.create(
+                            model=provider.model,
+                            messages=current_messages,  # type: ignore[arg-type]
+                            tools=GAME_MASTER_TOOLS,  # type: ignore[arg-type]
+                            temperature=0.7,
+                            max_tokens=2048,
+                        )
+                    else:
+                        raise Exception(f"Expected QwenProvider but got {type(provider).__name__}")
+
+                elif provider_name == "mistral":
+                    # Mistral uses Mistral SDK
+                    import asyncio
+
+                    from mistralai import Mistral
+
+                    from app.config import settings
+
+                    mistral_client = Mistral(api_key=settings.mistral_api_key)
+                    response = await asyncio.to_thread(
+                        mistral_client.chat.complete,
+                        model=settings.mistral_model,
+                        messages=current_messages,  # type: ignore[arg-type]
+                        tools=GAME_MASTER_TOOLS,  # type: ignore[arg-type]
+                        temperature=0.7,
+                        max_tokens=2048,
+                    )
+                else:
+                    # Other providers - check if they have OpenAI-compatible client
+                    logger.warning(
+                        f"Provider {provider_name} may not support tool calling, attempting generic approach..."
+                    )
+                    if hasattr(provider, "client") and hasattr(provider, "model"):
+                        response = await provider.client.chat.completions.create(  # type: ignore[attr-defined]
+                            model=provider.model,  # type: ignore[attr-defined]
+                            messages=current_messages,  # type: ignore[arg-type]
+                            tools=GAME_MASTER_TOOLS,  # type: ignore[arg-type]
+                            temperature=0.7,
+                            max_tokens=2048,
+                        )
+                    else:
+                        raise Exception(
+                            f"Provider {provider_name} does not support tool calling API"
+                        )
 
                 assistant_message = response.choices[0].message
 
@@ -1118,6 +1171,8 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                         "narration": narration,
                         "tool_calls_made": tool_calls_made,
                         "character_updates": character_updates,
+                        "provider_name": selected_provider_name,
+                        "provider_model": selected_provider_model,
                     }
 
                 # Execute tools
@@ -1193,7 +1248,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                         {
                             "role": "tool",
                             "name": tool_name,
-                            "content": json.dumps(tool_result),
+                            "content": json.dumps(tool_result, default=_json_serializer),
                             "tool_call_id": tool_call.id,
                         }
                     )
@@ -1669,9 +1724,9 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
                 },
             )
 
-            # RL-129: Use Mistral tool calling if enabled and character/db available
+            # RL-129: Use provider tool calling if enabled and character/db available
             if use_tools and character is not None and db is not None:
-                logger.info("Using Mistral tool calling for DM narration")
+                logger.info("Using AI provider tool calling for DM narration")
                 tool_result = await self.call_dm_with_tools(
                     messages=messages,
                     character=character,
@@ -1682,6 +1737,8 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
                 narration = tool_result.get("narration", "")
                 tool_calls_made = tool_result.get("tool_calls_made", [])
                 character_updates = tool_result.get("character_updates", {})
+                provider_name = tool_result.get("provider_name", "unknown")
+                provider_model = tool_result.get("provider_model", "unknown")
 
                 # Extract roll request if present
                 cleaned_narration, roll_request = self.extract_roll_request(narration)
@@ -1719,7 +1776,7 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
                     "character_updates": character_updates,
                     "tokens_used": 0,  # TODO: Track tokens from tool calling
                     "timestamp": datetime.now(),
-                    "model": "mistral-tool-calling",
+                    "model": f"{provider_name}-{provider_model}",
                 }
 
             # Fall back to regular narration without tools

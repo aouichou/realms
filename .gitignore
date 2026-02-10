@@ -9,6 +9,7 @@ docs/
 *.code-workspace
 .github
 .codacy/
+backend/tests/Local/*
 
 # Make sure workflows are not ignored
 !.github/workflows/

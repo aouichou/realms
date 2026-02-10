@@ -34,10 +34,6 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
-# Initialize image detection service (lazy-loaded singleton)
-image_detection_service = get_image_detection_service()
-
-
 @router.post("/messages", response_model=MessageResponse, status_code=201)
 @trace_async("conversations.create_message")
 async def create_message(
@@ -425,6 +421,12 @@ async def send_player_action(
     )
 
     perf_dm_duration = time.time() - perf_start_dm
+
+    # Safety check: Ensure narration is not empty
+    if not result.get("narration") or not result["narration"].strip():
+        logger.error(f"DM engine returned empty narration. Full result: {result}")
+        result["narration"] = "The magical energies swirl uncertainly as the spell takes effect..."
+
     logger.info(
         f"DM narration completed in {perf_dm_duration:.2f}s",
         extra={
@@ -695,7 +697,7 @@ async def send_player_action(
     logger.info("Checking scene significance for image generation")
     try:
         is_significant, similarity_score, matched_template = (
-            image_detection_service.is_significant_scene(
+            get_image_detection_service().is_significant_scene(
                 narration=result["narration"], player_action=request.action
             )
         )

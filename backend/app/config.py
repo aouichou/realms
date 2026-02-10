@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     mistral_max_tokens: int = Field(default=2048, description="Maximum tokens per request")
     mistral_temperature: float = Field(default=0.7, description="Model temperature")
 
+    # Alibaba Cloud Qwen API (DashScope)
+    qwen_api_key: str = Field(default="", description="Alibaba DashScope API key")
+    qwen_model: str = Field(
+        default="qwen-max",
+        description="Default Qwen model (qwen-max for best quality, qwen-turbo for speed, qwen-plus for balance)",
+    )
+    qwen_max_tokens: int = Field(default=2048, description="Maximum tokens per request")
+    qwen_temperature: float = Field(default=0.7, description="Model temperature")
+
     # Google Gemini AI API
     gemini_api_key: str = Field(default="", description="Google Gemini API key")
     gemini_model: str = Field(
@@ -141,6 +150,14 @@ class Settings(BaseSettings):
     def ai_providers_config(self) -> dict:
         """Get multi-provider configuration"""
         return {
+            "qwen": {
+                "enabled": bool(self.qwen_api_key),
+                "api_key": self.qwen_api_key,
+                "model": self.qwen_model,
+                "max_tokens": self.qwen_max_tokens,
+                "temperature": self.qwen_temperature,
+                "priority": 1,  # Primary provider - excellent rate limits (1M free/month)
+            },
             "gemini": {
                 "enabled": bool(self.gemini_api_key),
                 "api_key": self.gemini_api_key,
@@ -148,7 +165,7 @@ class Settings(BaseSettings):
                 "max_tokens": self.gemini_max_tokens,
                 "temperature": self.gemini_temperature,
                 "thinking_level": self.gemini_thinking_level,
-                "priority": 2,  # Fallback (was primary during development)
+                "priority": 2,  # Secondary fallback
             },
             "mistral": {
                 "enabled": bool(self.mistral_api_key),
@@ -157,7 +174,7 @@ class Settings(BaseSettings):
                 "max_tokens": self.mistral_max_tokens,
                 "temperature": self.mistral_temperature,
                 "rate_limit": self.rate_limit_per_second,
-                "priority": 1,  # Primary provider for production
+                "priority": 3,  # Tertiary fallback (keep for internship demo)
             },
             "openai": {
                 "enabled": bool(self.openai_api_key),

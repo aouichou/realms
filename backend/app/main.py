@@ -26,6 +26,7 @@ from app.middleware.rate_limit import RateLimitMiddleware
 from app.observability.logger import get_logger
 from app.observability.tracing import init_tracing, instrument_app, instrument_sqlalchemy
 from app.routers import health, metrics
+from app.services.image_detection_service import get_image_detection_service
 from app.services.provider_init import initialize_providers
 from app.services.redis_service import session_service
 
@@ -89,6 +90,15 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to initialize AI providers: {e}")
         # Continue anyway - some endpoints might still work
+
+    # Preload image detection service (471MB ML model - better to load at startup than first request)
+    try:
+        logger.info("Preloading image detection service...")
+        get_image_detection_service()  # Singleton - loads model now
+        logger.info("✓ Image detection service ready")
+    except Exception as e:
+        logger.warning(f"Failed to preload image detection service: {e}")
+        # Not critical - will lazy load on first use
 
     yield
 

@@ -20,59 +20,74 @@ depends_on = None
 
 def upgrade() -> None:
     """Create companion_conversations table for storing shared player-companion chats."""
-    op.create_table(
-        "companion_conversations",
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column(
-            "companion_id",
-            postgresql.UUID(as_uuid=True),
-            nullable=False,
-        ),
-        sa.Column(
-            "character_id",
-            postgresql.UUID(as_uuid=True),
-            nullable=False,
-        ),
-        sa.Column("role", sa.String(length=20), nullable=False),
-        sa.Column("message", sa.Text(), nullable=False),
-        sa.Column("shared_with_dm", sa.Boolean(), nullable=False, server_default="false"),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("now()")),
-        sa.ForeignKeyConstraint(
-            ["character_id"],
-            ["characters.id"],
-        ),
-        sa.ForeignKeyConstraint(
-            ["companion_id"],
-            ["companions.id"],
-        ),
-        sa.PrimaryKeyConstraint("id"),
+    # Check if table already exists (idempotent migration)
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
+    if "companion_conversations" not in inspector.get_table_names():
+        op.create_table(
+            "companion_conversations",
+            sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
+            sa.Column(
+                "companion_id",
+                postgresql.UUID(as_uuid=True),
+                nullable=False,
+            ),
+            sa.Column(
+                "character_id",
+                postgresql.UUID(as_uuid=True),
+                nullable=False,
+            ),
+            sa.Column("role", sa.String(length=20), nullable=False),
+            sa.Column("message", sa.Text(), nullable=False),
+            sa.Column("shared_with_dm", sa.Boolean(), nullable=False, server_default="false"),
+            sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("now()")),
+            sa.ForeignKeyConstraint(
+                ["character_id"],
+                ["characters.id"],
+            ),
+            sa.ForeignKeyConstraint(
+                ["companion_id"],
+                ["companions.id"],
+            ),
+            sa.PrimaryKeyConstraint("id"),
+        )
+
+    # Add indexes for efficient queries (only if table was created)
+    existing_indexes = (
+        [idx["name"] for idx in inspector.get_indexes("companion_conversations")]
+        if "companion_conversations" in inspector.get_table_names()
+        else []
     )
 
-    # Add indexes for efficient queries
-    op.create_index(
-        op.f("ix_companion_conversations_id"),
-        "companion_conversations",
-        ["id"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_companion_conversations_companion_id"),
-        "companion_conversations",
-        ["companion_id"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_companion_conversations_character_id"),
-        "companion_conversations",
-        ["character_id"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_companion_conversations_shared_with_dm"),
-        "companion_conversations",
-        ["shared_with_dm"],
-        unique=False,
-    )
+    if "ix_companion_conversations_id" not in existing_indexes:
+        op.create_index(
+            op.f("ix_companion_conversations_id"),
+            "companion_conversations",
+            ["id"],
+            unique=False,
+        )
+    if "ix_companion_conversations_companion_id" not in existing_indexes:
+        op.create_index(
+            op.f("ix_companion_conversations_companion_id"),
+            "companion_conversations",
+            ["companion_id"],
+            unique=False,
+        )
+    if "ix_companion_conversations_character_id" not in existing_indexes:
+        op.create_index(
+            op.f("ix_companion_conversations_character_id"),
+            "companion_conversations",
+            ["character_id"],
+            unique=False,
+        )
+    if "ix_companion_conversations_shared_with_dm" not in existing_indexes:
+        op.create_index(
+            op.f("ix_companion_conversations_shared_with_dm"),
+            "companion_conversations",
+            ["shared_with_dm"],
+            unique=False,
+        )
     op.create_index(
         op.f("ix_companion_conversations_created_at"),
         "companion_conversations",
