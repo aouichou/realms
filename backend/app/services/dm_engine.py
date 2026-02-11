@@ -17,6 +17,7 @@ from app.dm_tools import GAME_MASTER_TOOLS
 from app.observability.logger import get_logger
 from app.observability.metrics import metrics
 from app.observability.tracing import trace_async
+from app.services.adaptive_narration_service import get_adaptive_narration_service
 from app.services.ai_provider import ProviderUnavailableError, RateLimitError
 from app.services.message_summarizer import MessageSummarizer
 from app.services.provider_selector import provider_selector
@@ -80,6 +81,26 @@ You have access to comprehensive D&D 5e databases:
 
 ═══════════════════════════════════════════════════════════
 🛠️ AVAILABLE TOOLS - USE THESE FOR GAME MECHANICS
+═══════════════════════════════════════════════════════════
+
+🚨 CRITICAL: HOW TO CALL TOOLS
+
+You have 16 tools available via the function calling API.
+
+✅ CORRECT - Use the tool_calls response field:
+When you need to use a tool (e.g., request a player roll), respond with a tool_call.
+The system will execute it and give you the result in the next message.
+Then you can narrate based on that result.
+
+❌ NEVER write function syntax in your message content:
+- DO NOT write: "request_player_roll(ability_check, 15)"
+- DO NOT write: "roll_for_npc(Goblin, attack, d20+4)"
+- DO NOT write: "update_character_hp(-5)"
+- DO NOT include ANY function call syntax like "function_name(...)" in your narration text
+
+Your narration (message content) should be pure storytelling.
+Tool calls go in the tool_calls field, NOT in your narrative text.
+
 ═══════════════════════════════════════════════════════════
 
 You have access to 16 powerful tools that handle game mechanics. Use them appropriately:
@@ -243,10 +264,14 @@ Goal: 2-3 companion interactions per session
 🎲 REQUESTING DICE ROLLS - YOU HAVE TWO OPTIONS:
 
 **RECOMMENDED: Use request_player_roll tool**
-The request_player_roll tool is the primary way to request dice rolls from players:
+The request_player_roll tool is the primary way to request dice rolls from players.
+Call it via tool_calls, then narrate the result.
+
+⚠️ The examples below show tool parameters for reference.
+These are NOT text to write - they show what parameters the tool accepts:
 
 ```
-// Ability check
+// Ability check - Call this tool, don't write this text!
 request_player_roll(roll_type="ability_check", ability_or_skill="Stealth", dc=15)
 
 // Saving throw
@@ -365,14 +390,24 @@ ALWAYS use update_character_hp when damage or healing occurs:
 - The tool automatically clamps HP between 0 and max_hp
 - Persists changes to database immediately
 
-**TOOL USAGE EXAMPLES:**
-✅ "You creep forward..." → request_player_roll(roll_type="ability_check", ability_or_skill="Stealth", dc=12)
-✅ "The goblin charges!" → request_player_roll(roll_type="attack", ability_or_skill="initiative") for player, roll_for_npc for goblin
-✅ "You cast Burning Hands..." → request_player_roll(roll_type="saving_throw", ability_or_skill="DEX", dc=13) for enemies
-✅ "You try to convince the guard..." → request_player_roll(roll_type="ability_check", ability_or_skill="Persuasion", dc=15)
-✅ "Search the room carefully..." → request_player_roll(roll_type="ability_check", ability_or_skill="Perception", dc=10)
+**TOOL USAGE WORKFLOW:**
 
-ALWAYS use tools for precise control. They ensure consistent behavior.
+✅ CORRECT:
+1. Player action requires a roll
+2. You call request_player_roll tool (via tool_calls)
+3. System executes and shows player the roll request
+4. Player rolls dice
+5. You receive the result
+6. You narrate the outcome
+
+❌ WRONG:
+Writing "You creep forward... request_player_roll(Stealth, 12)" in your narration
+
+🔑 KEY PRINCIPLE:
+Narrative text = storytelling only, no function syntax
+Tool calls = use tool_calls response field
+
+ALWAYS use tools via tool_calls for game mechanics. They ensure consistent behavior.
 
 EXAMPLE OF CORRECT TOOL USAGE:
 Player: "I cast Burning Hands at the guards"
@@ -570,6 +605,26 @@ Vous avez accès à des bases de données D&D 5e complètes :
 
 ═══════════════════════════════════════════════════════════
 🛠️ OUTILS DISPONIBLES - UTILISEZ-LES POUR LES MÉCANIQUES
+═══════════════════════════════════════════════════════════
+
+🚨 CRITIQUE: COMMENT APPELER LES OUTILS
+
+Vous avez 14 outils disponibles via l'API d'appel de fonctions.
+
+✅ CORRECT - Utilisez le champ tool_calls dans votre réponse:
+Quand vous devez utiliser un outil (par ex., demander un jet au joueur), répondez avec un tool_call.
+Le système l'exécutera et vous donnera le résultat dans le message suivant.
+Ensuite vous pourrez narrer en fonction de ce résultat.
+
+❌ N'écrivez JAMAIS de syntaxe de fonction dans le contenu de votre message:
+- N'ÉCRIVEZ PAS: "request_player_roll(ability_check, 15)"
+- N'ÉCRIVEZ PAS: "roll_for_npc(Gobelin, attaque, d20+4)"
+- N'ÉCRIVEZ PAS: "update_character_hp(-5)"
+- N'incluez AUCUNE syntaxe d'appel de fonction comme "nom_fonction(...)" dans votre texte narratif
+
+Votre narration (contenu du message) doit être purement narrative.
+Les appels d'outils vont dans le champ tool_calls, PAS dans votre texte narratif.
+
 ═══════════════════════════════════════════════════════════
 
 Vous avez accès à 14 outils puissants qui gèrent les mécaniques de jeu :
@@ -1094,8 +1149,34 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                         )
                     )
 
-                    # Clean up any text-based tool calls that shouldn't be in narration
-                    narration = self._clean_text_tool_calls(narration)
+                    # ADAPTIVE: Parse and execute any text-based tool calls in the narration
+                    # instead of just removing them
+                    text_tool_calls = []
+                    text_character_updates = {}
+                    (
+                        narration,
+                        text_tool_calls,
+                        text_character_updates,
+                    ) = await self._parse_and_execute_text_tool_calls(narration, character, db)
+
+                    # Merge any text-based tool results
+                    if text_tool_calls:
+                        tool_calls_made.extend(text_tool_calls)
+                        character_updates.update(text_character_updates)
+
+                        # Check if any text tool call requested a roll
+                        for text_tool in text_tool_calls:
+                            if "roll_request" in text_tool.get("result", {}):
+                                logger.info(
+                                    "ADAPTIVE: Text-based tool call requested a roll, "
+                                    "returning with roll request"
+                                )
+                                return {
+                                    "narration": narration or "What would you like to do?",
+                                    "tool_calls_made": tool_calls_made,
+                                    "character_updates": character_updates,
+                                    "roll_request": text_tool["result"]["roll_request"],
+                                }
 
                     # RL-140: Validate response with agentic supervisor (trigger-based)
                     if player_input:
@@ -1233,11 +1314,39 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                     # CRITICAL: If tool requested a player roll, stop here and return
                     # DM must wait for player to roll before continuing
                     if "roll_request" in tool_result:
-                        logger.info(
-                            "Roll request detected in tool result - stopping iteration to wait for player roll"
+                        # Log what content the AI actually provided with the tool call
+                        raw_content = assistant_message.content or ""
+                        # Convert to string if it's a list of content chunks
+                        content_provided = (
+                            raw_content
+                            if isinstance(raw_content, str)
+                            else " ".join(
+                                chunk.get("text", "")
+                                for chunk in raw_content
+                                if isinstance(chunk, dict)
+                            )
                         )
+
+                        # ADAPTIVE: If AI didn't provide narration, generate it using semantic similarity
+                        if not content_provided or not content_provided.strip():
+                            # Use semantic service for natural, varied narration
+                            narration_service = get_adaptive_narration_service()
+                            narration = narration_service.generate_narration(
+                                tool_name=tool_name, tool_args=tool_args, player_action=player_input
+                            )
+
+                            logger.info(
+                                f"RL-145: AI provided empty content, "
+                                f"generated semantic narration: {repr(narration)}"
+                            )
+                        else:
+                            narration = content_provided
+                            logger.info(
+                                f"Roll request detected. AI provided content: {repr(content_provided[:100])}"
+                            )
+
                         return {
-                            "narration": assistant_message.content or "What would you like to do?",
+                            "narration": narration,
                             "tool_calls_made": tool_calls_made,
                             "character_updates": character_updates,
                             "roll_request": tool_result["roll_request"],
@@ -1273,9 +1382,135 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
             "character_updates": character_updates,
         }
 
+    async def _parse_and_execute_text_tool_calls(
+        self,
+        narration: str,
+        character: "Character",
+        db: AsyncSession,
+    ) -> tuple[str, list[dict], dict]:
+        """ADAPTIVE: Parse text-based tool calls and execute them.
+
+        Instead of just removing text tool calls, we parse and execute them.
+        This makes the system more robust when AI writes tools as text.
+
+        Args:
+            narration: The DM's narration text with potential tool calls
+            character: The player's character
+            db: Database session
+
+        Returns:
+            Tuple of (cleaned_narration, tool_calls_made, character_updates)
+        """
+        tool_calls_made = []
+        character_updates = {}
+
+        # Pattern to match tool calls: tool_name(args...)
+        # Updated to capture the full call including arguments
+        tool_pattern = r"(request_player_roll|roll_for_npc|update_character_hp|give_item|search_items|update_quest|create_quest)\s*\(([^)]*)\)"
+
+        matches = list(re.finditer(tool_pattern, narration))
+
+        if matches:
+            logger.info(
+                f"ADAPTIVE: Found {len(matches)} text-based tool calls. "
+                f"Parsing and executing instead of just removing."
+            )
+
+        for match in matches:
+            tool_name = match.group(1)
+            args_text = match.group(2).strip()
+
+            try:
+                # Parse arguments - handle common patterns
+                # Example: "ability_check, Survival, 15, 'checking for footprints'"
+                # Example: "'Stealth', 'DC 15'"
+                tool_args = self._parse_tool_arguments(tool_name, args_text)
+
+                logger.info(
+                    f"ADAPTIVE: Executing text-based tool call: {tool_name} "
+                    f"with parsed args: {tool_args}"
+                )
+
+                # Execute the tool
+                from app.services.tool_executor import execute_tool
+
+                tool_result = await execute_tool(
+                    tool_name=tool_name,
+                    tool_arguments=tool_args,
+                    character=character,
+                    db=db,
+                )
+
+                tool_calls_made.append(
+                    {
+                        "name": tool_name,
+                        "arguments": tool_args,
+                        "result": tool_result,
+                    }
+                )
+
+                if "character_update" in tool_result:
+                    character_updates.update(tool_result["character_update"])
+
+            except Exception as e:
+                logger.error(
+                    f"ADAPTIVE: Failed to parse/execute text tool call {tool_name}({args_text}): {e}"
+                )
+
+        # Remove tool calls from narration
+        cleaned = re.sub(tool_pattern, "", narration)
+        cleaned = re.sub(r"\n\n\n+", "\n\n", cleaned)
+        cleaned = cleaned.strip()
+
+        return cleaned, tool_calls_made, character_updates
+
+    @staticmethod
+    def _parse_tool_arguments(tool_name: str, args_text: str) -> dict:
+        """Parse text-based tool arguments into structured dict.
+
+        Handles common patterns like:
+        - "ability_check, Survival, 15, 'description'"
+        - "'Stealth', 15"
+        - "10" (for HP updates)
+        """
+        import re
+
+        args_text = args_text.strip()
+
+        # Special handling for request_player_roll
+        if tool_name == "request_player_roll":
+            # Split by comma, handling quoted strings
+            parts = [
+                p.strip().strip("'\"")
+                for p in re.split(r",\s*(?=(?:[^'\"]*['\"][^'\"]*['\"])*[^'\"]*$)", args_text)
+            ]
+
+            if len(parts) >= 3:
+                return {
+                    "roll_type": parts[0] if parts[0] else "ability_check",
+                    "ability_or_skill": parts[1],
+                    "dc": int(parts[2]) if parts[2].isdigit() else 15,
+                    "description": parts[3] if len(parts) > 3 else f"using {parts[1]}",
+                }
+            elif len(parts) == 2:
+                # Just skill and DC
+                return {
+                    "roll_type": "ability_check",
+                    "ability_or_skill": parts[0],
+                    "dc": int(parts[1]) if parts[1].isdigit() else 15,
+                    "description": f"using {parts[0]}",
+                }
+
+        # For other tools, return as simple dict or list
+        # This is a fallback - can be enhanced per tool
+        return {"raw_args": args_text}
+
     @staticmethod
     def _clean_text_tool_calls(narration: str) -> str:
         """Remove text-based tool calls from narration.
+
+        NOTE: This is the OLD approach - just removes tool calls.
+        Prefer using _parse_and_execute_text_tool_calls for adaptive behavior.
 
         DM should use the actual tool calling API, but sometimes writes
         tool calls as text (e.g., "request_player_roll(...)"). This removes
