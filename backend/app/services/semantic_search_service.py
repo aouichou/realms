@@ -4,7 +4,6 @@ Enables natural language search across items, monsters, and spells.
 Reuses sentence-transformer model from ImageDetectionService.
 """
 
-
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -15,8 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.creature import Creature
 from app.db.models.item_catalog import ItemCatalog
 from app.db.models.spell import Spell
-from app.services.image_detection_service import ImageDetectionService
 from app.observability.logger import get_logger
+from app.services.image_detection_service import ImageDetectionService
 
 logger = get_logger(__name__)
 
@@ -42,7 +41,6 @@ class SemanticSearchService:
         """Initialize the sentence transformer model for embeddings."""
         try:
             self.embedding_service = ImageDetectionService()
-            logger.info("RL-144: Initialized semantic search with embedding model")
         except Exception as e:
             logger.error(f"RL-144: Error initializing embedding model: {e}")
 
@@ -72,9 +70,7 @@ class SemanticSearchService:
             logger.error(f"RL-144: Error generating embedding: {e}")
             return None
 
-    def _calculate_similarity(
-        self, query_embedding: np.ndarray, text: str
-    ) -> float:
+    def _calculate_similarity(self, query_embedding: np.ndarray, text: str) -> float:
         """
         Calculate cosine similarity between query and text.
 
@@ -131,13 +127,9 @@ class SemanticSearchService:
         # Build base query with filters
         stmt = select(ItemCatalog)
         if category:
-            stmt = stmt.where(
-                func.lower(ItemCatalog.category) == func.lower(category)
-            )
+            stmt = stmt.where(func.lower(ItemCatalog.category) == func.lower(category))
         if rarity:
-            stmt = stmt.where(
-                func.lower(ItemCatalog.rarity).contains(func.lower(rarity))
-            )
+            stmt = stmt.where(func.lower(ItemCatalog.rarity).contains(func.lower(rarity)))
 
         # Limit to reasonable size for performance
         stmt = stmt.limit(1000)
@@ -145,20 +137,20 @@ class SemanticSearchService:
         result = await db.execute(stmt)
         items = result.scalars().all()
 
-        logger.info(f"RL-144: Semantic search '{query}' across {len(items)} items")
-
         # Calculate similarity for each item
         scored_items = []
         for item in items:
             # Create searchable text from item properties
-            search_text = " ".join([
-                str(getattr(item, "name", "")),
-                str(getattr(item, "category", "")),
-                str(getattr(item, "item_type", "")),
-                str(getattr(item, "rarity", "")),
-                str(getattr(item, "description", ""))[:100],  # Limit description length
-                str(getattr(item, "damage_type", "")),
-            ])
+            search_text = " ".join(
+                [
+                    str(getattr(item, "name", "")),
+                    str(getattr(item, "category", "")),
+                    str(getattr(item, "item_type", "")),
+                    str(getattr(item, "rarity", "")),
+                    str(getattr(item, "description", ""))[:100],  # Limit description length
+                    str(getattr(item, "damage_type", "")),
+                ]
+            )
 
             similarity = self._calculate_similarity(query_embedding, search_text)
 
@@ -168,8 +160,6 @@ class SemanticSearchService:
         # Sort by similarity (highest first)
         scored_items.sort(key=lambda x: x[1], reverse=True)
         top_items = scored_items[:limit]
-
-        logger.info(f"RL-144: Found {len(top_items)} items above threshold {threshold}")
 
         # Format results
         return [
@@ -245,21 +235,21 @@ class SemanticSearchService:
         result = await db.execute(stmt)
         creatures = result.scalars().all()
 
-        logger.info(f"RL-144: Semantic search '{query}' across {len(creatures)} creatures")
-
         # Calculate similarity for each creature
         scored_creatures = []
         for creature in creatures:
             # Create searchable text from creature properties
-            search_text = " ".join([
-                str(getattr(creature, "name", "")),
-                str(getattr(creature, "creature_type", "")),
-                str(getattr(creature, "size", "")),
-                str(getattr(creature, "alignment", "")),
-                str(getattr(creature, "traits", ""))[:100],  # Limit traits length
-                str(getattr(creature, "actions", ""))[:100],  # Limit actions length
-                f"CR {getattr(creature, 'cr', '')}",
-            ])
+            search_text = " ".join(
+                [
+                    str(getattr(creature, "name", "")),
+                    str(getattr(creature, "creature_type", "")),
+                    str(getattr(creature, "size", "")),
+                    str(getattr(creature, "alignment", "")),
+                    str(getattr(creature, "traits", ""))[:100],  # Limit traits length
+                    str(getattr(creature, "actions", ""))[:100],  # Limit actions length
+                    f"CR {getattr(creature, 'cr', '')}",
+                ]
+            )
 
             similarity = self._calculate_similarity(query_embedding, search_text)
 
@@ -269,10 +259,6 @@ class SemanticSearchService:
         # Sort by similarity (highest first)
         scored_creatures.sort(key=lambda x: x[1], reverse=True)
         top_creatures = scored_creatures[:limit]
-
-        logger.info(
-            f"RL-144: Found {len(top_creatures)} creatures above threshold {threshold}"
-        )
 
         # Format results
         return [
@@ -342,8 +328,6 @@ class SemanticSearchService:
         result = await db.execute(stmt)
         spells = result.scalars().all()
 
-        logger.info(f"RL-144: Semantic search '{query}' across {len(spells)} spells")
-
         # Calculate similarity for each spell
         scored_spells = []
         for spell in spells:
@@ -369,10 +353,6 @@ class SemanticSearchService:
         # Sort by similarity (highest first)
         scored_spells.sort(key=lambda x: x[1], reverse=True)
         top_spells = scored_spells[:limit]
-
-        logger.info(
-            f"RL-144: Found {len(top_spells)} spells above threshold {threshold}"
-        )
 
         # Format results
         return [
@@ -431,8 +411,6 @@ class SemanticSearchService:
 
         try:
             # Generate embedding for query
-            logger.info(f"RL-144: Semantic memory search '{query}' for character {character_id}")
-
             query_embedding = self._generate_embedding(query)
             if query_embedding is None:
                 logger.warning("RL-144: Failed to generate query embedding for memory search")
@@ -453,10 +431,6 @@ class SemanticSearchService:
 
             result = await db.execute(stmt)
             memories = result.scalars().all()
-
-            logger.info(
-                f"RL-144: Found {len(memories)} memories for '{query}'"
-            )
 
             # Format results
             return [
