@@ -245,6 +245,75 @@ docker-compose up --build --force-recreate
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Token expiry time | `30` | No |
 | `BACKEND_PORT` | Backend API port | `8000` | No |
 | `FRONTEND_PORT` | Frontend web port | `3000` | No |
+| `MISTRAL_ENABLED` | Mistral priority toggle | `true` | No |
+
+## 🤖 AI Provider System
+
+Mistral Realms uses a multi-provider AI system with intelligent fallback and priority management to optimize free tier usage and ensure uninterrupted gameplay.
+
+### Provider Architecture
+
+**6 AI Providers with Automatic Fallback:**
+1. **Mistral** - Priority 1 (Demo mode) or 99 (Testing mode)
+2. **Qwen** - 90+ models with 1M free tokens each (one-time, no expiration)
+3. **Groq** - 14,400 requests/day, ultra-fast inference
+4. **Cerebras** - Unlimited with soft rate limits
+5. **Together.ai** - $25 one-time credits (never expires)
+6. **Sambanova** - Unlimited with rate limits
+
+### Mistral Toggle: Demo vs Testing Mode
+
+**🎯 Demo Mode (MISTRAL_ENABLED=true)** - For Recruiters & Demos
+```bash
+MISTRAL_ENABLED=true docker-compose up
+```
+- Mistral at **priority 1** (primary provider)
+- Qwen at priority 2 (backup)
+- Free providers at priority 3 (fallback)
+- **Use case**: Internship demos, recruiter meetings, portfolio showcases
+
+**🧪 Testing Mode (MISTRAL_ENABLED=false)** - For Development & Friends
+```bash
+MISTRAL_ENABLED=false docker-compose up
+```
+- Qwen at **priority 1** (primary - massive free tier)
+- Free providers at priority 2 (4 providers with generous limits)
+- Mistral at **priority 99** (emergency fallback only)
+- **Use case**: Extended testing, playing with friends, development
+
+### Why This Matters
+
+The free tiers are incredibly generous but finite:
+- **Mistral**: Save for important demos (internship recruiters)
+- **Qwen**: 90M+ free tokens (90 models × 1M tokens each) - perfect for extended gameplay
+- **Free Pool**: 14,000+ daily requests + unlimited providers - excellent fallback
+
+By toggling `MISTRAL_ENABLED`, you can preserve Mistral quota for when it matters most while still enjoying unlimited gameplay during testing.
+
+### Quick Toggle
+
+```bash
+# For demo/recruiter showing
+docker-compose up  # Uses MISTRAL_ENABLED=true from .env
+
+# For testing/development
+MISTRAL_ENABLED=false docker-compose up
+
+# Or edit .env file:
+# MISTRAL_ENABLED=false
+# Then restart: docker-compose restart backend
+```
+
+### Logs Show Current Mode
+
+On startup, the backend logs the current mode:
+```
+🎯 DEMO MODE: Mistral enabled at priority 1 (preserving quota for recruiters)
+```
+or
+```
+🧪 TESTING MODE: Mistral deprioritized to priority 99 (emergency fallback only)
+```
 
 ### Setting Up Environment
 

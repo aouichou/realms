@@ -28,6 +28,14 @@ async def initialize_providers():
     """
     logger.info("Initializing AI providers...")
 
+    # Log Mistral toggle state for visibility
+    if settings.mistral_enabled:
+        logger.info("🎯 DEMO MODE: Mistral enabled at priority 1 (preserving quota for recruiters)")
+    else:
+        logger.info(
+            "🧪 TESTING MODE: Mistral deprioritized to priority 99 (emergency fallback only)"
+        )
+
     providers_config = settings.ai_providers_config
     initialized_count = 0
 
