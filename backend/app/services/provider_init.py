@@ -9,7 +9,6 @@ from typing import Optional
 from app.config import settings
 from app.observability.logger import get_logger
 from app.services.ai_provider import AIProvider
-from app.services.gemini_service import GeminiService
 from app.services.mistral_provider import MistralProvider
 from app.services.provider_selector import provider_selector
 from app.services.qwen_provider import QwenProvider
@@ -77,15 +76,6 @@ async def create_provider(name: str, config: dict) -> Optional[AIProvider]:
                 max_tokens=config.get("max_tokens", 2048),
                 temperature=config.get("temperature", 0.7),
                 priority=config["priority"],
-            )
-        elif name == "gemini":
-            return GeminiService(
-                api_key=config["api_key"],
-                model=config["model"],
-                priority=config["priority"],
-                thinking_level=config.get("thinking_level", "high"),
-                max_tokens=config.get("max_tokens", 2048),
-                temperature=config.get("temperature", 0.7),
             )
         elif name == "mistral":
             return MistralProvider(

@@ -54,9 +54,6 @@ services:
       - ./backend/logs:/app/logs  # For error logs and other application logs
     environment:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3-flash-preview}
-      - GEMINI_THINKING_LEVEL=${GEMINI_THINKING_LEVEL:-high}
       - QWEN_API_KEY=${QWEN_API_KEY}
       - QWEN_MODEL=${QWEN_MODEL:-qwen-max}
       - QWEN_MAX_TOKENS=${QWEN_MAX_TOKENS:-2048}

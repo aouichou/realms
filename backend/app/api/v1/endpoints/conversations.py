@@ -928,16 +928,14 @@ async def send_player_action(
                 recent_context = conversation_history[-3:]
 
             # Initialize companion service
-            from app.config import settings
-            from app.services.gemini_service import GeminiService
+            from app.services.provider_selector import provider_selector
 
-            gemini_config = settings.ai_providers_config.get("gemini", {})
-            gemini_service = GeminiService(
-                api_key=gemini_config.get("api_key"),
-                model=gemini_config.get("model", "gemini-1.5-flash"),
-                priority=gemini_config.get("priority", 1),
-            )
-            companion_service = CompanionService(gemini_service)
+            ai_provider = provider_selector.get_current_provider()
+            if not ai_provider:
+                logger.warning("AI service unavailable, skipping companion responses")
+                continue  # Skip companion responses if no provider available
+
+            companion_service = CompanionService(ai_provider)
 
             # Check each companion and generate responses
             for companion in active_companions:

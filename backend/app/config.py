@@ -43,36 +43,11 @@ class Settings(BaseSettings):
     qwen_max_tokens: int = Field(default=2048, description="Maximum tokens per request")
     qwen_temperature: float = Field(default=0.7, description="Model temperature")
 
-    # Google Gemini AI API
-    gemini_api_key: str = Field(default="", description="Google Gemini API key")
-    gemini_model: str = Field(
-        default="gemini-3-flash-preview",
-        description="Default Gemini model (gemini-3-flash-preview for better D&D reasoning)",
+    # Mistral Toggle
+    mistral_enabled: bool = Field(
+        default=True,
+        description="Enable Mistral priority (true=demo mode priority 1, false=testing mode priority 99)",
     )
-    gemini_max_tokens: int = Field(default=2048, description="Maximum tokens per request")
-    gemini_temperature: float = Field(default=0.7, description="Model temperature")
-    gemini_thinking_level: str = Field(
-        default="high",
-        description="Thinking level for Gemini 3 models (minimal, low, medium, high) - high recommended for D&D DMing",
-    )
-
-    # OpenAI API
-    openai_api_key: str = Field(default="", description="OpenAI API key")
-    openai_model: str = Field(
-        default="gpt-3.5-turbo",
-        description="Default OpenAI model (gpt-3.5-turbo recommended for cost/performance balance)",
-    )
-    openai_max_tokens: int = Field(default=2048, description="Maximum tokens per request")
-    openai_temperature: float = Field(default=0.7, description="Model temperature")
-
-    # Anthropic API
-    anthropic_api_key: str = Field(default="", description="Anthropic API key")
-    anthropic_model: str = Field(
-        default="claude-3-haiku-20240307",
-        description="Default Anthropic model (claude-3-haiku for cost efficiency)",
-    )
-    anthropic_max_tokens: int = Field(default=2048, description="Maximum tokens per request")
-    anthropic_temperature: float = Field(default=0.7, description="Model temperature")
 
     # Rate Limiting
     rate_limit_per_second: int = Field(default=1, description="Requests per second limit")
@@ -148,7 +123,10 @@ class Settings(BaseSettings):
 
     @property
     def ai_providers_config(self) -> dict:
-        """Get multi-provider configuration"""
+        """Get multi-provider configuration with dynamic priorities based on mistral_enabled"""
+        mistral_priority = 1 if self.mistral_enabled else 99
+        qwen_priority = 2 if self.mistral_enabled else 1
+
         return {
             "qwen": {
                 "enabled": bool(self.qwen_api_key),
@@ -156,41 +134,16 @@ class Settings(BaseSettings):
                 "model": self.qwen_model,
                 "max_tokens": self.qwen_max_tokens,
                 "temperature": self.qwen_temperature,
-                "priority": 1,  # Primary provider - excellent rate limits (1M free/month)
-            },
-            "gemini": {
-                "enabled": bool(self.gemini_api_key),
-                "api_key": self.gemini_api_key,
-                "model": self.gemini_model,
-                "max_tokens": self.gemini_max_tokens,
-                "temperature": self.gemini_temperature,
-                "thinking_level": self.gemini_thinking_level,
-                "priority": 2,  # Secondary fallback
+                "priority": qwen_priority,
             },
             "mistral": {
-                "enabled": bool(self.mistral_api_key),
+                "enabled": True,  # Always available
                 "api_key": self.mistral_api_key,
                 "model": self.mistral_model,
                 "max_tokens": self.mistral_max_tokens,
                 "temperature": self.mistral_temperature,
                 "rate_limit": self.rate_limit_per_second,
-                "priority": 3,  # Tertiary fallback (keep for internship demo)
-            },
-            "openai": {
-                "enabled": bool(self.openai_api_key),
-                "api_key": self.openai_api_key,
-                "model": self.openai_model,
-                "max_tokens": self.openai_max_tokens,
-                "temperature": self.openai_temperature,
-                "priority": 3,  # Secondary fallback
-            },
-            "anthropic": {
-                "enabled": bool(self.anthropic_api_key),
-                "api_key": self.anthropic_api_key,
-                "model": self.anthropic_model,
-                "max_tokens": self.anthropic_max_tokens,
-                "temperature": self.anthropic_temperature,
-                "priority": 4,  # Tertiary fallback
+                "priority": mistral_priority,  # 1 for demo, 99 for testing (emergency fallback)
             },
         }
 

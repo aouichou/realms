@@ -1,6 +1,6 @@
 """
 Companion AI service for generating companion NPC responses.
-Uses Google Gemini to provide distinct personality from DM.
+Uses the AI provider system for responses with distinct personality from DM.
 """
 
 import random
@@ -14,7 +14,7 @@ from app.db.models.companion import Companion
 from app.observability.logger import get_logger
 from app.observability.metrics import metrics
 from app.observability.tracing import get_tracer, trace_async
-from app.services.gemini_service import GeminiService
+from app.services.ai_provider import AIProvider
 
 logger = get_logger(__name__)
 
@@ -24,18 +24,18 @@ class CompanionService:
     AI service for companion NPCs.
 
     Handles companion personality, decision-making, and responses
-    using Google Gemini (separate from DM's Mistral).
+    using the AI provider system (separate personality from DM).
     """
 
-    def __init__(self, gemini_service: GeminiService):
+    def __init__(self, ai_provider: AIProvider):
         """
         Initialize companion AI service.
 
         Args:
-            gemini_service: Configured GeminiService instance
+            ai_provider: Configured AIProvider instance
         """
-        self.gemini_service = gemini_service
-        logger.info("CompanionService initialized with Google Gemini")
+        self.ai_provider = ai_provider
+        logger.info(f"CompanionService initialized with {ai_provider.name}")
 
     @trace_async("companion.generate_response")
     async def generate_companion_response(
@@ -74,14 +74,18 @@ class CompanionService:
         )
 
         try:
-            # Generate response using Gemini with tracing
-            with tracer.start_as_current_span("companion.gemini_call") as span:
+            # Generate response using AI provider with tracing
+            with tracer.start_as_current_span("companion.ai_call") as span:
                 span.set_attribute("companion.name", companion.name)
                 span.set_attribute("companion.personality", companion.personality)
                 span.set_attribute("companion.loyalty", companion.loyalty or 50)  # type: ignore[arg-type]
+                span.set_attribute("provider.name", self.ai_provider.name)
 
-                response = await self.gemini_service.generate_narration(
-                    prompt=prompt,
+                response = await self.ai_provider.generate_chat(
+                    messages=[
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": player_action},
+                    ],
                     max_tokens=500,
                     temperature=0.8,
                 )

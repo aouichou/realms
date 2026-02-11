@@ -25,7 +25,7 @@ from app.schemas.companion import (
     CompanionConversationMessage,
 )
 from app.services.companion_service import CompanionService
-from app.services.gemini_service import GeminiService
+from app.services.provider_selector import provider_selector
 
 logger = get_logger(__name__)
 
@@ -199,16 +199,16 @@ async def update_companion_loyalty(
     # Import here to avoid circular imports
     from app.config import settings
     from app.services.companion_service import CompanionService
-    from app.services.gemini_service import GeminiService
 
-    # Get Gemini service for companion
-    gemini_config = settings.ai_providers_config.get("gemini", {})
-    gemini_service = GeminiService(
-        api_key=gemini_config.get("api_key"),
-        model=gemini_config.get("model", "gemini-1.5-flash"),
-        priority=gemini_config.get("priority", 1),
-    )
-    companion_service = CompanionService(gemini_service)
+    # Get AI provider for companion
+    ai_provider = provider_selector.get_current_provider()
+    if not ai_provider:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service unavailable",
+        )
+
+    companion_service = CompanionService(ai_provider)
 
     # Update loyalty
     await companion_service.update_companion_loyalty(
@@ -318,13 +318,15 @@ async def chat_with_companion(
             detail="Character not found",
         )
 
-    # Initialize Gemini service for companion
-    gemini_service = GeminiService(
-        api_key=settings.gemini_api_key,
-        model=settings.gemini_model,
-        priority=1,
-    )
-    companion_service = CompanionService(gemini_service)
+    # Initialize AI provider for companion
+    ai_provider = provider_selector.get_current_provider()
+    if not ai_provider:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service unavailable",
+        )
+
+    companion_service = CompanionService(ai_provider)
 
     # Build context for companion response
     recent_context = []
