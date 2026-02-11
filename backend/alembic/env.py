@@ -1,7 +1,6 @@
 """Alembic environment configuration"""
 
 # Import app config and models
-import asyncio
 import logging
 import sys
 from logging.config import fileConfig
@@ -12,15 +11,15 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from app.config import settings
+from app.db import models  # noqa: F401 - Import all models
+from app.db.base import Base
 
 logger = logging.getLogger("alembic.env")
 
 # Add app to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.config import settings
-from app.db import models  # noqa: F401 - Import all models
-from app.db.base import Base
 
 # Alembic Config object
 config = context.config

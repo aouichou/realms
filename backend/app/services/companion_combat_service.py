@@ -3,15 +3,14 @@ Companion combat service for handling companion actions in combat.
 Parses companion AI responses for actions and executes dice rolls.
 """
 
-
 import re
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.companion import Companion
-from app.services.dice_service import DiceService
 from app.observability.logger import get_logger
+from app.services.dice_service import DiceService
 
 logger = get_logger(__name__)
 

@@ -1,7 +1,6 @@
 """Scene Image Generation Service using Mistral AI Agents"""
 
 import hashlib
-
 import os
 import time
 from datetime import datetime
@@ -14,9 +13,9 @@ from mistralai.models import ToolFileChunk
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.observability.logger import get_logger
 from app.schemas.generated_image import GeneratedImage
 from app.services.redis_service import session_service
-from app.observability.logger import get_logger
 
 logger = get_logger(__name__)
 

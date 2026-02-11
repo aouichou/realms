@@ -3,14 +3,14 @@ API endpoints for companion management.
 Handles fetching, creating, and managing AI-driven companion NPCs.
 """
 
-from typing import Any
+from datetime import datetime
+from typing import Any, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.db.base import get_db
 from app.db.models.character import Character
 from app.db.models.companion import Companion
@@ -197,7 +197,6 @@ async def update_companion_loyalty(
         )
 
     # Import here to avoid circular imports
-    from app.config import settings
     from app.services.companion_service import CompanionService
 
     # Get AI provider for companion
@@ -330,7 +329,7 @@ async def chat_with_companion(
 
     # Build context for companion response
     recent_context = []
-    if companion.conversation_memory:
+    if companion.conversation_memory:  # type: ignore[comparison-overlap]
         for memory in companion.conversation_memory[-10:]:
             role = memory.get("role", "")
             content = memory.get("content", "")
@@ -356,8 +355,8 @@ async def chat_with_companion(
         )
 
     # Save to database if sharing with DM
-    player_message_id = None
-    companion_message_id = None
+    player_message_id: UUID
+    companion_message_id: UUID
 
     if request.share_with_dm:
         # Save player message
@@ -384,8 +383,8 @@ async def chat_with_companion(
         await db.refresh(player_message)
         await db.refresh(companion_message)
 
-        player_message_id = player_message.id
-        companion_message_id = companion_message.id
+        player_message_id = cast(UUID, player_message.id)
+        companion_message_id = cast(UUID, companion_message.id)
 
         logger.info(
             f"Saved shared conversation for companion '{companion.name}' (char: {character.id})"
@@ -461,13 +460,13 @@ async def get_companion_conversations(
 
     return [
         CompanionConversationMessage(
-            id=conv.id,
-            companion_id=conv.companion_id,
-            character_id=conv.character_id,
-            role=conv.role,
-            message=conv.message,
-            shared_with_dm=conv.shared_with_dm,
-            created_at=conv.created_at,
+            id=cast(UUID, conv.id),
+            companion_id=cast(UUID, conv.companion_id),
+            character_id=cast(UUID, conv.character_id),
+            role=cast(str, conv.role),
+            message=cast(str, conv.message),
+            shared_with_dm=cast(bool, conv.shared_with_dm),
+            created_at=cast(datetime, conv.created_at),
         )
         for conv in conversations
     ]

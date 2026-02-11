@@ -3,6 +3,8 @@ Prometheus metrics for monitoring
 Provides counters, histograms, and gauges for key metrics
 """
 
+from typing import Optional
+
 from prometheus_client import Counter, Gauge, Histogram, generate_latest
 from prometheus_client.core import CollectorRegistry
 
@@ -370,7 +372,9 @@ class MetricsCollector:
         dm_tool_calls_total.labels(tool_name=tool_name, status=status).inc()
         dm_tool_duration_seconds.labels(tool_name=tool_name).observe(duration)
 
-    def record_image_generation(self, status: str, source: str, duration: float = None):
+    def record_image_generation(
+        self, status: str, source: str, duration: Optional[float] = None
+    ):
         """Record image generation"""
         image_generations_total.labels(status=status, source=source).inc()
         if duration is not None:

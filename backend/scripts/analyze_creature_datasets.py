@@ -3,8 +3,6 @@
 Analyze creature CSV datasets to understand structure, quality, and gaps.
 """
 
-import csv
-import os
 import re
 from collections import Counter, defaultdict
 from pathlib import Path

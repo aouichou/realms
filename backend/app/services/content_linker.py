@@ -186,7 +186,7 @@ class ContentLinker:
 
             logger.info(f"RL-145: Generated {len(items)} loot items (rarity: {rarity})")
             logger.debug(
-                f"RL-145: Loot table generated",
+                "RL-145: Loot table generated",
                 extra={
                     "extra_data": {
                         "encounter_cr": encounter_cr,
