@@ -155,6 +155,7 @@ class Settings(BaseSettings):
         """Get multi-provider configuration with dynamic priorities based on mistral_enabled"""
         mistral_priority = 1 if self.mistral_enabled else 99
         qwen_priority = 2 if self.mistral_enabled else 1
+        free_pool_priority = 3 if self.mistral_enabled else 2
 
         return {
             "qwen": {
@@ -173,6 +174,33 @@ class Settings(BaseSettings):
                 "temperature": self.mistral_temperature,
                 "rate_limit": self.rate_limit_per_second,
                 "priority": mistral_priority,  # 1 for demo, 99 for testing (emergency fallback)
+            },
+            "groq": {
+                "enabled": bool(self.groq_api_key),
+                "api_key": self.groq_api_key,
+                "model": self.groq_model,
+                "priority": free_pool_priority,
+            },
+            "cerebras": {
+                "enabled": bool(self.cerebras_api_key),
+                "api_key": self.cerebras_api_key,
+                "model": self.cerebras_model,
+                "base_url": self.cerebras_base_url,
+                "priority": free_pool_priority,
+            },
+            "together": {
+                "enabled": bool(self.together_api_key),
+                "api_key": self.together_api_key,
+                "model": self.together_model,
+                "base_url": self.together_base_url,
+                "priority": free_pool_priority,
+            },
+            "sambanova": {
+                "enabled": bool(self.sambanova_api_key),
+                "api_key": self.sambanova_api_key,
+                "model": self.sambanova_model,
+                "base_url": self.sambanova_base_url,
+                "priority": free_pool_priority,
             },
         }
 
