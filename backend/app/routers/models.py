@@ -115,7 +115,7 @@ async def list_provider_models(provider_name: str):
             if provider.name == provider_name:
                 # Check if provider has get_model method (Qwen does)
                 if hasattr(provider, "get_model"):
-                    current_model = provider.get_model()
+                    current_model = provider.get_model()  # type: ignore[attr-defined]
                 break
 
         return ProviderModelsResponse(
@@ -174,7 +174,7 @@ async def switch_provider_model(request: ModelSwitchRequest):
 
         # Verify the model is available
         if hasattr(target_provider, "get_available_models"):
-            available_models = await target_provider.get_available_models()
+            available_models = await target_provider.get_available_models()  # type: ignore[attr-defined]
             if request.model not in available_models:
                 raise HTTPException(
                     status_code=400,
@@ -183,7 +183,7 @@ async def switch_provider_model(request: ModelSwitchRequest):
                 )
 
         # Switch the model
-        target_provider.set_model(request.model)
+        target_provider.set_model(request.model)  # type: ignore[attr-defined]
 
         return {
             "success": True,
@@ -232,9 +232,9 @@ async def get_providers_status():
             for provider in provider_selector.providers:
                 if provider.name == provider_name:
                     if hasattr(provider, "get_model"):
-                        current_model = provider.get_model()
+                        current_model = provider.get_model()  # type: ignore[attr-defined]
                     elif hasattr(provider, "model"):
-                        current_model = provider.model
+                        current_model = provider.model  # type: ignore[attr-defined]
                     break
 
             providers_status.append(
