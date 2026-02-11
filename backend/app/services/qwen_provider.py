@@ -15,6 +15,7 @@ from app.services.ai_provider import (
     ProviderUnavailableError,
     RateLimitError,
 )
+from app.services.model_discovery_service import get_model_discovery_service
 
 logger = get_logger(__name__)
 
@@ -138,3 +139,41 @@ class QwenProvider(AIProvider):
         """
         # Provider is available if not in error or rate-limited state
         return self._status in [ProviderStatus.AVAILABLE, ProviderStatus.UNAVAILABLE]
+
+    def set_model(self, model: str):
+        """
+        Switch to a different Qwen model
+
+        Args:
+            model: Model identifier (e.g., "qwen-max", "qwen-turbo", "qwen-plus")
+
+        Note:
+            This allows dynamic model switching without recreating the provider instance.
+            Useful for selecting different models based on task requirements.
+        """
+        old_model = self.model
+        self.model = model
+        logger.info(f"Qwen provider model changed: {old_model} -> {model}")
+
+    def get_model(self) -> str:
+        """
+        Get the currently selected model
+
+        Returns:
+            Current model identifier
+        """
+        return self.model
+
+    async def get_available_models(self) -> List[str]:
+        """
+        Get list of available Qwen models
+
+        Returns:
+            List of model identifiers that can be used with this provider
+
+        Note:
+            Uses the model discovery service which maintains a hardcoded list
+            since DashScope doesn't expose a models API endpoint.
+        """
+        discovery_service = get_model_discovery_service()
+        return await discovery_service.discover_models("qwen")

@@ -933,65 +933,64 @@ async def send_player_action(
             ai_provider = provider_selector.get_current_provider()
             if not ai_provider:
                 logger.warning("AI service unavailable, skipping companion responses")
-                continue  # Skip companion responses if no provider available
+            else:
+                companion_service = CompanionService(ai_provider)
 
-            companion_service = CompanionService(ai_provider)
-
-            # Check each companion and generate responses
-            for companion in active_companions:
-                try:
-                    # Check if companion should respond
-                    should_respond = await companion_service.should_companion_respond(
-                        companion=companion,
-                        player_action=request.action,
-                        dm_narration=result["narration"],
-                    )
-
-                    if should_respond:
-                        logger.info(f"Companion {companion.name} will respond")
-
-                        # Generate companion response
-                        companion_message = await companion_service.generate_companion_response(
+                # Check each companion and generate responses
+                for companion in active_companions:
+                    try:
+                        # Check if companion should respond
+                        should_respond = await companion_service.should_companion_respond(
                             companion=companion,
                             player_action=request.action,
                             dm_narration=result["narration"],
-                            recent_context=recent_context,
-                            character=character,
                         )
 
-                        if companion_message:
-                            # Save companion message to conversation history
-                            if session_id:
-                                companion_msg = MessageCreate(
-                                    session_id=session_id,
-                                    role="companion",
-                                    content=companion_message,
-                                    tokens_used=0,  # Gemini doesn't provide token counts
-                                    companion_id=companion.id,  # type: ignore[arg-type]
-                                )
-                                await ConversationService.create_message(db, companion_msg)
-                                logger.info(f"Saved companion message from {companion.name}")
+                        if should_respond:
+                            logger.info(f"Companion {companion.name} will respond")
 
-                            # Add to response data
-                            companion_responses.append(
-                                {
-                                    "companion_id": str(companion.id),
-                                    "companion_name": companion.name,
-                                    "message": companion_message,
-                                    "loyalty": companion.loyalty,
-                                    "relationship_status": companion.relationship_status.value,
-                                }
+                            # Generate companion response
+                            companion_message = await companion_service.generate_companion_response(
+                                companion=companion,
+                                player_action=request.action,
+                                dm_narration=result["narration"],
+                                recent_context=recent_context,
+                                character=character,
                             )
 
-                            logger.info(f"Generated response from companion {companion.name}")
-                    else:
-                        logger.debug(f"Companion {companion.name} chose not to respond")
+                            if companion_message:
+                                # Save companion message to conversation history
+                                if session_id:
+                                    companion_msg = MessageCreate(
+                                        session_id=session_id,
+                                        role="companion",
+                                        content=companion_message,
+                                        tokens_used=0,  # Gemini doesn't provide token counts
+                                        companion_id=companion.id,  # type: ignore[arg-type]
+                                    )
+                                    await ConversationService.create_message(db, companion_msg)
+                                    logger.info(f"Saved companion message from {companion.name}")
 
-                except Exception as companion_err:
-                    logger.warning(
-                        f"Failed to generate response for companion {companion.id}: {companion_err}"
-                    )
-                    continue
+                                # Add to response data
+                                companion_responses.append(
+                                    {
+                                        "companion_id": str(companion.id),
+                                        "companion_name": companion.name,
+                                        "message": companion_message,
+                                        "loyalty": companion.loyalty,
+                                        "relationship_status": companion.relationship_status.value,
+                                    }
+                                )
+
+                                logger.info(f"Generated response from companion {companion.name}")
+                        else:
+                            logger.debug(f"Companion {companion.name} chose not to respond")
+
+                    except Exception as companion_err:
+                        logger.warning(
+                            f"Failed to generate response for companion {companion.id}: {companion_err}"
+                        )
+                        continue
 
     except Exception as e:
         logger.warning(f"Failed to process companions: {e}")

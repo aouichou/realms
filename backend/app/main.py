@@ -25,7 +25,7 @@ from app.middleware.query_monitor import query_monitor
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.observability.logger import get_logger
 from app.observability.tracing import init_tracing, instrument_app, instrument_sqlalchemy
-from app.routers import health, metrics
+from app.routers import health, metrics, models
 from app.services.image_detection_service import get_image_detection_service
 from app.services.provider_init import initialize_providers
 from app.services.redis_service import session_service
@@ -206,6 +206,9 @@ async def generic_exception_handler(request: Request, exc: Exception):
 # Root-level routers (health checks, metrics)
 app.include_router(health.router)
 app.include_router(metrics.router)
+
+# Models and providers management
+app.include_router(models.router)
 
 # API v1 routers
 app.include_router(api_router, prefix="/api/v1")
