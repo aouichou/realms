@@ -43,6 +43,35 @@ class Settings(BaseSettings):
     qwen_max_tokens: int = Field(default=2048, description="Maximum tokens per request")
     qwen_temperature: float = Field(default=0.7, description="Model temperature")
 
+    # Groq API (Free Provider Pool)
+    groq_api_key: str = Field(default="", description="Groq API key")
+    groq_model: str = Field(default="llama-3.3-70b-versatile", description="Default Groq model")
+
+    # Cerebras API (Free Provider Pool)
+    cerebras_api_key: str = Field(default="", description="Cerebras API key")
+    cerebras_base_url: str = Field(
+        default="https://api.cerebras.ai/v1", description="Cerebras API base URL"
+    )
+    cerebras_model: str = Field(default="llama-3.3-70b", description="Default Cerebras model")
+
+    # Together.ai API (Free Provider Pool)
+    together_api_key: str = Field(default="", description="Together.ai API key")
+    together_base_url: str = Field(
+        default="https://api.together.xyz/v1", description="Together.ai API base URL"
+    )
+    together_model: str = Field(
+        default="meta-llama/Llama-3.3-70B-Instruct-Turbo", description="Default Together.ai model"
+    )
+
+    # Sambanova API (Free Provider Pool)
+    sambanova_api_key: str = Field(default="", description="Sambanova API key")
+    sambanova_base_url: str = Field(
+        default="https://api.sambanova.ai/v1", description="Sambanova API base URL"
+    )
+    sambanova_model: str = Field(
+        default="Meta-Llama-3.3-70B-Instruct", description="Default Sambanova model"
+    )
+
     # Mistral Toggle
     mistral_enabled: bool = Field(
         default=True,
