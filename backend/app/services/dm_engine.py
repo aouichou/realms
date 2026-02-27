@@ -1039,7 +1039,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
         messages: List[Dict[str, Any]],
         character: Character,
         db: AsyncSession,
-        max_iterations: int = 5,
+        max_iterations: int = 10,
         player_input: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
@@ -1053,7 +1053,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
             messages: Conversation messages
             character: Character model instance
             db: Database session for tool execution
-            max_iterations: Max tool calling iterations to prevent loops
+            max_iterations: Max iterations (tool calls + RL-140 validation regeneration) to prevent loops
             player_input: Player's action (for RL-140 validation)
 
         Returns:

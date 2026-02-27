@@ -17,7 +17,6 @@ from app.api.v1.endpoints import (
     items,
     loot,
     memories,
-    narrate,
     npcs,
     progression,
     quests,
@@ -45,7 +44,6 @@ api_router.include_router(inventory.router, tags=["inventory"])
 api_router.include_router(items.router, prefix="/items", tags=["items"])
 api_router.include_router(loot.router, tags=["loot"])
 api_router.include_router(memories.router, tags=["memories"])
-api_router.include_router(narrate.router, tags=["narration"])
 api_router.include_router(npcs.router, tags=["npcs"])
 api_router.include_router(progression.router, tags=["progression"])
 api_router.include_router(quests.router, tags=["quests"])

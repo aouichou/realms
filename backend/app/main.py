@@ -26,6 +26,7 @@ from app.middleware.rate_limit import RateLimitMiddleware
 from app.observability.logger import get_logger
 from app.observability.tracing import init_tracing, instrument_app, instrument_sqlalchemy
 from app.routers import health, metrics, models
+from app.services.dm_supervisor import get_dm_supervisor
 from app.services.image_detection_service import get_image_detection_service
 from app.services.provider_init import initialize_providers
 from app.services.redis_service import session_service
@@ -99,6 +100,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Failed to preload image detection service: {e}")
         # Not critical - will lazy load on first use
+
+    # Pre-warm DM supervisor (RL-140): loads sentence-transformers model + embeds D&D rule chunks
+    # Prevents 2-5s cold-start latency on first combat/validation request
+    try:
+        logger.info("Pre-warming DM supervisor (RL-140)...")
+        get_dm_supervisor()  # Singleton - loads model and embeddings now
+        logger.info("✓ DM supervisor ready")
+    except Exception as e:
+        logger.warning(f"Failed to pre-warm DM supervisor: {e}")
+        # Not critical - will lazy load on first validation request
 
     yield
 
