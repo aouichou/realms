@@ -58,7 +58,8 @@ class Creature(Base):
     # Challenge and rewards
     cr = Column(
         String(100), index=True
-    )  # Challenge Rating: "1/4", "5", "16", etc.\n    xp = Column(String(100))  # XP value or treasure reference
+    )  # Challenge Rating: "1/4", "5", "16", etc.
+    xp = Column(String(100), nullable=True)  # XP value (e.g. "200", "700")
 
     # Abilities and actions (stored as text for DM display)
     actions = Column(Text)  # Attack descriptions, abilities
@@ -145,7 +146,7 @@ class Creature(Base):
             [
                 f"Senses: {self.senses}" if self.senses is not None else "Senses: —",  # type: ignore[comparison-overlap]
                 f"Languages: {self.languages}" if self.languages is not None else "Languages: —",  # type: ignore[comparison-overlap]
-                f"CR: {self.cr} (XP: {self.xp})",
+                f"CR: {self.cr}" + (f" (XP: {self.xp})" if self.xp else ""),
                 "",
             ]
         )

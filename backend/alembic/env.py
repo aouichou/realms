@@ -6,6 +6,9 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
+# Add backend root to path BEFORE importing app modules
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from sqlalchemy import pool, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -16,10 +19,6 @@ from app.db import models  # noqa: F401 - Import all models
 from app.db.base import Base
 
 logger = logging.getLogger("alembic.env")
-
-# Add app to path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 
 # Alembic Config object
 config = context.config
