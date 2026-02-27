@@ -492,8 +492,13 @@ def detect_roll_request_from_narration(dm_response: str) -> Optional[dict]:
             "check",
             lambda m: "stealth",
         ),
-        # Perception checks
-        (r"(?:look around|search|notice|spot|observe)", "check", lambda m: "perception"),
+        # Perception checks — require explicit roll/check language to avoid firing on narrative prose
+        # e.g. "make a perception check", "roll to notice" — NOT "you notice three figures"
+        (
+            r"(?:make a perception (?:check|roll)|perception check|roll (?:to |for )?(?:notice|spot|observe)|spot (?:check|roll)|look carefully around|search (?:for clues|the area|carefully))",
+            "check",
+            lambda m: "perception",
+        ),
         # Investigation checks
         (r"(?:investigate|examine|inspect) (?:the |for )", "check", lambda m: "investigation"),
     ]

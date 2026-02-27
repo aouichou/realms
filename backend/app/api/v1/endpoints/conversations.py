@@ -597,7 +597,16 @@ async def send_player_action(
                 # Continue without this roll rather than failing entire request
 
     # RL-127: Natural language roll detection (fallback if no tags found)
-    if not player_roll_requests:
+    # Skip when player is submitting a roll result — DM is narrating an outcome, not requesting a new roll
+    _action_lower = request.action.lower().strip()
+    _is_responding_to_roll = (
+        request.roll_result is not None  # structured roll from UI dice roller
+        or "[ROLL RESULT:" in action_text  # formatted roll result in action
+        or _action_lower.startswith("i rolled")
+        or _action_lower.startswith("rolled a")
+        or _action_lower.startswith("i got a")
+    )
+    if not player_roll_requests and not _is_responding_to_roll:
         logger.info("No [ROLL:...] tags found, attempting natural language detection")
         detected_roll = detect_roll_request_from_narration(result["narration"])
 

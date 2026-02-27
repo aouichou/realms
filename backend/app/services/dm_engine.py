@@ -1383,7 +1383,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                 logger.error(f"Error in tool calling loop: {e}", exc_info=True)
                 # Fall back to regular narration
                 return {
-                    "narration": "The magical energies swirl uncertainly as the spell takes effect...",
+                    "narration": "The world holds its breath for a moment... (Something went wrong. Please try again.)",
                     "tool_calls_made": tool_calls_made,
                     "character_updates": character_updates,
                     "error": str(e),
