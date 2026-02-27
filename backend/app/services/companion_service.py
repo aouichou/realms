@@ -5,7 +5,7 @@ Uses the AI provider system for responses with distinct personality from DM.
 
 import random
 import time
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -76,9 +76,9 @@ class CompanionService:
         try:
             # Generate response using AI provider with tracing
             with tracer.start_as_current_span("companion.ai_call") as span:
-                span.set_attribute("companion.name", companion.name)
-                span.set_attribute("companion.personality", companion.personality)
-                span.set_attribute("companion.loyalty", companion.loyalty or 50)  # type: ignore[arg-type]
+                span.set_attribute("companion.name", str(companion.name))
+                span.set_attribute("companion.personality", str(companion.personality))
+                span.set_attribute("companion.loyalty", int(companion.loyalty or 50))  # type: ignore[assignment]
                 span.set_attribute("provider.name", self.ai_provider.name)
 
                 response = await self.ai_provider.generate_chat(
@@ -99,13 +99,7 @@ class CompanionService:
 
             # Record metrics
             duration = time.time() - start_time
-            if hasattr(metrics, "companion_responses_total"):
-                metrics.companion_responses_total.labels(
-                    companion_name=companion.name, status="success"
-                ).inc()
-                metrics.companion_response_duration_seconds.labels(
-                    companion_name=companion.name
-                ).observe(duration)
+            metrics.record_companion_response(str(companion.name), "success", duration)
 
             logger.info(f"Companion '{companion.name}' responded: {response[:100]}...")
             return response
@@ -114,10 +108,7 @@ class CompanionService:
             duration = time.time() - start_time
 
             # Record error metrics
-            if hasattr(metrics, "companion_responses_total"):
-                metrics.companion_responses_total.labels(
-                    companion_name=companion.name, status="error"
-                ).inc()
+            metrics.record_companion_response(str(companion.name), "error", duration)
 
             logger.error(f"Failed to generate companion response: {e}")
             return self._get_fallback_response(companion)
@@ -295,7 +286,7 @@ You are reluctant and possibly defiant. You:
         tracer = get_tracer()
 
         with tracer.start_as_current_span("companion.check_response_criteria") as span:
-            span.set_attribute("companion.name", companion.name)
+            span.set_attribute("companion.name", str(companion.name))
             span.set_attribute("combat_active", combat_active)
 
             companion_name_lower = companion.name.lower()
@@ -349,8 +340,8 @@ You are reluctant and possibly defiant. You:
         tracer = get_tracer()
 
         with tracer.start_as_current_span("companion.calculate_loyalty") as span:
-            old_loyalty = companion.loyalty  # type: ignore[assignment]
-            companion.loyalty = max(0, min(100, companion.loyalty + loyalty_change))  # type: ignore[assignment,operator]
+            old_loyalty: int = cast(int, companion.loyalty or 0)
+            companion.loyalty = max(0, min(100, old_loyalty + loyalty_change))  # type: ignore[assignment]
 
             logger.debug(
                 f"Loyalty calculation for {companion.name}",
@@ -367,9 +358,9 @@ You are reluctant and possibly defiant. You:
                 },
             )
 
-            span.set_attribute("companion.name", companion.name)
+            span.set_attribute("companion.name", str(companion.name))
             span.set_attribute("loyalty.old", old_loyalty)
-            span.set_attribute("loyalty.new", companion.loyalty)  # type: ignore[arg-type]
+            span.set_attribute("loyalty.new", cast(int, companion.loyalty))
             span.set_attribute("loyalty.change", loyalty_change)
             span.set_attribute("event", event_description[:100])
 
