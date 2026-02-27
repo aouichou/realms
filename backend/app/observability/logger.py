@@ -117,7 +117,7 @@ class LogContext:
             self.tokens.append(character_id_var.set(self.character_id))
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, _exc_type, _exc_val, _exc_tb):
         """Reset context variables"""
         for token in self.tokens:
             token.var.reset(token)

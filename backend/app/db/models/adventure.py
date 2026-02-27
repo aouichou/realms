@@ -12,7 +12,7 @@ except ImportError:
     # Fallback if pgvector is not installed
     from sqlalchemy import ARRAY, Float
 
-    Vector = lambda dim: ARRAY(Float)  # noqa: E731
+    Vector = lambda _: ARRAY(Float)  # noqa: E731
 
 from sqlalchemy import (
     ARRAY,

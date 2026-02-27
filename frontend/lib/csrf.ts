@@ -10,7 +10,7 @@
  *
  * @returns CSRF token string or null if not found
  */
-export function getCsrfToken(): string | null {
+function getCsrfToken(): string | null {
 	if (typeof document === 'undefined') {
 		return null; // SSR
 	}
@@ -71,15 +71,6 @@ export function getHeadersWithCsrf(additionalHeaders: Record<string, string> = {
 }
 
 /**
- * Check if CSRF token exists
- *
- * @returns true if CSRF token is present
- */
-export function hasCsrfToken(): boolean {
-	return getCsrfToken() !== null;
-}
-
-/**
  * Clear CSRF token (logout)
  *
  * Server will clear cookie, this is just for client-side state
@@ -92,23 +83,3 @@ export function clearCsrfToken(): void {
 	}
 }
 
-/**
- * Handle CSRF error response
- *
- * @param error - Error from API request
- * @returns true if CSRF error was handled
- */
-export function handleCsrfError(error: any): boolean {
-	if (error?.response?.status === 403 && error?.response?.data?.error === 'CSRFValidationError') {
-		if (process.env.NODE_ENV === 'development') {
-			console.error('[CSRF] Validation failed:', error.response.data.message);
-		}
-
-		// Could trigger a toast notification here
-		// or force page refresh to get new token
-
-		return true;
-	}
-
-	return false;
-}

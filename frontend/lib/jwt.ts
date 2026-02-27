@@ -20,7 +20,7 @@ interface JWTPayload {
  * @param token - JWT token string
  * @returns Decoded payload or null if invalid
  */
-export function decodeJwt(token: string): JWTPayload | null {
+function decodeJwt(token: string): JWTPayload | null {
 	try {
 		// JWT format: header.payload.signature
 		const parts = token.split('.');
@@ -41,32 +41,12 @@ export function decodeJwt(token: string): JWTPayload | null {
 }
 
 /**
- * Check if JWT token is expired
- *
- * @param token - JWT token string
- * @returns true if token is expired or invalid
- */
-export function isTokenExpired(token: string): boolean {
-	const payload = decodeJwt(token);
-
-	if (!payload || !payload.exp) {
-		return true; // Treat invalid tokens as expired
-	}
-
-	// exp is in seconds, Date.now() is in milliseconds
-	const expiryTime = payload.exp * 1000;
-	const now = Date.now();
-
-	return now >= expiryTime;
-}
-
-/**
  * Get token expiry date
  *
  * @param token - JWT token string
  * @returns Expiry date or null if invalid
  */
-export function getTokenExpiry(token: string): Date | null {
+function getTokenExpiry(token: string): Date | null {
 	const payload = decodeJwt(token);
 
 	if (!payload || !payload.exp) {
@@ -82,7 +62,7 @@ export function getTokenExpiry(token: string): Date | null {
  * @param token - JWT token string
  * @returns Milliseconds until expiry, 0 if expired, -1 if invalid
  */
-export function getTimeUntilExpiry(token: string): number {
+function getTimeUntilExpiry(token: string): number {
 	const expiryDate = getTokenExpiry(token);
 
 	if (!expiryDate) {
@@ -110,58 +90,3 @@ export function willExpireSoon(token: string, thresholdMs: number = 5 * 60 * 100
 	return timeLeft <= thresholdMs;
 }
 
-/**
- * Format time remaining until expiry as human-readable string
- *
- * @param token - JWT token string
- * @returns Formatted time string (e.g., "5m 30s") or "expired"
- */
-export function formatTimeUntilExpiry(token: string): string {
-	const timeLeft = getTimeUntilExpiry(token);
-
-	if (timeLeft < 0) {
-		return 'invalid';
-	}
-
-	if (timeLeft === 0) {
-		return 'expired';
-	}
-
-	const seconds = Math.floor(timeLeft / 1000);
-	const minutes = Math.floor(seconds / 60);
-	const hours = Math.floor(minutes / 60);
-	const days = Math.floor(hours / 24);
-
-	if (days > 0) {
-		return `${days}d ${hours % 24}h`;
-	}
-	if (hours > 0) {
-		return `${hours}h ${minutes % 60}m`;
-	}
-	if (minutes > 0) {
-		return `${minutes}m ${seconds % 60}s`;
-	}
-	return `${seconds}s`;
-}
-
-/**
- * Extract user ID from token
- *
- * @param token - JWT token string
- * @returns User ID or null if invalid
- */
-export function getUserIdFromToken(token: string): string | null {
-	const payload = decodeJwt(token);
-	return payload?.sub || null;
-}
-
-/**
- * Check if token is a guest token
- *
- * @param token - JWT token string
- * @returns true if token is for a guest user
- */
-export function isGuestToken(token: string): boolean {
-	const payload = decodeJwt(token);
-	return payload?.guest === true;
-}

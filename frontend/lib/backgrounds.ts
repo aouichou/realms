@@ -154,12 +154,3 @@ export const BACKGROUNDS: Background[] = [
 	},
 ];
 
-// Helper to get background by name
-export function getBackgroundByName(name: string): Background | undefined {
-	return BACKGROUNDS.find(bg => bg.name.toLowerCase() === name.toLowerCase());
-}
-
-// Get all background names
-export function getBackgroundNames(): string[] {
-	return BACKGROUNDS.map(bg => bg.name);
-}

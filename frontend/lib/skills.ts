@@ -130,7 +130,7 @@ export const SKILLS: Skill[] = [
 /**
  * Class-specific skill proficiency rules from D&D 5e
  */
-export interface ClassSkillRules {
+interface ClassSkillRules {
 	count: number; // Number of skills to choose
 	choices: SkillName[]; // Available skills for the class
 }
@@ -255,7 +255,7 @@ export const CLASS_SKILL_PROFICIENCIES: Record<string, ClassSkillRules> = {
 /**
  * Racial skill bonuses from D&D 5e
  */
-export interface RacialSkillBonus {
+interface RacialSkillBonus {
 	skills: SkillName[]; // Fixed skills granted
 	chooseCount?: number; // Number of skills to choose (e.g., Half-Elf)
 	chooseFrom?: SkillName[]; // Available choices (if chooseCount > 0)
@@ -313,32 +313,3 @@ export const RACIAL_SKILL_BONUSES: Record<string, RacialSkillBonus> = {
 	},
 };
 
-/**
- * Calculate ability modifier from ability score
- */
-export function getAbilityModifier(score: number): number {
-	return Math.floor((score - 10) / 2);
-}
-
-/**
- * Calculate skill bonus (ability modifier + proficiency bonus if proficient)
- */
-export function calculateSkillBonus(
-	abilityScore: number,
-	isProficient: boolean,
-	proficiencyBonus: number
-): number {
-	const abilityMod = getAbilityModifier(abilityScore);
-	return isProficient ? abilityMod + proficiencyBonus : abilityMod;
-}
-
-/**
- * Get proficiency bonus by character level (D&D 5e rules)
- */
-export function getProficiencyBonus(level: number): number {
-	if (level <= 4) return 2;
-	if (level <= 8) return 3;
-	if (level <= 12) return 4;
-	if (level <= 16) return 5;
-	return 6;
-}

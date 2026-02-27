@@ -24,27 +24,3 @@ export function LoadingSpinner({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
 		</div>
 	);
 }
-
-export function LoadingPage({ message }: { message?: string }) {
-	const { t } = useTranslation();
-	return (
-		<div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-			<div className="text-center space-y-4">
-				<LoadingSpinner size="lg" />
-				<p className="text-lg font-body text-neutral-500">{message || t('common.loading')}</p>
-			</div>
-		</div>
-	);
-}
-
-export function LoadingOverlay({ message }: { message?: string }) {
-	const { t } = useTranslation();
-	return (
-		<div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-			<div className="text-center space-y-4 bg-white p-8 rounded-lg shadow-xl">
-				<LoadingSpinner size="lg" />
-				<p className="text-lg font-body text-neutral-900">{message || t('common.loading')}</p>
-			</div>
-		</div>
-	);
-}

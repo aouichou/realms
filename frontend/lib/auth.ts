@@ -11,13 +11,13 @@ export interface User {
 	last_login: string | null;
 }
 
-export interface AuthTokens {
+interface AuthTokens {
 	access_token: string;
 	refresh_token?: string;
 	guest_token?: string;
 }
 
-export interface AuthState {
+interface AuthState {
 	user: User | null;
 	isAuthenticated: boolean;
 	isGuest: boolean;

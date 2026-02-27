@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export type Language = "en" | "fr";
+type Language = "en" | "fr";
 
 // Define translations directly as TypeScript objects
 const translations: Record<Language, any> = {

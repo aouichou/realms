@@ -39,11 +39,11 @@ class QueryPerformanceMonitor:
         """Setup SQLAlchemy event listeners for query logging"""
 
         @event.listens_for(Engine, "before_cursor_execute")
-        def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        def before_cursor_execute(conn, _cursor, statement, _parameters, _context, _executemany):
             conn.info.setdefault("query_start_time", []).append(time.time())
 
         @event.listens_for(Engine, "after_cursor_execute")
-        def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        def after_cursor_execute(conn, _cursor, statement, _parameters, _context, _executemany):
             total = time.time() - conn.info["query_start_time"].pop()
 
             # Log slow queries

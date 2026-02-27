@@ -7,12 +7,12 @@
  * - 6 Flaws
  */
 
-export interface PersonalityOption {
+interface PersonalityOption {
 	text: string;
 	category?: 'Good' | 'Lawful' | 'Chaotic' | 'Evil' | 'Neutral' | 'Any';
 }
 
-export interface BackgroundPersonality {
+interface BackgroundPersonality {
 	name: string;
 	traits: string[];
 	ideals: PersonalityOption[];
@@ -24,7 +24,7 @@ export interface BackgroundPersonality {
  * Acolyte Background
  * Complete template showing the structure for all backgrounds
  */
-export const ACOLYTE_PERSONALITY: BackgroundPersonality = {
+const ACOLYTE_PERSONALITY: BackgroundPersonality = {
 	name: 'Acolyte',
 	traits: [
 		'I idolize a particular hero of my faith, and constantly refer to that person\'s deeds and example.',
@@ -65,7 +65,7 @@ export const ACOLYTE_PERSONALITY: BackgroundPersonality = {
 /**
  * Charlatan Background
  */
-export const CHARLATAN_PERSONALITY: BackgroundPersonality = {
+const CHARLATAN_PERSONALITY: BackgroundPersonality = {
 	name: 'Charlatan',
 	traits: [
 		'I fall in and out of love easily, and am always pursuing someone.',
@@ -106,7 +106,7 @@ export const CHARLATAN_PERSONALITY: BackgroundPersonality = {
 /**
  * Criminal Background
  */
-export const CRIMINAL_PERSONALITY: BackgroundPersonality = {
+const CRIMINAL_PERSONALITY: BackgroundPersonality = {
 	name: 'Criminal',
 	traits: [
 		'I always have a plan for what to do when things go wrong.',
@@ -147,7 +147,7 @@ export const CRIMINAL_PERSONALITY: BackgroundPersonality = {
 /**
  * Entertainer Background
  */
-export const ENTERTAINER_PERSONALITY: BackgroundPersonality = {
+const ENTERTAINER_PERSONALITY: BackgroundPersonality = {
 	name: 'Entertainer',
 	traits: [
 		'I know a story relevant to almost every situation.',
@@ -188,7 +188,7 @@ export const ENTERTAINER_PERSONALITY: BackgroundPersonality = {
 /**
  * Folk Hero Background
  */
-export const FOLK_HERO_PERSONALITY: BackgroundPersonality = {
+const FOLK_HERO_PERSONALITY: BackgroundPersonality = {
 	name: 'Folk Hero',
 	traits: [
 		'I judge people by their actions, not their words.',
@@ -229,7 +229,7 @@ export const FOLK_HERO_PERSONALITY: BackgroundPersonality = {
 /**
  * Guild Artisan Background
  */
-export const GUILD_ARTISAN_PERSONALITY: BackgroundPersonality = {
+const GUILD_ARTISAN_PERSONALITY: BackgroundPersonality = {
 	name: 'Guild Artisan',
 	traits: [
 		'I believe that anything worth doing is worth doing right. I can\'t help it—I\'m a perfectionist.',
@@ -270,7 +270,7 @@ export const GUILD_ARTISAN_PERSONALITY: BackgroundPersonality = {
 /**
  * Hermit Background
  */
-export const HERMIT_PERSONALITY: BackgroundPersonality = {
+const HERMIT_PERSONALITY: BackgroundPersonality = {
 	name: 'Hermit',
 	traits: [
 		'I\'ve been isolated for so long that I rarely speak, preferring gestures and the occasional grunt.',
@@ -311,7 +311,7 @@ export const HERMIT_PERSONALITY: BackgroundPersonality = {
 /**
  * Noble Background
  */
-export const NOBLE_PERSONALITY: BackgroundPersonality = {
+const NOBLE_PERSONALITY: BackgroundPersonality = {
 	name: 'Noble',
 	traits: [
 		'My eloquent flattery makes everyone I talk to feel like the most wonderful and important person in the world.',
@@ -352,7 +352,7 @@ export const NOBLE_PERSONALITY: BackgroundPersonality = {
 /**
  * Outlander Background
  */
-export const OUTLANDER_PERSONALITY: BackgroundPersonality = {
+const OUTLANDER_PERSONALITY: BackgroundPersonality = {
 	name: 'Outlander',
 	traits: [
 		'I\'m driven by a wanderlust that led me away from home.',
@@ -393,7 +393,7 @@ export const OUTLANDER_PERSONALITY: BackgroundPersonality = {
 /**
  * Sage Background
  */
-export const SAGE_PERSONALITY: BackgroundPersonality = {
+const SAGE_PERSONALITY: BackgroundPersonality = {
 	name: 'Sage',
 	traits: [
 		'I use polysyllabic words that convey the impression of great erudition.',
@@ -434,7 +434,7 @@ export const SAGE_PERSONALITY: BackgroundPersonality = {
 /**
  * Sailor Background
  */
-export const SAILOR_PERSONALITY: BackgroundPersonality = {
+const SAILOR_PERSONALITY: BackgroundPersonality = {
 	name: 'Sailor',
 	traits: [
 		'My friends know they can rely on me, no matter what.',
@@ -475,7 +475,7 @@ export const SAILOR_PERSONALITY: BackgroundPersonality = {
 /**
  * Soldier Background
  */
-export const SOLDIER_PERSONALITY: BackgroundPersonality = {
+const SOLDIER_PERSONALITY: BackgroundPersonality = {
 	name: 'Soldier',
 	traits: [
 		'I\'m always polite and respectful.',
@@ -516,7 +516,7 @@ export const SOLDIER_PERSONALITY: BackgroundPersonality = {
 /**
  * Urchin Background
  */
-export const URCHIN_PERSONALITY: BackgroundPersonality = {
+const URCHIN_PERSONALITY: BackgroundPersonality = {
 	name: 'Urchin',
 	traits: [
 		'I hide scraps of food and trinkets away in my pockets.',
@@ -555,7 +555,7 @@ export const URCHIN_PERSONALITY: BackgroundPersonality = {
 };
 
 // Update the map to include all backgrounds
-export const BACKGROUND_PERSONALITIES: Record<string, BackgroundPersonality> = {
+const BACKGROUND_PERSONALITIES: Record<string, BackgroundPersonality> = {
 	acolyte: ACOLYTE_PERSONALITY,
 	charlatan: CHARLATAN_PERSONALITY,
 	criminal: CRIMINAL_PERSONALITY,
@@ -579,9 +579,3 @@ export function getBackgroundPersonality(backgroundName: string): BackgroundPers
 	return BACKGROUND_PERSONALITIES[key] || null;
 }
 
-/**
- * Get all available backgrounds with personality data
- */
-export function getAvailableBackgrounds(): string[] {
-	return Object.keys(BACKGROUND_PERSONALITIES);
-}

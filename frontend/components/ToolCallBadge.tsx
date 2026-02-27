@@ -8,7 +8,7 @@ interface ToolCallBadgeProps {
 	arguments?: Record<string, any>;
 }
 
-export function ToolCallBadge({ toolName, arguments: args }: ToolCallBadgeProps) {
+function ToolCallBadge({ toolName, arguments: args }: ToolCallBadgeProps) {
 	// Tool name display mapping
 	const toolDisplayNames: Record<string, string> = {
 		request_player_roll: '🎲 Roll Request',

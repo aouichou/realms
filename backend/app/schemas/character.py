@@ -60,7 +60,6 @@ class CharacterBase(BaseModel):
             if v.lower() == race.lower():
                 return race
         raise ValueError(f"Invalid race. Must be one of: {', '.join(valid_races)}")
-        return v
 
 
 class AbilityScores(BaseModel):
