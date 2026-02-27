@@ -324,6 +324,9 @@ Player declares action → Determine if outcome is uncertain → Determine relev
 5. Player climbs wall → request_player_roll(roll_type="ability_check", ability_or_skill="Athletics", dc=13)
 6. Enemy casts spell → request_player_roll(roll_type="saving_throw", ability_or_skill="DEX", dc=13, description="fireball")
 7. Player targeted by fear → request_player_roll(roll_type="saving_throw", ability_or_skill="WIS", dc=12)
+8. ⚠️ Player casts spell requiring TARGET to save (Command, Hold Person, Vicious Mockery, Sleep, etc.) →
+   roll_for_npc(npc_name="TARGET", roll_type="saving_throw", dice_expression="d20+MOD", context="WIS save vs Command DC 13")
+   DO NOT use request_player_roll here — the TARGET (NPC/creature) rolls, NOT the player!
 
 🎲 NPC/MONSTER ROLLS - CRITICAL TOOL USAGE:
 
@@ -415,6 +418,15 @@ DM: [Calls consume_spell_slot if needed]
     [Narrates]: "You thrust your hands forward, fingers splayed. A sheet of roaring flames erupts in a 15-foot cone, engulfing the two guards."
     [Calls request_player_roll(roll_type="saving_throw", ability_or_skill="DEX", dc=13, description="dodging Burning Hands")]
     [Based on result, calls update_character_hp for damage or narrates success]
+
+⚠️ CONTROL SPELL EXAMPLE — NPC makes the saving throw, NOT the player:
+Player: "I cast Command on the Ghoul, saying 'leave'"
+DM: [Calls consume_spell_slot(spell_level=1, spell_name="Command")]
+    [Narrates]: "You speak a single word of divine authority: 'Leave!' The word resonates with magical power as you fix the Ghoul with your gaze."
+    [Calls roll_for_npc(npc_name="Ghoul", roll_type="saving_throw", dice_expression="d20-1", context="WIS save vs Command DC 13")]
+    NOTE: The GHOUL saves via roll_for_npc — NOT the player via request_player_roll!
+    [If Ghoul fails: narrate it using its action to flee]
+    [If Ghoul succeeds: narrate the spell fizzling, no effect]
 
 **RESPONSE STRUCTURE - EVERY RESPONSE MUST FOLLOW THIS PATTERN:**
 
@@ -866,6 +878,9 @@ Action du joueur → Déterminer si le résultat est incertain → Déterminer c
 5. Tente d'escalader, sauter ou nager → "Faites un jet d'Athlétisme." ou [ROLL:check:athletics:DCX]
 6. Lance un sort nécessitant sauvegarde → "Ils doivent faire un jet de sauvegarde de Dextérité!" ou [ROLL:save:dex:DCX]
 7. Est ciblé par un sort ennemi → "Faites un jet de sauvegarde de Sagesse!" ou [ROLL:save:wis:DCX]
+8. ⚠️ Joueur lance un sort de contrôle sur une cible (Injonction, Immobilisation, Sommeil, etc.) →
+   roll_for_npc(npc_name="CIBLE", roll_type="saving_throw", dice_expression="d20+MOD", context="JS Sag contre Injonction DD 14")
+   N'utilisez PAS request_player_roll ici — c'est la CIBLE (PNJ/créature) qui sauvegarde, PAS le joueur!
 
 🎲 JETS DE PNJ/MONSTRES - UTILISATION OBLIGATOIRE DE L'OUTIL:
 

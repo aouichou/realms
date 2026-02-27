@@ -282,6 +282,19 @@ class AdaptiveNarrationService:
         # Determine what the target is (what player is acting on)
         target = cleaned_desc if cleaned_desc else f"using {ability}"
 
+        # Special handling for saving throws — use targeted templates instead of semantic action type
+        # (Avoids "You study..." templates firing for spell saves)
+        if tool_args.get("roll_type") == "saving_throw":
+            import random as _random
+            save_templates = [
+                "You brace yourself, steeling your will against the incoming threat.",
+                "Magic bears down on you, testing your defenses.",
+                "Your muscles tense and your mind sharpens as you try to resist.",
+                "The force of it washes over you — everything depends on this roll.",
+                "You feel the pressure crash against your defenses. Hold firm.",
+            ]
+            return _random.choice(save_templates)
+
         # Get semantic action type
         action_type = self._get_action_type(description, ability)
 
