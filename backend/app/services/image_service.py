@@ -33,6 +33,10 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 # Rate limiting storage
 _image_generation_calls = []
 
+# API-level 429 cooldown tracking (Mistral server-side rate limit)
+_api_cooldown_until: float = 0
+RATE_LIMIT_COOLDOWN_SECONDS = int(os.getenv("IMAGE_RATE_LIMIT_COOLDOWN", "300"))  # 5 min default
+
 
 def rate_limit(max_per_hour: int = MAX_IMAGES_PER_HOUR):
     """Decorator to limit image generation rate"""
@@ -132,6 +136,14 @@ class ImageService:
         use_cache: bool = True,
         character_description: Optional[str] = None,
     ) -> Optional[str]:
+        # Check API-level cooldown from a previous 429 response
+        global _api_cooldown_until
+        if time.time() < _api_cooldown_until:
+            remaining = int(_api_cooldown_until - time.time())
+            logger.info(
+                f"Image generation in API cooldown after rate limit, {remaining}s remaining"
+            )
+            return None
         """Generate scene image using Mistral Agent API with smart reuse
 
         Args:
@@ -196,7 +208,16 @@ class ImageService:
             return image_url
 
         except Exception as e:
-            logger.error(f"Image generation failed: {e}")
+            error_str = str(e)
+            if "429" in error_str or "rate limit" in error_str.lower():
+                _api_cooldown_until = time.time() + RATE_LIMIT_COOLDOWN_SECONDS
+                logger.warning(
+                    f"Mistral image API rate limited (429). "
+                    f"Cooling down for {RATE_LIMIT_COOLDOWN_SECONDS}s "
+                    f"(until {time.strftime('%H:%M:%S', time.localtime(_api_cooldown_until))})"
+                )
+            else:
+                logger.error(f"Image generation failed: {e}")
             return None
 
     def _build_image_prompt(
