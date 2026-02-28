@@ -1,415 +1,341 @@
-# Observability Stack Setup
+# Mistral Realms — Observability
 
-Complete observability infrastructure for Mistral Realms with Prometheus, Grafana, and Jaeger.
+Full observability stack: OpenTelemetry distributed traces → Jaeger, 40+ Prometheus metrics with 15 alert rules → Grafana dashboards, and structured logging with request-scoped correlation IDs.
 
-## Architecture
+---
+
+## Stack
+
+| Component | Image | Port | Purpose |
+|-----------|-------|------|---------|
+| **Jaeger** | `jaegertracing/all-in-one:1.53` | 16686 (UI), 4317 (OTLP gRPC), 4318 (OTLP HTTP) | Distributed trace storage and visualization |
+| **Prometheus** | `prom/prometheus:v2.48.1` | 9090 | Metrics collection and alerting |
+| **Grafana** | `grafana/grafana:10.2.3` | 3001 | Dashboards and visualization |
+
+All three are included in both production (`docker-compose.yml`) and development (`docker-compose.dev.yml`) stacks.
+
+---
+
+## Accessing the UIs
 
 ```
-┌─────────────┐     ┌───────────────┐     ┌──────────────┐
-│   FastAPI   │────▶│  Prometheus   │────▶│   Grafana    │
-│   Backend   │     │  (Metrics)    │     │ (Dashboards) │
-└─────────────┘     └───────────────┘     └──────────────┘
-       │                                          │
-       │            ┌───────────────┐            │
-       └───────────▶│    Jaeger     │────────────┘
-                    │   (Traces)    │
-                    └───────────────┘
+Jaeger:     http://localhost:16686
+Prometheus: http://localhost:9090
+Grafana:    http://localhost:3001  (default: admin/admin)
 ```
 
-## Quick Start
+---
 
-### 1. Start the Observability Stack
+## What's Instrumented
+
+### Distributed Tracing (OpenTelemetry → Jaeger)
+
+Tracing is configured in `backend/app/observability/tracing.py`. The OTLP gRPC exporter sends spans to Jaeger at `jaeger:4317`.
+
+#### Auto-Instrumented (via OpenTelemetry instrumentors)
+
+| Library | What's Traced |
+|---------|--------------|
+| **FastAPI** | Every HTTP request becomes a span with method, path, status code, duration |
+| **HTTPX** | All outbound HTTP calls — this captures **every Mistral API call** since the Mistral SDK uses httpx internally |
+| **Redis** | All Redis operations (SET, GET, LPUSH, etc.) with key names |
+| **SQLAlchemy** | All database queries with SQL statement, parameters, duration |
+
+#### Custom Spans
+
+| Decorator/Function | Usage |
+|-------------------|-------|
+| `@trace_async("span_name")` | Wraps any async function with a span. Records function arguments and captures exceptions. Used across services. |
+| `trace_llm_call(model, tokens...)` | Creates `llm.mistral.chat` spans with LLM-specific attributes |
+
+#### LLM-Specific Span Attributes
+
+Every AI provider call creates a span with:
+- `llm.vendor` — provider name (e.g., "mistral", "qwen", "groq")
+- `llm.model` — model identifier (e.g., "mistral-small-latest")
+- `llm.prompt_tokens` — input token count
+- `llm.completion_tokens` — output token count
+- `llm.total_tokens` — combined token count
+
+### What a DM Narration Trace Looks Like
+
+A single player action (`POST /api/v1/conversations/action`) generates a distributed trace spanning:
+
+```
+[FastAPI] POST /api/v1/conversations/action (parent)
+├── [SQLAlchemy] SELECT character WHERE id = ?
+├── [SQLAlchemy] SELECT game_session WHERE id = ?
+├── [SQLAlchemy] SELECT companions WHERE character_id = ?
+├── [Redis] GET session:{id}:state
+├── [Redis] LRANGE session:{id}:messages
+│
+├── [Custom] embed_text (Mistral API - mistral-embed)
+│   └── [HTTPX] POST https://api.mistral.ai/v1/embeddings
+│
+├── [SQLAlchemy] SELECT adventure_memories ORDER BY embedding <=> ?
+│
+├── [Custom] dm_engine.narrate
+│   ├── [Custom] build_messages
+│   ├── [Custom] call_dm_with_tools
+│   │   ├── [HTTPX] POST https://api.mistral.ai/v1/chat/completions  ← tool call iteration 1
+│   │   │   └── [Custom] llm.mistral.chat {model, tokens}
+│   │   ├── [Custom] tool_executor.execute_tool (get_creature_stats)
+│   │   │   └── [SQLAlchemy] SELECT creature WHERE name LIKE ?
+│   │   ├── [HTTPX] POST https://api.mistral.ai/v1/chat/completions  ← tool call iteration 2
+│   │   │   └── [Custom] llm.mistral.chat {model, tokens}
+│   │   ├── [Custom] tool_executor.execute_tool (request_player_roll)
+│   │   └── [HTTPX] POST https://api.mistral.ai/v1/chat/completions  ← final narration
+│   │       └── [Custom] llm.mistral.chat {model, tokens}
+│   └── [Custom] dm_supervisor.validate
+│
+├── [Custom] scene_detection
+│   └── [Custom] image_service.generate (if scene change detected)
+│       └── [HTTPX] POST https://api.mistral.ai/v1/agents/...
+│
+├── [SQLAlchemy] INSERT conversation_message
+├── [Redis] RPUSH session:{id}:messages
+├── [Custom] embed_text (for memory storage)
+│   └── [HTTPX] POST https://api.mistral.ai/v1/embeddings
+└── [SQLAlchemy] INSERT adventure_memory
+```
+
+This trace lets you see:
+- Total request latency vs LLM API latency (usually 1-3s of the total is LLM)
+- How many tool-calling iterations occurred
+- Which tools were called and their DB query times
+- Token counts per LLM call
+- Whether scene detection triggered image generation
+- Memory embedding and storage duration
+
+### Uninstrumented Services
+
+The following services lack custom tracing (they still get auto-instrumented HTTP/DB/Redis spans, but no service-level spans):
+- CompanionService
+- EffectsService
+- ContentLinker
+- ToolExecutor (individual tool executions)
+
+---
+
+## Prometheus Metrics
+
+Metrics are collected by `MetricsCollector` in `backend/app/observability/metrics.py` (394 lines) and exposed at `GET /metrics`.
+
+### Metric Inventory (40+ metrics)
+
+#### HTTP
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `http_requests_total` | Counter | method, endpoint, status | Total HTTP requests |
+| `http_request_duration_seconds` | Histogram | method, endpoint | Request duration (8 buckets: .005–10s) |
+
+#### LLM / AI
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `llm_requests_total` | Counter | model, status | Total LLM API calls |
+| `llm_tokens_used` | Counter | model, type (prompt/completion/total) | Token consumption |
+| `llm_request_duration_seconds` | Histogram | model | LLM call duration (6 buckets up to 30s) |
+
+#### Database
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `db_query_duration_seconds` | Histogram | operation | Query duration |
+| `db_connections_active` | Gauge | — | Active DB connections |
+
+#### Redis
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `redis_operations_total` | Counter | operation | Total Redis operations |
+| `redis_cache_hits` | Counter | — | Cache hit count |
+| `redis_cache_misses` | Counter | — | Cache miss count |
+
+#### Rate Limiting
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `rate_limit_exceeded_total` | Counter | endpoint | Rate limit violations |
+| `rate_limit_blocks_total` | Counter | — | DDoS auto-blocks triggered |
+
+#### Auth
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `auth_attempts_total` | Counter | result (success/failure) | Login attempts |
+
+#### Sessions
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `active_sessions` | Gauge | — | Currently active sessions |
+| `active_conversations` | Gauge | — | Active conversation count |
+
+#### Companions
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `companion_responses_total` | Counter | companion_type | Companion AI responses |
+| `companion_response_duration_seconds` | Histogram | — | Companion response time |
+| `active_companions` | Gauge | — | Active companion count |
+| `companion_loyalty_changes` | Counter | direction | Loyalty increases/decreases |
+
+#### Spells & Effects
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `spell_casts_total` | Counter | school, level | Spells cast |
+| `active_effects` | Gauge | — | Active spell effects |
+| `effect_applications_total` | Counter | effect_type | Effects applied |
+| `effect_duration_ticks` | Counter | — | Effect duration ticks processed |
+
+#### Content Enrichment
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `content_enrichments_total` | Counter | content_type | Content enrichment operations |
+| `entity_links_created` | Counter | — | Entity cross-references created |
+| `enrichment_cache_performance` | Counter | result (hit/miss) | Enrichment cache performance |
+
+#### DM Tools
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `dm_tool_calls_total` | Counter | tool_name | Tool calls by name |
+| `dm_tool_duration_seconds` | Histogram | tool_name | Tool execution duration |
+
+#### Image Generation
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `image_generations_total` | Counter | status | Image generation attempts |
+| `image_generation_duration_seconds` | Histogram | — | Generation duration |
+| `image_cache_size_bytes` | Gauge | — | Image cache size |
+
+---
+
+## Alert Rules
+
+15 alert rules defined in `observability/prometheus/alerts.yml` across 6 groups:
+
+### Critical Alerts
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `HighHTTPErrorRate` | >5% 5xx responses over 5 min | critical |
+| `HighHTTPLatency` | P95 latency >2s over 5 min | warning |
+| `LLMServiceHighErrorRate` | >10% LLM failures over 5 min | critical |
+| `SlowDatabaseQueries` | P95 query time >1s over 5 min | warning |
+
+### Companion System
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `CompanionResponseSlow` | P95 >5s over 5 min | warning |
+| `CompanionHighErrorRate` | >10% failures over 5 min | warning |
+
+### Spell & Effects
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `SpellEffectProcessingSlow` | Processing time threshold exceeded | warning |
+| `SpellCastHighErrorRate` | >15% failures over 5 min | warning |
+
+### Content System
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `ContentEnrichmentSlow` | <0.1 operations/s | warning |
+| `ContentCacheLowHitRate` | <50% cache hits | warning |
+
+### DM Tools
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `DMToolExecutionSlow` | P95 >2s over 5 min | warning |
+| `DMToolHighErrorRate` | >10% failures over 5 min | warning |
+
+### Image Generation
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `ImageGenerationSlow` | P95 >30s over 5 min | warning |
+| `ImageGenerationHighErrorRate` | >20% failures over 5 min | warning |
+
+### Infrastructure
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `HighDatabaseConnections` | >80 active connections | warning |
+| `LargeImageCacheSize` | >10GB cache | warning |
+| `HighRateLimitViolations` | >10/s rate limit hits | warning |
+
+---
+
+## Structured Logging
+
+Configured in `backend/app/observability/logger.py`.
+
+### Format
+```
+2026-02-28 14:30:15,123 level=INFO logger=dm_engine module=dm_engine func=narrate line=342 request_id=abc-123 user_id=42 session_id=sess-456 | Starting narration for character Thorin
+```
+
+### Context Variables (ContextVars)
+Request-scoped variables automatically propagated through async call chains:
+- `request_id` — UUID generated per request (also sent as `X-Request-ID` response header)
+- `user_id` — extracted from JWT authentication
+- `session_id` — game session identifier
+- `character_id` — active character
+
+Set/cleared by `LogContext` context manager in the observability middleware.
+
+### Usage
+```python
+from app.observability.logger import get_logger
+logger = get_logger(__name__)
+logger.info("Starting narration", extra={"character_name": "Thorin"})
+```
+
+---
+
+## Grafana Setup
+
+### Datasources (auto-provisioned)
+- **Prometheus** (`http://prometheus:9090`) — default datasource
+- **Jaeger** (`http://jaeger:16686`) — with `tracesToLogs` correlation on `request_id`, `user_id`, `character_id`
+
+### Dashboard
+Auto-provisioned from `observability/grafana/dashboards/mistral-realms-overview.json`.
+
+---
+
+## Prometheus Configuration
+
+`observability/prometheus/prometheus.yml` scrapes:
+- `backend:8000/metrics` (10s interval)
+- `localhost:9090` (Prometheus self-monitoring)
+- Optional exporters (not deployed): `node-exporter:9100`, `postgres-exporter:9187`, `redis-exporter:9121`
+
+---
+
+## Validation Script
+
+`scripts/test-observability.sh` validates the full stack:
 
 ```bash
-# From project root
-docker-compose up -d prometheus grafana jaeger
-
-# Verify services are running
-docker-compose ps
+./scripts/test-observability.sh
 ```
 
-### 2. Access Dashboards
+Checks:
+1. Prometheus health + targets up + alert rules loaded
+2. Grafana health + datasources configured
+3. Jaeger health
+4. Backend `/metrics` endpoint responding
+5. Backend `/health` endpoint responding
 
-- **Grafana**: http://localhost:3001
-  - Username: `admin`
-  - Password: `admin` (change on first login)
-  - Pre-loaded dashboard: "Mistral Realms - Overview"
+---
 
-- **Prometheus**: http://localhost:9090
-  - Metrics explorer
-  - Alert rules status
-
-- **Jaeger**: http://localhost:16686
-  - Distributed tracing
-  - Service dependency graph
-
-### 3. View Metrics
-
-```bash
-# Check backend metrics endpoint
-curl http://localhost:8000/metrics
-
-# View specific metrics
-curl http://localhost:8000/metrics | grep companion_responses_total
-curl http://localhost:8000/metrics | grep spell_casts_total
-```
-
-## Files Structure
+## Directory Structure
 
 ```
 observability/
 ├── prometheus/
-│   ├── prometheus.yml          # Prometheus configuration
-│   └── alerts.yml              # Alerting rules
+│   ├── prometheus.yml          # Scrape configuration
+│   └── alerts.yml              # 15 alert rules in 6 groups
 ├── grafana/
 │   ├── datasources/
-│   │   └── datasources.yml     # Prometheus & Jaeger datasources
-│   ├── provisioning/
-│   │   └── dashboards.yml      # Dashboard provisioning
+│   │   └── datasources.yml    # Prometheus + Jaeger auto-provisioning
 │   └── dashboards/
+│       ├── dashboards.yml     # Dashboard provisioning config
 │       └── mistral-realms-overview.json  # Main dashboard
-└── README.md                   # This file
+
+backend/app/observability/
+├── __init__.py
+├── tracing.py                 # OpenTelemetry setup, @trace_async, trace_llm_call
+├── metrics.py                 # MetricsCollector with 40+ Prometheus metrics
+└── logger.py                  # StructuredFormatter, ContextVars, LogContext
 ```
-
-## Dashboard Features
-
-The **Mistral Realms - Overview** dashboard includes:
-
-### HTTP Metrics
-- Request rate per second
-- P95 latency gauge with thresholds
-- Error rate by endpoint
-
-### LLM & AI Metrics
-- Token usage rate (Mistral + Gemini)
-- P95 LLM response latency
-- Model comparison
-
-### Companion System (RL-131)
-- Companion response rate by status
-- P95 response time with SLA thresholds (5s warning)
-- Active companions gauge
-- Loyalty change tracking
-
-### Spell Effects (RL-106)
-- Spell cast rate by level
-- Active effects by type (pie chart)
-- Effect application success/failure
-- Effect duration tracking
-
-### Content System (RL-145)
-- Content enrichment rate by entity type
-- Entity link creation rate
-- Cache hit/miss ratio
-
-### DM Tools
-- Tool execution rate
-- Tool-specific latency
-- Error rates per tool
-
-### Database & Redis
-- Query P95 latency
-- Active connections
-- Cache performance
-
-### Infrastructure
-- Database connections gauge
-- Redis operation stats
-- Rate limiting violations
-
-## Alert Rules
-
-### Critical Alerts
-- **HighHTTPErrorRate**: >5% error rate for 5min
-- **LLMServiceHighErrorRate**: >10% LLM errors for 2min
-- **CompanionHighErrorRate**: >10% companion errors for 5min
-
-### Warning Alerts
-- **HighHTTPLatency**: P95 >2s for 5min
-- **CompanionResponseSlow**: P95 >5s for 3min
-- **SpellEffectProcessingSlow**: P95 >100ms for 5min
-- **SlowDatabaseQueries**: P95 >1s for 5min
-- **DMToolExecutionSlow**: P95 >2s for 5min
-
-### Info Alerts
-- **ImageGenerationSlow**: P95 >30s for 3min
-- **ContentCacheLowHitRate**: <50% hit rate for 10min
-- **LargeImageCacheSize**: >10GB for 10min
-
-## Prometheus Configuration
-
-### Scrape Targets
-
-1. **backend-api** (10s interval)
-   - Endpoint: `http://backend:8000/metrics`
-   - All application metrics
-
-2. **prometheus** (15s interval)
-   - Self-monitoring
-
-3. **node-exporter** (optional)
-   - System metrics (CPU, memory, disk)
-
-4. **postgres-exporter** (optional)
-   - Database-specific metrics
-
-5. **redis-exporter** (optional)
-   - Redis-specific metrics
-
-### Alert Evaluation
-
-- Interval: 30s
-- Alert file: `/etc/prometheus/alerts.yml`
-
-## Grafana Configuration
-
-### Pre-configured Datasources
-
-1. **Prometheus** (default)
-   - URL: `http://prometheus:9090`
-   - Scrape interval: 15s
-
-2. **Jaeger**
-   - URL: `http://jaeger:16686`
-   - Trace-to-logs integration
-
-### Dashboard Auto-loading
-
-Dashboards in `observability/grafana/dashboards/` are automatically loaded on startup.
-
-### Customization
-
-1. Edit dashboard in Grafana UI
-2. Export JSON via "Share" → "Export"
-3. Save to `observability/grafana/dashboards/`
-4. Restart Grafana: `docker-compose restart grafana`
-
-## Jaeger Tracing
-
-### Service Name
-- `mistral-realms-backend`
-
-### Traced Operations
-- All HTTP endpoints (auto-instrumented)
-- LLM calls (Mistral + Gemini)
-- Database queries (SQLAlchemy)
-- Companion AI operations
-- Spell effect processing
-- DM tool executions
-- Content enrichment
-
-### Viewing Traces
-
-1. Open Jaeger UI: http://localhost:16686
-2. Select service: `mistral-realms-backend`
-3. Search by:
-   - Operation name (e.g., "POST /api/v1/conversations/:id/action")
-   - Tags (e.g., `http.status_code=500`)
-   - Duration (e.g., `>2s`)
-
-### Correlation IDs
-
-All traces include correlation IDs:
-- `request_id`: Unique request identifier
-- `user_id`: Authenticated user
-- `character_id`: Active character
-- `session_id`: Game session
-
-Match these with structured logs for full debugging context.
-
-## Alerting Setup (Optional)
-
-### Alertmanager Integration
-
-1. Add to `docker-compose.yml`:
-```yaml
-alertmanager:
-  image: prom/alertmanager:v0.26.0
-  ports:
-    - "9093:9093"
-  volumes:
-    - ./observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml
-  command:
-    - '--config.file=/etc/alertmanager/alertmanager.yml'
-```
-
-2. Uncomment alerting section in `prometheus.yml`
-
-3. Create `alertmanager.yml`:
-```yaml
-route:
-  receiver: 'slack'
-receivers:
-  - name: 'slack'
-    slack_configs:
-      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
-        channel: '#alerts'
-```
-
-## Debug Logging
-
-Debug-level logs are now available for:
-
-### ContentLinker (RL-145)
-```python
-logger.debug("Entity matches for {monster.name}", extra={
-    "monster_id": ...,
-    "cr": ...,
-    "matched_items": [...],
-    "item_categories": [...]
-})
-```
-
-### EffectsService (RL-106)
-```python
-logger.debug("Processing effect tick: {effect.name}", extra={
-    "effect_id": ...,
-    "rounds_remaining": ...,
-    "requires_concentration": ...
-})
-```
-
-### CompanionService (RL-131)
-```python
-logger.debug("Loyalty calculation for {companion.name}", extra={
-    "old_loyalty": ...,
-    "loyalty_change": ...,
-    "new_loyalty": ...,
-    "was_clamped": ...
-})
-```
-
-Enable debug logging:
-```bash
-# In docker-compose.yml or .env
-LOG_LEVEL=DEBUG
-```
-
-## Performance Budgets
-
-Monitored SLAs:
-- ✅ HTTP requests: P95 <2s
-- ✅ Companion responses: P95 <5s
-- ✅ Spell effects: P95 <100ms
-- ✅ Content enrichment: P95 <500ms
-- ✅ Image generation: P95 <30s
-- ✅ Database queries: P95 <1s
-
-## Metrics Retention
-
-### Prometheus
-- Default: 15 days
-- Modify in `docker-compose.yml`:
-```yaml
-prometheus:
-  command:
-    - '--storage.tsdb.retention.time=30d'
-```
-
-### Jaeger
-- Default: In-memory (ephemeral)
-- For persistence, add Elasticsearch backend:
-```yaml
-jaeger:
-  environment:
-    - SPAN_STORAGE_TYPE=elasticsearch
-    - ES_SERVER_URLS=http://elasticsearch:9200
-```
-
-## Troubleshooting
-
-### Metrics Not Appearing
-
-1. Check backend metrics endpoint:
-```bash
-curl http://localhost:8000/metrics
-```
-
-2. Check Prometheus targets:
-- Visit http://localhost:9090/targets
-- Ensure `backend:8000` is **UP**
-
-3. Check Prometheus logs:
-```bash
-docker-compose logs prometheus
-```
-
-### Dashboard Not Loading
-
-1. Verify datasource:
-- Grafana → Configuration → Data Sources
-- Test connection to Prometheus
-
-2. Check dashboard file:
-```bash
-cat observability/grafana/dashboards/mistral-realms-overview.json | jq .
-```
-
-3. Reload provisioning:
-```bash
-docker-compose restart grafana
-```
-
-### Traces Not in Jaeger
-
-1. Check tracing is enabled:
-```bash
-# In backend container
-env | grep TRACING_ENABLED
-```
-
-2. Verify Jaeger connection:
-```bash
-curl http://localhost:16686/api/services
-```
-
-3. Check backend logs:
-```bash
-docker-compose logs backend | grep -i otlp
-```
-
-### Alerts Not Firing
-
-1. Check alert rules:
-- Visit http://localhost:9090/alerts
-- Verify rules are loaded
-
-2. Manually trigger alert:
-```bash
-# Force high error rate
-for i in {1..100}; do curl http://localhost:8000/nonexistent; done
-```
-
-3. Check alert state:
-```bash
-# Should transition: Inactive → Pending → Firing
-```
-
-## Next Steps
-
-1. **Create Custom Dashboards**
-   - Copy `mistral-realms-overview.json`
-   - Customize for specific use cases
-   - Add to provisioning directory
-
-2. **Set Up Alertmanager**
-   - Configure Slack/PagerDuty integration
-   - Define escalation policies
-   - Test alert notifications
-
-3. **Add Log Aggregation**
-   - Deploy Loki for log aggregation
-   - Link traces to logs in Grafana
-   - Create log-based alerts
-
-4. **Enable Advanced Features**
-   - Query performance insights
-   - User session analytics
-   - Business metrics (quest completion rates)
-
-## Resources
-
-- [Prometheus Documentation](https://prometheus.io/docs/)
-- [Grafana Tutorials](https://grafana.com/tutorials/)
-- [Jaeger Documentation](https://www.jaegertracing.io/docs/)
-- [OpenTelemetry Best Practices](https://opentelemetry.io/docs/concepts/observability-primer/)
