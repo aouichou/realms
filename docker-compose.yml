@@ -48,6 +48,14 @@ services:
       - "8000:8000"
     environment:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - QWEN_API_KEY=${QWEN_API_KEY}
+      - QWEN_MODEL=${QWEN_MODEL:-qwen-max}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
+      - GEMINI_THINKING_LEVEL=${GEMINI_THINKING_LEVEL:-high}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - POSTGRES_HOST=postgres
@@ -65,6 +73,13 @@ services:
       - RANDOM_POOL_TIMEOUT=${RANDOM_POOL_TIMEOUT:-30.0}
       - OTLP_ENDPOINT=http://jaeger:4317
       - TRACING_ENABLED=true
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - API_BASE_URL=${API_BASE_URL:-http://localhost:8000}
+      # Image generation
+      - ENABLE_IMAGE_GENERATION=${ENABLE_IMAGE_GENERATION:-false}
+      - IMAGE_GENERATION_MAX_PER_HOUR=${IMAGE_GENERATION_MAX_PER_HOUR:-10}
+      - IMAGE_RATE_LIMIT_COOLDOWN=${IMAGE_RATE_LIMIT_COOLDOWN:-300}
+      - MISTRAL_IMAGE_AGENT_ID=${MISTRAL_IMAGE_AGENT_ID:-}
     depends_on:
       postgres:
         condition: service_healthy
