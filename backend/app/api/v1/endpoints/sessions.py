@@ -21,6 +21,31 @@ from app.services.session_service import GameSessionService
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
+@router.get("/active/character/{character_id}", response_model=SessionResponse)
+async def get_active_session_for_character(
+    character_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the active session for a specific character.
+
+    Args:
+        character_id: Character UUID
+        current_user: Authenticated user
+        db: Database session
+
+    Returns:
+        Active session for the character
+
+    Raises:
+        HTTPException: 404 if no active session found
+    """
+    session = await GameSessionService.get_active_session_for_character(db, character_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="No active session for this character")
+    return session
+
+
 @router.post("", response_model=SessionResponse, status_code=201)
 async def create_session(
     session_data: SessionCreate,

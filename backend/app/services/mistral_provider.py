@@ -5,16 +5,14 @@ Implements AIProvider interface for Mistral AI API
 
 import asyncio
 import time
-from typing import Dict, List
+from typing import AsyncGenerator, Dict, List
 
 from mistralai import Mistral
 from mistralai.models import ChatCompletionResponse
 
 from app.observability.logger import get_logger
 from app.observability.metrics import metrics
-from app.observability.tracing import (
-    trace_llm_call,  # noqa: F401 - TODO: Implement in tracing ticket
-)
+from app.observability.tracing import trace_llm_call
 from app.services.ai_provider import AIProvider, ProviderStatus
 
 logger = get_logger(__name__)
@@ -43,8 +41,18 @@ class MistralProvider(AIProvider):
         self.last_request_time = 0.0
         self.rate_limited_at = 0.0  # Timestamp when rate limit occurred
         self.request_lock = asyncio.Lock()
+        self._last_usage: dict | None = None  # Token usage from last API call
 
         logger.info(f"Initialized Mistral provider with model: {model}")
+
+    def get_last_usage(self) -> dict | None:
+        """
+        Get token usage from the last API call.
+
+        Returns:
+            Dict with prompt_tokens, completion_tokens, total_tokens, or None
+        """
+        return self._last_usage
 
     async def _wait_for_rate_limit(self):
         """Enforce rate limiting"""
@@ -82,7 +90,6 @@ class MistralProvider(AIProvider):
             ProviderUnavailableError: If the API is unavailable
             RateLimitError: If rate limit is exceeded
         """
-        # TODO: Add tracing with trace_llm_call context manager in observability ticket
         await self._wait_for_rate_limit()
 
         model = kwargs.get("model", self.model)
@@ -91,16 +98,34 @@ class MistralProvider(AIProvider):
 
         messages = [{"role": "user", "content": prompt}]
 
+        start_time = time.time()
         try:
-            response: ChatCompletionResponse = await asyncio.to_thread(
-                self.client.chat.complete,
-                model=model,
-                messages=messages,  # type: ignore[arg-type]
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
+            with trace_llm_call(model=model, vendor="mistral", operation="narration") as llm_span:
+                response: ChatCompletionResponse = await asyncio.to_thread(
+                    self.client.chat.complete,
+                    model=model,
+                    messages=messages,  # type: ignore[arg-type]
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
 
-            metrics.record_llm_request(model=model, status="success", duration=0.0)
+                # Record token usage on the tracing span
+                if response.usage:
+                    llm_span.set_usage(
+                        prompt_tokens=response.usage.prompt_tokens,
+                        completion_tokens=response.usage.completion_tokens,
+                        total_tokens=response.usage.total_tokens,
+                    )
+                    self._last_usage = {
+                        "prompt_tokens": response.usage.prompt_tokens,
+                        "completion_tokens": response.usage.completion_tokens,
+                        "total_tokens": response.usage.total_tokens,
+                    }
+                else:
+                    self._last_usage = None
+
+            duration = time.time() - start_time
+            metrics.record_llm_request(model=model, status="success", duration=duration)
             self.set_status(ProviderStatus.AVAILABLE)
 
             content = response.choices[0].message.content
@@ -110,9 +135,10 @@ class MistralProvider(AIProvider):
             return content
 
         except Exception as e:
+            duration = time.time() - start_time
             error_msg = str(e)
             logger.error(f"Mistral generation error: {error_msg}")
-            metrics.record_llm_request(model=model, status="error", duration=0.0)
+            metrics.record_llm_request(model=model, status="error", duration=duration)
 
             # Check for rate limit (429 status or rate_limit in message)
             if (
@@ -156,23 +182,40 @@ class MistralProvider(AIProvider):
         Returns:
             Generated chat response
         """
-        # TODO: Add tracing with trace_llm_call context manager in observability ticket
         await self._wait_for_rate_limit()
 
         model = kwargs.get("model", self.model)
         max_tokens = max_tokens or self.max_tokens
         temperature = temperature or self.temperature
 
+        start_time = time.time()
         try:
-            response: ChatCompletionResponse = await asyncio.to_thread(
-                self.client.chat.complete,
-                model=model,
-                messages=messages,  # type: ignore[arg-type]
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
+            with trace_llm_call(model=model, vendor="mistral", operation="chat") as llm_span:
+                response: ChatCompletionResponse = await asyncio.to_thread(
+                    self.client.chat.complete,
+                    model=model,
+                    messages=messages,  # type: ignore[arg-type]
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
 
-            metrics.record_llm_request(model=model, status="success", duration=0.0)
+                # Record token usage on the tracing span
+                if response.usage:
+                    llm_span.set_usage(
+                        prompt_tokens=response.usage.prompt_tokens,
+                        completion_tokens=response.usage.completion_tokens,
+                        total_tokens=response.usage.total_tokens,
+                    )
+                    self._last_usage = {
+                        "prompt_tokens": response.usage.prompt_tokens,
+                        "completion_tokens": response.usage.completion_tokens,
+                        "total_tokens": response.usage.total_tokens,
+                    }
+                else:
+                    self._last_usage = None
+
+            duration = time.time() - start_time
+            metrics.record_llm_request(model=model, status="success", duration=duration)
             self.set_status(ProviderStatus.AVAILABLE)
 
             content = response.choices[0].message.content
@@ -182,9 +225,10 @@ class MistralProvider(AIProvider):
             return content
 
         except Exception as e:
+            duration = time.time() - start_time
             error_msg = str(e)
             logger.error(f"Mistral chat error: {error_msg}")
-            metrics.record_llm_request(model=model, status="error", duration=0.0)
+            metrics.record_llm_request(model=model, status="error", duration=duration)
 
             # Check for rate limit (429 status or rate_limit in message)
             if (
@@ -234,3 +278,87 @@ class MistralProvider(AIProvider):
 
         # Rate-limited providers should be unavailable to trigger fallback
         return self._status == ProviderStatus.AVAILABLE
+
+    async def generate_chat_stream(
+        self,
+        messages: List[Dict[str, str]],
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+        **kwargs,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Stream chat response token-by-token using Mistral streaming API.
+
+        Args:
+            messages: List of chat messages with 'role' and 'content'
+            max_tokens: Maximum tokens to generate
+            temperature: Generation temperature
+
+        Yields:
+            Text chunks as they arrive from the API
+        """
+        await self._wait_for_rate_limit()
+
+        model = kwargs.get("model", self.model)
+        max_tokens = max_tokens or self.max_tokens
+        temperature = temperature or self.temperature
+
+        start_time = time.time()
+        try:
+            with trace_llm_call(model=model, vendor="mistral", operation="chat_stream") as llm_span:
+                stream = self.client.chat.stream(
+                    model=model,
+                    messages=messages,  # type: ignore[arg-type]
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+
+                for event in stream:
+                    chunk = event.data
+                    # Extract text content from delta
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        content = chunk.choices[0].delta.content
+                        if isinstance(content, str):
+                            yield content
+
+                    # Last chunk may contain usage stats
+                    if chunk.usage:
+                        llm_span.set_usage(
+                            prompt_tokens=chunk.usage.prompt_tokens,
+                            completion_tokens=chunk.usage.completion_tokens,
+                            total_tokens=chunk.usage.total_tokens,
+                        )
+                        self._last_usage = {
+                            "prompt_tokens": chunk.usage.prompt_tokens,
+                            "completion_tokens": chunk.usage.completion_tokens,
+                            "total_tokens": chunk.usage.total_tokens,
+                        }
+
+            duration = time.time() - start_time
+            metrics.record_llm_request(model=model, status="success", duration=duration)
+            self.set_status(ProviderStatus.AVAILABLE)
+
+        except Exception as e:
+            duration = time.time() - start_time
+            error_msg = str(e)
+            logger.error(f"Mistral stream error: {error_msg}")
+            metrics.record_llm_request(model=model, status="error", duration=duration)
+
+            if (
+                "rate_limit" in error_msg.lower()
+                or "429" in error_msg
+                or "status 429" in error_msg.lower()
+            ):
+                self.set_status(ProviderStatus.RATE_LIMITED, error_msg)
+                self.rate_limited_at = time.time()
+                from app.services.ai_provider import RateLimitError
+
+                raise RateLimitError(
+                    f"Mistral rate limit exceeded: {error_msg}",
+                    retry_after=self.rate_limit_cooldown,
+                )
+
+            self.set_status(ProviderStatus.ERROR, error_msg)
+            from app.services.ai_provider import ProviderUnavailableError
+
+            raise ProviderUnavailableError(f"Mistral provider error: {error_msg}")

@@ -7,7 +7,7 @@ provider and falling back to alternatives when rate limits or errors occur.
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -301,6 +301,54 @@ class ProviderSelector:
                 stats["successes"] += 1
                 logger.info(f"Successfully generated chat with {provider.name}")
                 return result
+
+            except (RateLimitError, ProviderUnavailableError, Exception) as e:
+                logger.warning(f"Provider {provider.name} failed: {e}")
+                stats["failures"] += 1
+                stats["last_error"] = str(e)
+                last_error = e
+
+        raise ProviderUnavailableError(f"All AI providers failed. Last error: {last_error}")
+
+    async def generate_chat_stream(
+        self,
+        messages: List[Dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+        **kwargs,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Stream chat response using the best available provider.
+
+        Falls back to non-streaming if provider doesn't support streaming.
+
+        Args:
+            messages: Conversation history
+            max_tokens: Maximum tokens to generate
+            temperature: Temperature for randomness
+
+        Yields:
+            Text chunks as they arrive
+        """
+        last_error = None
+
+        for provider in self.providers:
+            if not await provider.is_available():
+                continue
+
+            try:
+                stats = self.provider_stats[provider.name]
+                stats["requests"] += 1
+                stats["last_used"] = datetime.now(timezone.utc)
+
+                async for chunk in provider.generate_chat_stream(
+                    messages=messages, max_tokens=max_tokens, temperature=temperature, **kwargs
+                ):
+                    yield chunk
+
+                stats["successes"] += 1
+                logger.info(f"Successfully streamed chat with {provider.name}")
+                return
 
             except (RateLimitError, ProviderUnavailableError, Exception) as e:
                 logger.warning(f"Provider {provider.name} failed: {e}")

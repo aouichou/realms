@@ -1079,6 +1079,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
         tool_calls_made = []
         character_updates = {}
         iteration = 0
+        total_tokens_used = 0  # Accumulate tokens across iterations
         selected_provider_name = "unknown"  # Track actual provider used
         selected_provider_model = "unknown"
 
@@ -1148,6 +1149,15 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
                         )
 
                 assistant_message = response.choices[0].message
+
+                # Accumulate token usage from this iteration
+                if hasattr(response, "usage") and response.usage:
+                    iter_tokens = getattr(response.usage, "total_tokens", 0) or 0
+                    total_tokens_used += iter_tokens
+                    logger.debug(
+                        f"Iteration {iteration} used {iter_tokens} tokens "
+                        f"(accumulated: {total_tokens_used})"
+                    )
 
                 # Check if DM wants to use tools
                 if not assistant_message.tool_calls or len(assistant_message.tool_calls) == 0:
@@ -1829,6 +1839,7 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
                 character_updates = tool_result.get("character_updates", {})
                 provider_name = tool_result.get("provider_name", "unknown")
                 provider_model = tool_result.get("provider_model", "unknown")
+                tokens_used_from_tools = tool_result.get("tokens_used", 0)
 
                 # Extract roll request if present
                 cleaned_narration, roll_request = self.extract_roll_request(narration)
@@ -1864,7 +1875,7 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
                     "quest_complete_id": quest_complete_id,
                     "tool_calls_made": tool_calls_made,
                     "character_updates": character_updates,
-                    "tokens_used": 0,  # TODO: Track tokens from tool calling
+                    "tokens_used": tokens_used_from_tools,
                     "timestamp": datetime.now(),
                     "model": f"{provider_name}-{provider_model}",
                 }
@@ -1879,8 +1890,13 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
             )
 
             narration = response_text
-            # Note: Token usage not available from provider interface yet
+            # Extract token usage from the provider that handled the request
             tokens_used = 0
+            current_provider = self.provider_selector.get_current_provider()
+            if current_provider and hasattr(current_provider, "get_last_usage"):
+                usage = current_provider.get_last_usage()  # type: ignore[attr-defined]
+                if usage:
+                    tokens_used = usage.get("total_tokens", 0)
 
             # Extract roll request if present
             cleaned_narration, roll_request = self.extract_roll_request(narration)
@@ -1973,18 +1989,16 @@ Long conversations may degrade quality. Suggest resting or reaching a milestone.
 
             logger.debug(f"Streaming narration for action: {user_action[:50]}...")
 
-            # TODO: Implement streaming in provider_selector
-            # For now, fallback to non-streaming
-            response_text = await self.provider_selector.generate_chat(
+            # Stream using provider_selector's streaming support
+            async for chunk in self.provider_selector.generate_chat_stream(
                 messages=[msg for msg in messages if msg["role"] != "system"],
                 max_tokens=2048,
                 temperature=0.7,
-            )
-            yield response_text
+            ):
+                yield chunk
 
             logger.info("Narration streaming completed")
 
         except (ProviderUnavailableError, RateLimitError) as e:
             logger.error(f"Failed to stream narration: {e}")
             raise
-

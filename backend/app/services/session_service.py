@@ -1,10 +1,11 @@
 """Game session service for database operations."""
 
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import GameSession
@@ -28,6 +29,16 @@ class GameSessionService:
         Returns:
             Created game session
         """
+        # Deactivate any previous active sessions for this character
+        await db.execute(
+            update(GameSession)
+            .where(
+                GameSession.character_id == session_data.character_id,
+                GameSession.is_active.is_(True),
+            )
+            .values(is_active=False, last_activity_at=datetime.now(timezone.utc))
+        )
+
         session = GameSession(
             id=uuid.uuid4(),
             user_id=user_id,
@@ -105,7 +116,32 @@ class GameSessionService:
             .where(and_(GameSession.user_id == user_id, GameSession.is_active.is_(True)))
             .order_by(GameSession.last_activity_at.desc())
         )
-        return result.scalar_one_or_none()
+        return result.scalars().first()
+
+    @staticmethod
+    async def get_active_session_for_character(
+        db: AsyncSession, character_id: UUID
+    ) -> Optional[GameSession]:
+        """Get the active session for a specific character.
+
+        Args:
+            db: Database session
+            character_id: Character UUID
+
+        Returns:
+            Active game session or None
+        """
+        result = await db.execute(
+            select(GameSession)
+            .where(
+                and_(
+                    GameSession.character_id == character_id,
+                    GameSession.is_active.is_(True),
+                )
+            )
+            .order_by(GameSession.last_activity_at.desc())
+        )
+        return result.scalars().first()
 
     @staticmethod
     async def update_session(

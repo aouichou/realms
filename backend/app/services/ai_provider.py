@@ -8,7 +8,7 @@ while maintaining consistent behavior.
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import AsyncGenerator, Dict, List, Optional
 
 
 class ProviderStatus(Enum):
@@ -94,6 +94,26 @@ class AIProvider(ABC):
             True if provider can accept requests, False otherwise
         """
         pass
+
+    async def generate_chat_stream(
+        self,
+        messages: List[Dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+        **kwargs,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Stream chat response token-by-token.
+
+        Default implementation falls back to non-streaming generate_chat().
+        Providers that support streaming should override this method.
+
+        Yields:
+            Text chunks as they arrive
+        """
+        # Default: fall back to non-streaming
+        result = await self.generate_chat(messages, max_tokens, temperature, **kwargs)
+        yield result
 
     async def get_status(self) -> ProviderStatus:
         """

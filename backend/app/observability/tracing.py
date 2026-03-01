@@ -135,40 +135,67 @@ def trace_async(span_name: Optional[str] = None):
     return decorator
 
 
-def trace_llm_call(
-    model: str,
-    prompt_tokens: Optional[int] = None,
-    completion_tokens: Optional[int] = None,
-    total_tokens: Optional[int] = None,
-) -> Any:
+class trace_llm_call:  # noqa: N801
     """
-    Create a span for LLM API calls
+    Context manager for tracing LLM API calls.
 
-    Args:
-        model: Model name (e.g., "mistral-small-latest")
-        prompt_tokens: Number of tokens in prompt
-        completion_tokens: Number of tokens in completion
-        total_tokens: Total tokens used
-
-    Returns:
-        Span context manager
+    Creates an OpenTelemetry span with LLM-specific attributes (model, vendor,
+    token usage, duration, status). Token counts can be set after the call
+    completes via set_usage().
 
     Usage:
-        with trace_llm_call("mistral-small-latest", prompt_tokens=100):
+        with TraceLLMCall("mistral-small-latest", vendor="mistral") as span_ctx:
             response = await mistral_client.chat(...)
+            span_ctx.set_usage(
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                total_tokens=response.usage.total_tokens,
+            )
     """
-    tracer = get_tracer()
-    span = tracer.start_span("llm.mistral.chat")
 
-    # Add LLM-specific attributes
-    span.set_attribute("llm.vendor", "mistral")
-    span.set_attribute("llm.model", model)
+    def __init__(
+        self,
+        model: str,
+        vendor: str = "mistral",
+        operation: str = "chat",
+    ):
+        self.model = model
+        self.vendor = vendor
+        self.operation = operation
+        self._span: Optional[Any] = None
 
-    if prompt_tokens is not None:
-        span.set_attribute("llm.prompt_tokens", prompt_tokens)
-    if completion_tokens is not None:
-        span.set_attribute("llm.completion_tokens", completion_tokens)
-    if total_tokens is not None:
-        span.set_attribute("llm.total_tokens", total_tokens)
+    def set_usage(
+        self,
+        prompt_tokens: Optional[int] = None,
+        completion_tokens: Optional[int] = None,
+        total_tokens: Optional[int] = None,
+    ):
+        """Set token usage attributes on the span after the LLM call completes."""
+        if self._span is None:
+            return
+        if prompt_tokens is not None:
+            self._span.set_attribute("llm.prompt_tokens", prompt_tokens)
+        if completion_tokens is not None:
+            self._span.set_attribute("llm.completion_tokens", completion_tokens)
+        if total_tokens is not None:
+            self._span.set_attribute("llm.total_tokens", total_tokens)
 
-    return span
+    def __enter__(self):
+        tracer = get_tracer()
+        self._span = tracer.start_span(f"llm.{self.vendor}.{self.operation}")
+        self._span.set_attribute("llm.vendor", self.vendor)
+        self._span.set_attribute("llm.model", self.model)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._span is None:
+            return False
+        if exc_type is not None:
+            self._span.set_attribute("llm.status", "error")
+            self._span.set_attribute("error.type", exc_type.__name__)
+            self._span.set_attribute("error.message", str(exc_val))
+            self._span.record_exception(exc_val)
+        else:
+            self._span.set_attribute("llm.status", "success")
+        self._span.end()
+        return False

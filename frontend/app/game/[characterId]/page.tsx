@@ -218,8 +218,15 @@ export default function GamePage() {
 
 	const getOrCreateSession = async () => {
 		try {
-			// For now, create a new session every time
-			// TODO: Implement logic to get active session or create new one
+			// Try to get an existing active session for this character
+			const activeResponse = await apiClient.get(`/api/v1/sessions/active/character/${characterId}`);
+			if (activeResponse.ok) {
+				const data = await activeResponse.json();
+				setSessionId(data.id);
+				return;
+			}
+
+			// No active session found, create a new one
 			const response = await apiClient.post('/api/v1/sessions', {
 				character_id: characterId,
 				companion_id: null,
