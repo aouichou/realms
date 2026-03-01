@@ -4,7 +4,7 @@ Companions are linked to creatures for stats but have unique personalities.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -133,7 +133,7 @@ class Companion(Base):
         memory_entry = {
             "role": role,
             "content": content,
-            "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         # Ensure it's a list before appending
@@ -153,7 +153,7 @@ class Companion(Base):
 
         event_entry = {
             "event": event,
-            "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         self.important_events.append(event_entry)

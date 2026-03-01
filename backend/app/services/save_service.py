@@ -1,7 +1,7 @@
 """Save/Load System for Game Sessions"""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 from uuid import UUID
 
@@ -45,9 +45,7 @@ class SaveService:
 
         # Generate save name if not provided
         if not save_name:
-            save_name = (
-                f"Auto-save {datetime.datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}"
-            )
+            save_name = f"Auto-save {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}"
 
         # Check for duplicate save name (unless overwriting)
         if not overwrite and session_service.redis:
@@ -69,7 +67,7 @@ class SaveService:
             "session_id": str(session_id),
             "character_id": str(game_session.character_id),
             "character_name": character.name if character else "Unknown",
-            "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "game_data": {
                 "location": game_session.current_location,
                 "state_snapshot": game_session.state_snapshot or {},
@@ -124,7 +122,7 @@ class SaveService:
         return await SaveService.save_game(
             db,
             session_id,
-            save_name=f"Auto-save {datetime.datetime.now(timezone.utc).strftime('%H:%M')}",
+            save_name=f"Auto-save {datetime.now(timezone.utc).strftime('%H:%M')}",
         )
 
     @staticmethod

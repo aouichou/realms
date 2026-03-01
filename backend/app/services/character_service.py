@@ -1,7 +1,7 @@
 """Character service for business logic."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -210,7 +210,7 @@ class CharacterService:
             return False
 
         # Soft delete: set timestamp instead of removing record
-        character.deleted_at = datetime.datetime.now(timezone.utc)
+        character.deleted_at = datetime.now(timezone.utc)
         await db.commit()
         return True
 

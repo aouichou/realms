@@ -1,7 +1,7 @@
 """Memory service for storing and retrieving adventure memories"""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy import and_, desc, select, text
@@ -54,12 +54,12 @@ class MemoryService:
             content=content,
             embedding=embedding if embedding else None,
             importance=importance,
-            timestamp=datetime.datetime.now(timezone.utc),
+            timestamp=datetime.now(timezone.utc),
             tags=tags or [],
             npcs_involved=npcs_involved or [],
             locations=locations or [],
             items_involved=items_involved or [],
-            created_at=datetime.datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc),
         )
 
         db.add(memory)

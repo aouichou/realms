@@ -6,7 +6,7 @@ provider and falling back to alternatives when rate limits or errors occur.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -166,7 +166,7 @@ class ProviderSelector:
                 # Track request
                 stats = self.provider_stats[provider.name]
                 stats["requests"] += 1
-                stats["last_used"] = datetime.datetime.now(timezone.utc)
+                stats["last_used"] = datetime.now(timezone.utc)
 
                 # Generate with this provider
                 result = await provider.generate_narration(
@@ -292,7 +292,7 @@ class ProviderSelector:
             try:
                 stats = self.provider_stats[provider.name]
                 stats["requests"] += 1
-                stats["last_used"] = datetime.datetime.now(timezone.utc)
+                stats["last_used"] = datetime.now(timezone.utc)
 
                 result = await provider.generate_chat(
                     messages=messages, max_tokens=max_tokens, temperature=temperature, **kwargs

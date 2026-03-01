@@ -3,7 +3,7 @@
 import hashlib
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
 from typing import Optional
@@ -173,7 +173,7 @@ class ImageService:
             if existing_image:
                 # Update reuse stats
                 existing_image.reuse_count += 1  # type: ignore[assignment]
-                existing_image.last_used_at = datetime.datetime.now(timezone.utc)  # type: ignore[assignment]
+                existing_image.last_used_at = datetime.now(timezone.utc)  # type: ignore[assignment]
                 await (
                     db.flush()
                 )  # Flush to persist changes but don't commit - let endpoint handle commit

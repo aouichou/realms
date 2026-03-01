@@ -1,7 +1,7 @@
 """Redis session management service."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
 
@@ -84,8 +84,8 @@ class RedisSessionService:
             "character_id": str(character_id),
             "companion_id": str(companion_id) if companion_id else None,
             "current_location": current_location,
-            "created_at": datetime.datetime.now(timezone.utc).isoformat(),
-            "last_updated": datetime.datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
             "state": initial_state or {},
         }
 
@@ -143,7 +143,7 @@ class RedisSessionService:
         if state_updates:
             current_state["state"].update(state_updates)
 
-        current_state["last_updated"] = datetime.datetime.now(timezone.utc).isoformat()
+        current_state["last_updated"] = datetime.now(timezone.utc).isoformat()
 
         # Save back to Redis with TTL refresh
         key = self._get_state_key(session_id)
@@ -197,7 +197,7 @@ class RedisSessionService:
             "role": role,
             "content": content,
             "tokens_used": tokens_used,
-            "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         if not self._redis:
@@ -312,7 +312,7 @@ class RedisSessionService:
         if self._redis:
             key = f"{self.GUEST_TOKEN_PREFIX}{guest_token}"
             await self._redis.delete(key)
-            logger.info(f"Deleted guest token")
+            logger.info("Deleted guest token")
 
     # Token revocation
     TOKEN_BLACKLIST_PREFIX = "token:revoked:"

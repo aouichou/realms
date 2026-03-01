@@ -4,7 +4,7 @@ Tracks temporary buffs, debuffs, conditions, and spell effects on characters.
 Examples: Bless, Haste, Poisoned, Concentrating on Spell X
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -140,7 +140,7 @@ class ActiveEffect(Base):
         if self.rounds_remaining is not None and self.rounds_remaining <= 0:
             return True
 
-        if self.expires_at and datetime.datetime.now(timezone.utc) >= self.expires_at:
+        if self.expires_at and datetime.now(timezone.utc) >= self.expires_at:
             return True
 
         return False
