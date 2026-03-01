@@ -1,7 +1,7 @@
 """Database model for game sessions."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import (
@@ -45,9 +45,15 @@ class GameSession(Base):
     # Flexible game state storage (inventory, quest log, world state, etc.)
     state_snapshot: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True, default=dict)
 
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
     last_activity_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False, index=True
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
     )
 
     # Relationships

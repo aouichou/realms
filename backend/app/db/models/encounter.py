@@ -3,7 +3,7 @@ Encounter models for general and combat encounters
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import (
@@ -31,8 +31,10 @@ class Encounter(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     participants: Mapped[list] = mapped_column(JSONB, nullable=False)
 
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Additional data stored as JSONB
     data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
@@ -68,8 +70,10 @@ class CombatEncounter(Base):
     # Combat log: list of action descriptions
     combat_log: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     session = relationship("GameSession", back_populates="combat_encounters")

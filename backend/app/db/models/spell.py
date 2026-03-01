@@ -3,7 +3,7 @@ Spell model for D&D 5e spells
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import (
@@ -101,7 +101,9 @@ class Spell(Base):
         JSONB, nullable=True, default=dict
     )  # {"wizard": True, "cleric": True}
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
 
     # Relationships
     character_spells = relationship("CharacterSpell", back_populates="spell")

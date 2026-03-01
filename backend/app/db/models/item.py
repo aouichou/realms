@@ -1,7 +1,7 @@
 """Item model for character inventory"""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import (
@@ -59,7 +59,9 @@ class Item(Base):
     equipped: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
 
     # Relationships
     character = relationship("Character", back_populates="items")

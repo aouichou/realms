@@ -4,7 +4,7 @@ Allows DMs to view conversations that players choose to share.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -39,7 +39,12 @@ class CompanionConversation(Base):
     shared_with_dm = Column(Boolean, default=False, nullable=False, index=True)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
 
     # Relationships
     companion = relationship("Companion")

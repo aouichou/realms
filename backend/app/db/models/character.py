@@ -3,7 +3,7 @@ Character model for players, companions, and NPCs
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, String, Text
@@ -134,12 +134,21 @@ class Character(Base):
     # Character motivation (Step 6 of character creation)
     motivation: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, nullable=True, default=None, index=True, comment="Soft delete timestamp"
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
+        index=True,
+        comment="Soft delete timestamp",
     )
 
     # Relationships
@@ -192,7 +201,9 @@ class CharacterSpell(Base):
     is_known: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_prepared: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
 
     # Relationships
     character = relationship("Character", back_populates="character_spells")
@@ -237,7 +248,9 @@ class CharacterCondition(Base):
     # Source of condition (spell name, ability, etc.)
     source: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
 
-    applied_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    applied_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
 
     # Relationships
     character = relationship("Character", back_populates="conditions")
@@ -262,7 +275,9 @@ class CharacterQuest(Base):
         UUID(as_uuid=True), ForeignKey("quests.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
-    accepted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    accepted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
 
     # Relationships
     character = relationship("Character")

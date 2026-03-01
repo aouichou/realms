@@ -1,6 +1,6 @@
 """Database model for generated scene images"""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, Integer, String, Text
 
@@ -18,8 +18,8 @@ class GeneratedImage(Base):
     image_path = Column(String(255), nullable=False)
     model_used = Column(String(50), default="mistral-medium-latest")
     reuse_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_used_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_used_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
         return f"<GeneratedImage(hash={self.description_hash}, reuse_count={self.reuse_count})>"
