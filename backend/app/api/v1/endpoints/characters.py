@@ -1,9 +1,10 @@
 """Character API router."""
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
@@ -144,7 +145,6 @@ async def delete_character(
     Raises:
         HTTPException: 404 if character not found
         HTTPException: 403 if character does not belong to user
-        HTTPException: 409 if character has an active session
     """
     character = await CharacterService.get_character(db, character_id)
     if not character:
@@ -153,15 +153,15 @@ async def delete_character(
     if character.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to delete this character")
 
-    active_session_result = await db.execute(
-        select(GameSession).where(
+    # Auto-deactivate any stale active sessions for this character
+    await db.execute(
+        update(GameSession)
+        .where(
             GameSession.character_id == character_id,
             GameSession.is_active.is_(True),
         )
+        .values(is_active=False, last_activity_at=datetime.now(timezone.utc))
     )
-    active_session = active_session_result.scalar_one_or_none()
-    if active_session:
-        raise HTTPException(status_code=409, detail="Cannot delete character with active session")
 
     deleted = await CharacterService.delete_character(db, character_id)
     if not deleted:
