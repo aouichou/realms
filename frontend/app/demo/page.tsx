@@ -146,7 +146,7 @@ export default function DemoPage() {
 									</li>
 									<li className="flex items-start gap-2">
 										<span className="text-green-400 mt-0.5">✓</span>
-										<span>Can save progress anytime</span>
+										<span>No signup required</span>
 									</li>
 								</ul>
 							</div>
@@ -255,8 +255,7 @@ export default function DemoPage() {
 				{/* Footer */}
 				<div className="text-center mt-8 text-accent-200/60 text-sm font-body">
 					<p>
-						All progress is saved automatically.{" "}
-						<span className="text-accent-200/80">You can claim your account with email later.</span>
+						Create an account to save your progress and continue later.
 					</p>
 					<p className="mt-2">
 						Already have an account?{" "}

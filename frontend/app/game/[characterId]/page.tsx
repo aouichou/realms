@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api-client';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import Image from 'next/image';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -182,9 +183,10 @@ export default function GamePage() {
 		scrollToBottom();
 	}, [messages]);
 
-	// Auto-save every 5 minutes
+	// Auto-save every 5 minutes (skip for guest users)
+	const { isGuest } = useAuth();
 	useEffect(() => {
-		if (!sessionId) return;
+		if (!sessionId || isGuest) return;
 
 		const autoSaveInterval = setInterval(async () => {
 			try {
@@ -198,7 +200,7 @@ export default function GamePage() {
 		}, 5 * 60 * 1000); // 5 minutes
 
 		return () => clearInterval(autoSaveInterval);
-	}, [sessionId]);
+	}, [sessionId, isGuest]);
 
 	const scrollToBottom = () => {
 		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -798,13 +800,24 @@ export default function GamePage() {
 						{t('game.panels.images')}
 					</button>
 
-					{/* Save Game Button */}
+					{/* Save Game Button (or account creation CTA for guests) */}
 					{sessionId && character && (
 						<div className="pt-2 border-t border-white/10">
-							<SaveGameButton
-								sessionId={sessionId}
-								characterName={character.name}
-							/>
+							{isGuest ? (
+								<Button
+									variant="outline"
+									size="sm"
+									className="w-full gap-2 border-accent-600/50 text-accent-200 hover:bg-accent-600/20"
+									onClick={() => router.push('/auth/login')}
+								>
+									{t('game.guestSaveCta')}
+								</Button>
+							) : (
+								<SaveGameButton
+									sessionId={sessionId}
+									characterName={character.name}
+								/>
+							)}
 						</div>
 					)}
 				</div>

@@ -2,6 +2,7 @@
 
 import { SaveSlotsModal } from '@/components/SaveSlotsModal';
 import { apiFetch } from '@/lib/api-client';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -20,6 +21,7 @@ interface Character {
 export default function CharacterSelectPage() {
 	const router = useRouter();
 	const { t } = useTranslation();
+	const { isGuest } = useAuth();
 	const [characters, setCharacters] = useState<Character[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -132,15 +134,17 @@ export default function CharacterSelectPage() {
 						</h1>
 						<p className="text-accent-200/70 font-body">{t('character.select.subtitle')}</p>
 					</div>
-					<button
-						onClick={() => setShowLoadModal(true)}
-						className="inline-flex items-center gap-2 px-6 py-3 border-2 border-accent-600 bg-accent-600/10 text-accent-200 rounded-lg hover:bg-accent-600 hover:text-primary-900 transition-all font-body font-semibold"
-					>
-						<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-						</svg>
-						<span>{t('character.select.loadGame')}</span>
-					</button>
+					{!isGuest && (
+						<button
+							onClick={() => setShowLoadModal(true)}
+							className="inline-flex items-center gap-2 px-6 py-3 border-2 border-accent-600 bg-accent-600/10 text-accent-200 rounded-lg hover:bg-accent-600 hover:text-primary-900 transition-all font-body font-semibold"
+						>
+							<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+							</svg>
+							<span>{t('character.select.loadGame')}</span>
+						</button>
+					)}
 				</div>
 
 				{characters.length === 0 ? (

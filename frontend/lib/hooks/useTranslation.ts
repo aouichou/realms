@@ -126,6 +126,7 @@ const translations: Record<Language, any> = {
 			},
 			dmThinking: "The DM is thinking...",
 			saveGame: "Save Game",
+			guestSaveCta: "Create account to save",
 			inventory: {
 				title: "Inventory",
 				carryingCapacity: "Carrying Capacity",
@@ -681,6 +682,7 @@ const translations: Record<Language, any> = {
 			},
 			dmThinking: "Le MJ réfléchit...",
 			saveGame: "Sauvegarder",
+			guestSaveCta: "Créez un compte pour sauvegarder",
 			inventory: {
 				title: "Inventaire",
 				carryingCapacity: "Capacité de transport",
