@@ -3,7 +3,7 @@ User account model with guest mode support
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import (
@@ -24,9 +24,14 @@ class User(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Email is nullable for guest mode
+    # Email is encrypted at rest (AES-256-GCM) — nullable for guest mode
     email: Mapped[Optional[str]] = mapped_column(
-        String(255), unique=True, nullable=True, index=True
+        String(512),
+        nullable=True,  # Encrypted value is longer than plaintext
+    )
+    # Blind index for email lookups (HMAC-SHA256) — replaces direct email query
+    email_blind_index: Mapped[Optional[str]] = mapped_column(
+        String(64), unique=True, nullable=True, index=True
     )
 
     # Username is always required (generated for guests)
@@ -51,15 +56,32 @@ class User(Base):
     )
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
 
     # Relationships
     characters = relationship("Character", back_populates="user", cascade="all, delete-orphan")
     game_sessions = relationship("GameSession", back_populates="user", cascade="all, delete-orphan")
+
+    @property
+    def decrypted_email(self) -> Optional[str]:
+        """Get the decrypted email address."""
+        if not self.email:
+            return None
+        try:
+            from app.core.pii_encryption import decrypt_pii
+
+            return decrypt_pii(self.email)
+        except Exception:
+            return None  # Key might have changed or data corrupted
 
     def __repr__(self) -> str:
         guest_str = " (guest)" if self.is_guest else ""

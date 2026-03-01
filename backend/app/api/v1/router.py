@@ -25,6 +25,7 @@ from app.api.v1.endpoints import (
     rules,
     sessions,
     spells,
+    user_data,
 )
 
 api_router = APIRouter()
@@ -52,3 +53,4 @@ api_router.include_router(rest.router, tags=["rest"])
 api_router.include_router(rules.router, tags=["rules"])
 api_router.include_router(sessions.router, tags=["sessions"])
 api_router.include_router(spells.router, tags=["spells"])
+api_router.include_router(user_data.router, tags=["user-data"])

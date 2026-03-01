@@ -133,7 +133,7 @@ class Companion(Base):
         memory_entry = {
             "role": role,
             "content": content,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
         }
 
         # Ensure it's a list before appending
@@ -153,7 +153,7 @@ class Companion(Base):
 
         event_entry = {
             "event": event,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
         }
 
         self.important_events.append(event_entry)

@@ -77,3 +77,6 @@ Thumbs.db
 #Ignore vscode AI rules
 .github/instructions/codacy.instructions.md
 scripts/.scripts/*
+
+# Database exports
+exports/

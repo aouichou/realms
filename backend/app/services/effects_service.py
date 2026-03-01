@@ -93,11 +93,13 @@ class EffectsService:
                 if duration_value:
                     existing_effect.rounds_remaining = duration_value
                 if duration_type == EffectDuration.MINUTES and duration_value:
-                    existing_effect.expires_at = datetime.utcnow() + timedelta(
+                    existing_effect.expires_at = datetime.datetime.now(timezone.utc) + timedelta(
                         minutes=duration_value
                     )
                 elif duration_type == EffectDuration.HOURS and duration_value:
-                    existing_effect.expires_at = datetime.utcnow() + timedelta(hours=duration_value)
+                    existing_effect.expires_at = datetime.datetime.now(timezone.utc) + timedelta(
+                        hours=duration_value
+                    )
                 await db.commit()
                 await db.refresh(existing_effect)
                 return existing_effect
@@ -105,9 +107,9 @@ class EffectsService:
         # Calculate expiration time for time-based effects
         expires_at = None
         if duration_type == EffectDuration.MINUTES and duration_value:
-            expires_at = datetime.utcnow() + timedelta(minutes=duration_value)
+            expires_at = datetime.datetime.now(timezone.utc) + timedelta(minutes=duration_value)
         elif duration_type == EffectDuration.HOURS and duration_value:
-            expires_at = datetime.utcnow() + timedelta(hours=duration_value)
+            expires_at = datetime.datetime.now(timezone.utc) + timedelta(hours=duration_value)
 
         # Create new effect
         effect = ActiveEffect(

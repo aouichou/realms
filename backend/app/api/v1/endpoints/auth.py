@@ -1,9 +1,15 @@
 """Authentication API endpoints"""
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import (
+    COOKIE_REFRESH_TOKEN_NAME,
+    check_token_revoked,
     clear_auth_cookies,
     create_access_token,
     create_refresh_token,
@@ -16,7 +22,8 @@ from app.middleware.csrf import generate_csrf_token, set_csrf_cookie
 from app.schemas.auth import (
     ClaimGuestAccount,
     GuestTokenResponse,
-    RefreshTokenRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     TokenResponse,
     UserCreate,
     UserLogin,
@@ -28,6 +35,7 @@ from app.services.auth_service import (
     create_guest_user,
     register_user,
 )
+from app.services.redis_service import session_service
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -63,9 +71,7 @@ async def register(user_data: UserCreate, response: Response, db: AsyncSession =
     set_csrf_cookie(response, csrf_token)
     response.headers["X-CSRF-Token"] = csrf_token  # Send in header for initial setup
 
-    return TokenResponse(
-        access_token=access_token, refresh_token=refresh_token, user=UserResponse.from_orm(user)
-    )
+    return TokenResponse(user=UserResponse.from_orm(user))
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -84,13 +90,7 @@ async def login(login_data: UserLogin, response: Response, db: AsyncSession = De
         HTTPException: 401 if credentials are invalid
     """
     user = await authenticate_user(db, login_data.email, login_data.password)
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # authenticate_user raises HTTPException on failure (401 or 423)
 
     # Generate tokens
     access_token = create_access_token(data={"sub": str(user.id)})
@@ -104,9 +104,7 @@ async def login(login_data: UserLogin, response: Response, db: AsyncSession = De
     set_csrf_cookie(response, csrf_token)
     response.headers["X-CSRF-Token"] = csrf_token  # Send in header for initial setup
 
-    return TokenResponse(
-        access_token=access_token, refresh_token=refresh_token, user=UserResponse.from_orm(user)
-    )
+    return TokenResponse(user=UserResponse.from_orm(user))
 
 
 @router.post("/guest", response_model=GuestTokenResponse)
@@ -143,9 +141,7 @@ async def create_guest(response: Response, db: AsyncSession = Depends(get_db)):
     set_csrf_cookie(response, csrf_token)
     response.headers["X-CSRF-Token"] = csrf_token  # Send in header for initial setup
 
-    return GuestTokenResponse(
-        access_token=access_token, guest_token=user.guest_token, user=UserResponse.from_orm(user)
-    )
+    return GuestTokenResponse(guest_token=user.guest_token, user=UserResponse.from_orm(user))
 
 
 @router.post("/claim-guest", response_model=TokenResponse)
@@ -185,34 +181,45 @@ async def claim_guest(
     set_csrf_cookie(response, csrf_token)
     response.headers["X-CSRF-Token"] = csrf_token  # Send in header for initial setup
 
-    return TokenResponse(
-        access_token=access_token, refresh_token=refresh_token, user=UserResponse.from_orm(user)
-    )
+    return TokenResponse(user=UserResponse.from_orm(user))
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(
-    refresh_data: RefreshTokenRequest, response: Response, db: AsyncSession = Depends(get_db)
-):
-    """Refresh access token using refresh token
+async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+    """Refresh access token using refresh token from httpOnly cookie
 
     Args:
-        refresh_data: Refresh token request data
+        request: FastAPI Request object for reading cookies
         response: FastAPI response object (for cookies)
         db: Database session
 
     Returns:
-        New access token and refresh token
+        New tokens (in cookies) and user data
 
     Raises:
-        HTTPException: 401 if refresh token is invalid
+        HTTPException: 401 if refresh token is invalid or revoked
     """
     from app.core.security import decode_token
     from app.services.auth_service import get_user_by_id
 
     try:
+        # Read refresh token from httpOnly cookie
+        refresh_token_value = request.cookies.get(COOKIE_REFRESH_TOKEN_NAME)
+        if not refresh_token_value:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No refresh token found",
+            )
+
         # Decode and validate refresh token
-        payload = decode_token(refresh_data.refresh_token)
+        payload = decode_token(refresh_token_value)
+
+        # Check if refresh token has been revoked
+        if await check_token_revoked(payload):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token has been revoked",
+            )
 
         # Check token type
         token_type = payload.get("type")
@@ -232,6 +239,13 @@ async def refresh_token(
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
+        # Revoke the old refresh token
+        old_jti = payload.get("jti")
+        old_exp = payload.get("exp", 0)
+        if old_jti:
+            ttl = max(0, int(old_exp - datetime.now(timezone.utc).timestamp()))
+            await session_service.revoke_token(old_jti, ttl)
+
         # Generate new tokens (token rotation)
         access_token = create_access_token(data={"sub": str(user.id)})
         new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
@@ -240,9 +254,6 @@ async def refresh_token(
         set_auth_cookies(response, access_token, new_refresh_token)
 
         return TokenResponse(
-            access_token=access_token,
-            refresh_token=new_refresh_token,
-            token_type="bearer",
             user=UserResponse.from_orm(user),
         )
     except HTTPException:
@@ -254,17 +265,66 @@ async def refresh_token(
 
 
 @router.post("/logout")
-async def logout(response: Response):
-    """Logout user by clearing authentication cookies
+async def logout(request: Request, response: Response):
+    """Logout user by clearing authentication cookies and revoking refresh token
 
     Args:
+        request: FastAPI Request object for reading cookies
         response: FastAPI response object (for cookies)
 
     Returns:
         Success message
     """
+    from app.core.security import decode_token
+
+    # Try to revoke the refresh token
+    refresh_token_cookie = request.cookies.get(COOKIE_REFRESH_TOKEN_NAME)
+    if refresh_token_cookie:
+        try:
+            payload = decode_token(refresh_token_cookie)
+            jti = payload.get("jti")
+            exp = payload.get("exp", 0)
+            if jti:
+                ttl = max(0, int(exp - datetime.now(timezone.utc).timestamp()))
+                await session_service.revoke_token(jti, ttl)
+        except Exception:
+            pass  # Token might be already invalid — still clear cookies
+
     clear_auth_cookies(response)
     return {"message": "Successfully logged out"}
+
+
+@router.get("/token-status")
+async def token_status(request: Request):
+    """Get current token expiry status for proactive refresh.
+
+    Returns minutes until access token expires.
+    Frontend uses this instead of reading the token body.
+    """
+    from app.core.security import COOKIE_ACCESS_TOKEN_NAME, decode_token
+
+    access_token = request.cookies.get(COOKIE_ACCESS_TOKEN_NAME)
+    if not access_token:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"authenticated": False},
+        )
+
+    try:
+        payload = decode_token(access_token)
+        exp = payload.get("exp", 0)
+        now = datetime.now(timezone.utc).timestamp()
+        expires_in = max(0, int(exp - now))
+        return {
+            "authenticated": True,
+            "expires_in_seconds": expires_in,
+            "should_refresh": expires_in < 300,  # Less than 5 minutes
+        }
+    except Exception:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"authenticated": False},
+        )
 
 
 @router.get("/me", response_model=UserResponse)
@@ -278,3 +338,96 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
         User data
     """
     return UserResponse.from_orm(current_user)
+
+
+@router.post("/forgot-password")
+async def forgot_password(data: PasswordResetRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Request a password reset email.
+
+    Always returns success to prevent email enumeration.
+    """
+    import secrets
+
+    from app.core.pii_encryption import create_blind_index
+    from app.services.email_service import send_password_reset_email
+
+    # Look up user by email blind index
+    blind_index = create_blind_index(data.email)
+    result = await db.execute(select(User).where(User.email_blind_index == blind_index))
+    user = result.scalar_one_or_none()
+
+    if user and user.is_active and not user.is_guest:
+        # Generate a secure reset token
+        reset_token = secrets.token_urlsafe(32)
+
+        # Store in Redis with 30-min TTL: reset_token -> user_id
+        redis = session_service.redis
+        if redis:
+            await redis.setex(
+                f"password:reset:{reset_token}",
+                1800,  # 30 minutes
+                str(user.id),
+            )
+
+        # Send email (use decrypted email)
+        decrypted_email = user.decrypted_email
+        if decrypted_email:
+            await send_password_reset_email(
+                to_email=decrypted_email,
+                reset_token=reset_token,
+                username=user.username,
+            )
+
+    # Always return success to prevent email enumeration
+    return {"message": "If an account with that email exists, a password reset link has been sent"}
+
+
+@router.post("/reset-password")
+async def reset_password(data: PasswordResetConfirm, db: AsyncSession = Depends(get_db)):
+    """
+    Reset password using a valid reset token.
+
+    Clears account lockout after successful reset.
+    """
+    from app.core.security import get_password_hash
+    from app.services.auth_service import _clear_failed_attempts
+
+    # Validate reset token
+    redis = session_service.redis
+    if not redis:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service temporarily unavailable",
+        )
+
+    user_id = await redis.get(f"password:reset:{data.token}")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    # Find user
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid reset token",
+        )
+
+    # Update password
+    user.password_hash = get_password_hash(data.password)
+    user.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    # Invalidate the reset token (one-time use)
+    await redis.delete(f"password:reset:{data.token}")
+
+    # Clear account lockout (instant unlock feature)
+    if user.decrypted_email:
+        await _clear_failed_attempts(user.decrypted_email)
+
+    return {"message": "Password has been reset successfully. You can now log in."}

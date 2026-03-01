@@ -94,6 +94,21 @@ class Settings(BaseSettings):
     redis_db: int = Field(default=0, description="Redis database number")
     redis_password: str = Field(default="", description="Redis password")
 
+    # PII Encryption
+    pii_encryption_key: str = Field(default="", description="Encryption key for PII data at rest")
+
+    # SMTP Email
+    smtp_host: str = Field(default="mail.smtp2go.com", description="SMTP server host")
+    smtp_port: int = Field(default=2525, description="SMTP server port")
+    smtp_user: str = Field(default="", description="SMTP username")
+    smtp_password: str = Field(default="", description="SMTP password")
+    smtp_from_email: str = Field(
+        default="noreply@realms.anguelz.tech", description="From email for outbound messages"
+    )
+
+    # Frontend URL (for password reset links)
+    frontend_url: str = Field(default="http://localhost:3000", description="Frontend base URL")
+
     # PostgreSQL
     postgres_host: str = Field(default="postgres", description="PostgreSQL host")
     postgres_port: int = Field(default=5432, description="PostgreSQL port")

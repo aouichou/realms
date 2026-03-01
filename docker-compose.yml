@@ -3,12 +3,10 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     container_name: realms-postgres
-    ports:
-      - "5432:5432"
     environment:
       - POSTGRES_DB=mistral_realms
       - POSTGRES_USER=realms_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-realms_password}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -16,6 +14,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+    read_only: false
     restart: unless-stopped
     networks:
       - realms-network
@@ -24,16 +23,17 @@ services:
   redis:
     image: redis:7-alpine
     container_name: realms-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 3
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: unless-stopped
     networks:
       - realms-network
@@ -58,11 +58,12 @@ services:
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=mistral_realms
       - POSTGRES_USER=realms_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-realms_password}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - ENVIRONMENT=production
       - DEBUG=False
       - LOG_LEVEL=WARNING
@@ -80,6 +81,14 @@ services:
       - IMAGE_GENERATION_MAX_PER_HOUR=${IMAGE_GENERATION_MAX_PER_HOUR:-10}
       - IMAGE_RATE_LIMIT_COOLDOWN=${IMAGE_RATE_LIMIT_COOLDOWN:-300}
       - MISTRAL_IMAGE_AGENT_ID=${MISTRAL_IMAGE_AGENT_ID:-}
+      # SMTP configuration
+      - SMTP_HOST=${SMTP_HOST:-mail.smtp2go.com}
+      - SMTP_PORT=${SMTP_PORT:-2525}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-noreply@realms.anguelz.tech}
+      # PII encryption
+      - PII_ENCRYPTION_KEY=${PII_ENCRYPTION_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,6 +100,14 @@ services:
       timeout: 3s
       retries: 3
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     networks:
       - realms-network
@@ -123,12 +140,9 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:1.53
     container_name: realms-jaeger
-    ports:
-      - "16686:16686"  # Jaeger UI
-      - "4317:4317"    # OTLP gRPC receiver
-      - "4318:4318"    # OTLP HTTP receiver
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+    read_only: true
     restart: unless-stopped
     networks:
       - realms-network
@@ -137,8 +151,6 @@ services:
   prometheus:
     image: prom/prometheus:v2.48.1
     container_name: realms-prometheus
-    ports:
-      - "9090:9090"
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml
@@ -149,6 +161,7 @@ services:
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
+    read_only: true
     restart: unless-stopped
     networks:
       - realms-network
@@ -160,8 +173,8 @@ services:
     ports:
       - "3001:3000"  # Using 3001 to avoid conflict with frontend
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GF_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana-data:/var/lib/grafana

@@ -1,7 +1,8 @@
 """Core security utilities for password hashing and JWT tokens"""
 
 import os
-from datetime import datetime, timedelta
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import bcrypt
@@ -9,7 +10,13 @@ from fastapi import HTTPException, Response, status
 from jose import JWTError, jwt
 
 # Configuration from environment
-SECRET_KEY = os.getenv("JWT_SECRET", "dev-secret-key-change-in-production")
+_jwt_secret = os.getenv("JWT_SECRET")
+if not _jwt_secret:
+    raise ValueError(
+        "JWT_SECRET environment variable is required. "
+        'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
+    )
+SECRET_KEY = _jwt_secret
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
@@ -41,11 +48,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode.update({"exp": expire, "type": "access"})
+    to_encode.update({"exp": expire, "type": "access", "jti": str(uuid.uuid4())})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -53,8 +60,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 def create_refresh_token(data: dict) -> str:
     """Create a JWT refresh token"""
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire, "type": "refresh", "jti": str(uuid.uuid4())})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -116,3 +123,13 @@ def clear_auth_cookies(response: Response):
     """
     response.delete_cookie(key=COOKIE_ACCESS_TOKEN_NAME, httponly=True, samesite="lax")
     response.delete_cookie(key=COOKIE_REFRESH_TOKEN_NAME, httponly=True, samesite="lax")
+
+
+async def check_token_revoked(payload: dict) -> bool:
+    """Check if a token has been revoked (async — for use in endpoints)."""
+    from app.services.redis_service import session_service
+
+    jti = payload.get("jti")
+    if not jti:
+        return False
+    return await session_service.is_token_revoked(jti)

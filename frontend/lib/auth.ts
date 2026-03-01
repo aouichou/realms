@@ -56,7 +56,7 @@ export const authService = {
 		return {
 			user: data.user,
 			tokens: {
-				access_token: data.access_token,
+				access_token: '',  // Tokens in httpOnly cookies
 				guest_token: data.guest_token,
 			},
 		};
@@ -94,8 +94,8 @@ export const authService = {
 		return {
 			user: data.user,
 			tokens: {
-				access_token: data.access_token,
-				refresh_token: data.refresh_token,
+				access_token: '',  // Tokens in httpOnly cookies
+				refresh_token: '',
 			},
 		};
 	},
@@ -131,8 +131,8 @@ export const authService = {
 		return {
 			user: data.user,
 			tokens: {
-				access_token: data.access_token,
-				refresh_token: data.refresh_token,
+				access_token: '',  // Tokens in httpOnly cookies
+				refresh_token: '',
 			},
 		};
 	},
@@ -174,8 +174,8 @@ export const authService = {
 		return {
 			user: data.user,
 			tokens: {
-				access_token: data.access_token,
-				refresh_token: data.refresh_token,
+				access_token: '',  // Tokens in httpOnly cookies
+				refresh_token: '',
 			},
 		};
 	},
@@ -204,7 +204,7 @@ export const authService = {
 	/**
 	 * Refresh access token using refresh token from httpOnly cookie
 	 */
-	async refreshToken(): Promise<AuthTokens | null> {
+	async refreshToken(): Promise<boolean> {
 		try {
 			// Backend reads refresh_token from httpOnly cookie
 			const response = await fetch(`${API_URL}/api/v1/auth/refresh`, {
@@ -217,20 +217,14 @@ export const authService = {
 			if (!response.ok) {
 				// Refresh token is invalid or expired
 				this.logout();
-				return null;
+				return false;
 			}
 
-			const data = await response.json();
-
-			// Tokens are set in httpOnly cookies by backend
-			return {
-				access_token: data.access_token,
-				refresh_token: data.refresh_token,
-			};
+			return true;
 		} catch (error) {
 			console.error('Failed to refresh token:', error);
 			this.logout();
-			return null;
+			return false;
 		}
 	},
 

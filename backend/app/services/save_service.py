@@ -45,7 +45,9 @@ class SaveService:
 
         # Generate save name if not provided
         if not save_name:
-            save_name = f"Auto-save {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}"
+            save_name = (
+                f"Auto-save {datetime.datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}"
+            )
 
         # Check for duplicate save name (unless overwriting)
         if not overwrite and session_service.redis:
@@ -67,7 +69,7 @@ class SaveService:
             "session_id": str(session_id),
             "character_id": str(game_session.character_id),
             "character_name": character.name if character else "Unknown",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
             "game_data": {
                 "location": game_session.current_location,
                 "state_snapshot": game_session.state_snapshot or {},
@@ -120,7 +122,9 @@ class SaveService:
             Dict with save information
         """
         return await SaveService.save_game(
-            db, session_id, save_name=f"Auto-save {datetime.utcnow().strftime('%H:%M')}"
+            db,
+            session_id,
+            save_name=f"Auto-save {datetime.datetime.now(timezone.utc).strftime('%H:%M')}",
         )
 
     @staticmethod

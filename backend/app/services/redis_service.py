@@ -21,6 +21,10 @@ class RedisSessionService:
     SESSION_HISTORY_PREFIX = "session:history:"
     SESSION_TTL = 86400  # 24 hours in seconds
 
+    # Guest token management
+    GUEST_TOKEN_PREFIX = "guest:token:"
+    GUEST_TOKEN_TTL = 86400 * 7  # 7 days
+
     def __init__(self):
         """Initialize Redis connection pool."""
         self._redis: Optional[redis.Redis] = None
@@ -80,8 +84,8 @@ class RedisSessionService:
             "character_id": str(character_id),
             "companion_id": str(companion_id) if companion_id else None,
             "current_location": current_location,
-            "created_at": datetime.utcnow().isoformat(),
-            "last_updated": datetime.utcnow().isoformat(),
+            "created_at": datetime.datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.datetime.now(timezone.utc).isoformat(),
             "state": initial_state or {},
         }
 
@@ -139,7 +143,7 @@ class RedisSessionService:
         if state_updates:
             current_state["state"].update(state_updates)
 
-        current_state["last_updated"] = datetime.utcnow().isoformat()
+        current_state["last_updated"] = datetime.datetime.now(timezone.utc).isoformat()
 
         # Save back to Redis with TTL refresh
         key = self._get_state_key(session_id)
@@ -193,7 +197,7 @@ class RedisSessionService:
             "role": role,
             "content": content,
             "tokens_used": tokens_used,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
         }
 
         if not self._redis:
@@ -281,6 +285,52 @@ class RedisSessionService:
         await self._redis.expire(history_key, self.SESSION_TTL)
 
         return refreshed > 0
+
+    # ------------------------------------------------------------------
+    # Guest token management
+    # ------------------------------------------------------------------
+
+    async def store_guest_token(self, guest_token: str, user_id: str) -> None:
+        """Store a guest token mapping to user ID in Redis."""
+        await self.connect()
+        if self._redis:
+            key = f"{self.GUEST_TOKEN_PREFIX}{guest_token}"
+            await self._redis.setex(key, self.GUEST_TOKEN_TTL, user_id)
+            logger.info(f"Stored guest token mapping for user {user_id}")
+
+    async def get_guest_user_id(self, guest_token: str) -> str | None:
+        """Look up user ID from guest token."""
+        await self.connect()
+        if self._redis:
+            key = f"{self.GUEST_TOKEN_PREFIX}{guest_token}"
+            return await self._redis.get(key)
+        return None
+
+    async def delete_guest_token(self, guest_token: str) -> None:
+        """Remove a guest token (after account claiming)."""
+        await self.connect()
+        if self._redis:
+            key = f"{self.GUEST_TOKEN_PREFIX}{guest_token}"
+            await self._redis.delete(key)
+            logger.info(f"Deleted guest token")
+
+    # Token revocation
+    TOKEN_BLACKLIST_PREFIX = "token:revoked:"
+
+    async def revoke_token(self, jti: str, expires_in: int) -> None:
+        """Add a token JTI to the blacklist until it expires naturally."""
+        await self.connect()
+        if self._redis:
+            key = f"{self.TOKEN_BLACKLIST_PREFIX}{jti}"
+            await self._redis.setex(key, expires_in, "1")
+
+    async def is_token_revoked(self, jti: str) -> bool:
+        """Check if a token has been revoked."""
+        await self.connect()
+        if self._redis:
+            key = f"{self.TOKEN_BLACKLIST_PREFIX}{jti}"
+            return await self._redis.exists(key) > 0
+        return False  # Fail open if Redis unavailable
 
 
 # Global session service instance

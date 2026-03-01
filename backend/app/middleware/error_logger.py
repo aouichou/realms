@@ -57,7 +57,7 @@ class ErrorLoggerMiddleware(BaseHTTPMiddleware):
     def _build_error_details(self, request: Request, exc: Exception) -> dict:
         """Build comprehensive error details"""
         error_dict = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.datetime.now(timezone.utc).isoformat(),
             "error": {
                 "type": type(exc).__name__,
                 "message": str(exc),
@@ -122,7 +122,7 @@ class ErrorLoggerMiddleware(BaseHTTPMiddleware):
         """Write error details to a timestamped log file"""
         try:
             # Create filename with timestamp
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
+            timestamp = datetime.datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
             filename = f"error_{timestamp}.json"
             filepath = ERROR_LOG_DIR / filename
 

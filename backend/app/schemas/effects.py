@@ -140,7 +140,7 @@ class ActiveEffect(Base):
         if self.rounds_remaining is not None and self.rounds_remaining <= 0:
             return True
 
-        if self.expires_at and datetime.utcnow() >= self.expires_at:
+        if self.expires_at and datetime.datetime.now(timezone.utc) >= self.expires_at:
             return True
 
         return False

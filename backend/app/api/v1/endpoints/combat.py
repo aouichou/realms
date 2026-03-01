@@ -303,7 +303,7 @@ async def end_combat(combat_id: UUID, db: AsyncSession = Depends(get_db)):
 
     # Mark as ended
     combat.is_active = False
-    ended_at = datetime.utcnow()
+    ended_at = datetime.datetime.now(timezone.utc)
     combat.ended_at = ended_at
 
     # Calculate stats

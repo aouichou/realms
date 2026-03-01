@@ -1,7 +1,7 @@
 "use client";
 
+import { API_URL } from "@/lib/api-client";
 import { authService, type User } from "@/lib/auth";
-import { willExpireSoon } from "@/lib/jwt";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 
@@ -22,15 +22,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
 	const [user, setUser] = useState<User | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
-	const [accessToken, setAccessToken] = useState<string | null>(null); // Store token for expiry checking
 	const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 	const router = useRouter();
 
-	// Check auth status on mount and try to restore session
 	useEffect(() => {
 		initializeAuth();
-
-		// Cleanup refresh timer on unmount
 		return () => {
 			if (refreshTimerRef.current) {
 				clearInterval(refreshTimerRef.current);
@@ -38,62 +34,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		};
 	}, []);
 
-	// Proactive token refresh - check every minute
+	// Proactive token refresh via /token-status endpoint
 	useEffect(() => {
-		if (!accessToken || !user) {
+		if (!user) {
+			if (refreshTimerRef.current) {
+				clearInterval(refreshTimerRef.current);
+			}
 			return;
 		}
 
-		// Clear existing timer
-		if (refreshTimerRef.current) {
-			clearInterval(refreshTimerRef.current);
-		}
-
-		// Set up periodic check (every 60 seconds)
 		refreshTimerRef.current = setInterval(async () => {
-			// Check if token will expire in the next 5 minutes
-			if (willExpireSoon(accessToken, 5 * 60 * 1000)) {
-				try {
-					const refreshed = await authService.refreshToken();
-					if (refreshed && refreshed.access_token) {
-						setAccessToken(refreshed.access_token);
-					} else {
-						// Refresh failed, logout
+			try {
+				const response = await fetch(`${API_URL}/api/v1/auth/token-status`, {
+					credentials: 'include',
+				});
+
+				if (!response.ok) {
+					await logout();
+					return;
+				}
+
+				const status = await response.json();
+				if (status.should_refresh) {
+					const success = await authService.refreshToken();
+					if (!success) {
 						await logout();
 					}
-				} catch (error) {
-					console.error('[AuthContext] Proactive token refresh failed:', error);
-					await logout();
 				}
+			} catch (error) {
+				console.error('[AuthContext] Token status check failed:', error);
 			}
-		}, 60 * 1000); // Check every minute
+		}, 60 * 1000);
 
 		return () => {
 			if (refreshTimerRef.current) {
 				clearInterval(refreshTimerRef.current);
 			}
 		};
-	}, [accessToken, user]);
+	}, [user]);
 
 	const initializeAuth = async () => {
 		try {
-			// With httpOnly cookies, we can't check tokens from client
-			// Instead, try to get current user - backend validates cookie
 			const currentUser = await authService.getCurrentUser();
-
 			if (currentUser) {
-				// Valid session, user is logged in
 				setUser(currentUser);
 			} else {
-				// No valid session - try to refresh
-				const refreshed = await authService.refreshToken();
-
-				if (refreshed) {
-					// Refresh successful, get user again
+				const success = await authService.refreshToken();
+				if (success) {
 					const refreshedUser = await authService.getCurrentUser();
 					setUser(refreshedUser);
 				} else {
-					// Refresh failed - user needs to log in
 					await authService.logout();
 				}
 			}
@@ -106,33 +96,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	};
 
 	const login = async (email: string, password: string) => {
-		const { user, tokens } = await authService.login(email, password);
+		const { user } = await authService.login(email, password);
 		setUser(user);
-		setAccessToken(tokens.access_token); // Store for expiry checking
 	};
 
 	const register = async (email: string, username: string, password: string) => {
-		const { user, tokens } = await authService.register(email, username, password);
+		const { user } = await authService.register(email, username, password);
 		setUser(user);
-		setAccessToken(tokens.access_token); // Store for expiry checking
 	};
 
 	const createGuest = async () => {
-		const { user, tokens } = await authService.createGuest();
+		const { user } = await authService.createGuest();
 		setUser(user);
-		setAccessToken(tokens.access_token); // Store for expiry checking
 	};
 
 	const logout = async () => {
 		await authService.logout();
 		setUser(null);
-		setAccessToken(null);
-
-		// Clear refresh timer
 		if (refreshTimerRef.current) {
 			clearInterval(refreshTimerRef.current);
 		}
-
 		router.push('/');
 	};
 

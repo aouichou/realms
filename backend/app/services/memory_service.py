@@ -54,12 +54,12 @@ class MemoryService:
             content=content,
             embedding=embedding if embedding else None,
             importance=importance,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.datetime.now(timezone.utc),
             tags=tags or [],
             npcs_involved=npcs_involved or [],
             locations=locations or [],
             items_involved=items_involved or [],
-            created_at=datetime.utcnow(),
+            created_at=datetime.datetime.now(timezone.utc),
         )
 
         db.add(memory)

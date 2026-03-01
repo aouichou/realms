@@ -166,7 +166,7 @@ class ProviderSelector:
                 # Track request
                 stats = self.provider_stats[provider.name]
                 stats["requests"] += 1
-                stats["last_used"] = datetime.utcnow()
+                stats["last_used"] = datetime.datetime.now(timezone.utc)
 
                 # Generate with this provider
                 result = await provider.generate_narration(
@@ -292,7 +292,7 @@ class ProviderSelector:
             try:
                 stats = self.provider_stats[provider.name]
                 stats["requests"] += 1
-                stats["last_used"] = datetime.utcnow()
+                stats["last_used"] = datetime.datetime.now(timezone.utc)
 
                 result = await provider.generate_chat(
                     messages=messages, max_tokens=max_tokens, temperature=temperature, **kwargs

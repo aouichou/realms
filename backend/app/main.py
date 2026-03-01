@@ -23,6 +23,7 @@ from app.middleware.observability import ObservabilityMiddleware
 from app.middleware.performance import PerformanceMiddleware
 from app.middleware.query_monitor import query_monitor
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.observability.logger import get_logger
 from app.observability.tracing import init_tracing, instrument_app, instrument_sqlalchemy
 from app.routers import health, metrics, models
@@ -130,14 +131,33 @@ app = FastAPI(
 )
 
 
-# CORS Middleware
+# CORS Middleware — restrict to only the methods and headers the frontend uses
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Content-Type",
+        "Accept",
+        "Accept-Language",
+        "X-CSRF-Token",
+        "X-Request-ID",
+    ],
+    expose_headers=[
+        "X-CSRF-Token",
+        "X-Request-ID",
+        "X-RateLimit-Limit-Minute",
+        "X-RateLimit-Remaining-Minute",
+        "X-RateLimit-Limit-Hour",
+        "X-RateLimit-Remaining-Hour",
+        "Retry-After",
+    ],
+    max_age=600,  # Cache preflight for 10 minutes
 )
+
+# Security headers (OWASP best practices)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # HTTPS enforcement (redirects HTTP to HTTPS in production)
 app.add_middleware(HTTPSEnforcementMiddleware, hsts_max_age=31536000)  # 1 year

@@ -4,7 +4,9 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
+
+from app.core.password_validator import validate_password
 
 
 class UserBase(BaseModel):
@@ -19,7 +21,14 @@ class UserCreate(BaseModel):
 
     username: str = Field(..., min_length=3, max_length=100)
     email: EmailStr
-    password: str = Field(..., min_length=8, max_length=100)
+    password: str = Field(..., min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_password_strength(self) -> "UserCreate":
+        errors = validate_password(self.password, username=self.username, email=self.email)
+        if errors:
+            raise ValueError("; ".join(errors))
+        return self
 
 
 class UserLogin(BaseModel):
@@ -34,7 +43,14 @@ class ClaimGuestAccount(BaseModel):
 
     guest_token: str
     email: EmailStr
-    password: str = Field(..., min_length=8, max_length=100)
+    password: str = Field(..., min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_password_strength(self) -> "ClaimGuestAccount":
+        errors = validate_password(self.password, email=self.email)
+        if errors:
+            raise ValueError("; ".join(errors))
+        return self
 
 
 class RefreshTokenRequest(BaseModel):
@@ -48,7 +64,7 @@ class UserResponse(BaseModel):
 
     id: UUID
     username: str
-    email: Optional[str]
+    email: Optional[str] = None
     is_guest: bool
     created_at: datetime
     last_login: Optional[datetime]
@@ -56,12 +72,22 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+    @classmethod
+    def from_orm(cls, user) -> "UserResponse":
+        """Create UserResponse with decrypted email."""
+        return cls(
+            id=user.id,
+            username=user.username,
+            email=user.decrypted_email,  # Decrypt for display
+            is_guest=user.is_guest,
+            created_at=user.created_at,
+            last_login=user.last_login,
+        )
+
 
 class TokenResponse(BaseModel):
-    """Schema for token response"""
+    """Schema for auth response — tokens are in httpOnly cookies only"""
 
-    access_token: str
-    refresh_token: Optional[str] = None
     token_type: str = "bearer"
     user: UserResponse
 
@@ -69,7 +95,26 @@ class TokenResponse(BaseModel):
 class GuestTokenResponse(BaseModel):
     """Schema for guest user creation"""
 
-    access_token: str
     guest_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class PasswordResetRequest(BaseModel):
+    """Schema for requesting a password reset"""
+
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    """Schema for confirming a password reset with new password"""
+
+    token: str
+    password: str = Field(..., min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_reset_password(self) -> "PasswordResetConfirm":
+        errors = validate_password(self.password)
+        if errors:
+            raise ValueError("; ".join(errors))
+        return self
