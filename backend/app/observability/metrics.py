@@ -1,6 +1,9 @@
 """
 Prometheus metrics for monitoring
-Provides counters, histograms, and gauges for key metrics
+Provides counters, histograms, and gauges for key metrics.
+
+Dual-write support: records to both prometheus_client (for /metrics scraping)
+and OpenTelemetry (for OTLP push to Grafana Cloud) when configured.
 """
 
 from typing import Optional
@@ -248,15 +251,67 @@ image_cache_size_bytes = Gauge(
 
 
 class MetricsCollector:
-    """Helper class for collecting metrics"""
+    """Helper class for collecting metrics.
+
+    Records to prometheus_client for /metrics scraping and optionally
+    to OpenTelemetry for OTLP push to Grafana Cloud.
+    """
 
     def __init__(self):
         self.registry = registry
+        # OTel instruments (initialized lazily via init_otel_instruments)
+        self._otel_enabled = False
+        self._otel = {}
+
+    def init_otel_instruments(self):
+        """Initialize OpenTelemetry metric instruments for dual-write."""
+        from app.observability.tracing import get_meter
+
+        meter = get_meter("mistral-realms")
+
+        self._otel = {
+            "http_requests": meter.create_counter(
+                "http.requests", description="Total HTTP requests", unit="1"
+            ),
+            "http_duration": meter.create_histogram(
+                "http.request.duration", description="HTTP request duration", unit="s"
+            ),
+            "llm_requests": meter.create_counter(
+                "llm.requests", description="Total LLM API requests", unit="1"
+            ),
+            "llm_tokens": meter.create_counter(
+                "llm.tokens.used", description="Total tokens used", unit="1"
+            ),
+            "llm_duration": meter.create_histogram(
+                "llm.request.duration", description="LLM request duration", unit="s"
+            ),
+            "db_duration": meter.create_histogram(
+                "db.query.duration", description="Database query duration", unit="s"
+            ),
+            "errors": meter.create_counter("errors", description="Total errors by type", unit="1"),
+            "rate_limit_exceeded": meter.create_counter(
+                "rate_limit.exceeded", description="Rate limit violations", unit="1"
+            ),
+            "auth_attempts": meter.create_counter(
+                "auth.attempts", description="Authentication attempts", unit="1"
+            ),
+            "image_generations": meter.create_counter(
+                "image.generations", description="Image generations", unit="1"
+            ),
+            "image_gen_duration": meter.create_histogram(
+                "image.generation.duration", description="Image generation time", unit="s"
+            ),
+        }
+        self._otel_enabled = True
 
     def record_http_request(self, method: str, endpoint: str, status: int, duration: float):
         """Record HTTP request metrics"""
         http_requests_total.labels(method=method, endpoint=endpoint, status=status).inc()
         http_request_duration_seconds.labels(method=method, endpoint=endpoint).observe(duration)
+        if self._otel_enabled:
+            attrs = {"http.method": method, "http.route": endpoint, "http.status_code": status}
+            self._otel["http_requests"].add(1, attrs)
+            self._otel["http_duration"].record(duration, attrs)
 
     def record_llm_request(
         self,
@@ -272,10 +327,18 @@ class MetricsCollector:
         llm_tokens_used.labels(model=model, type="prompt").inc(prompt_tokens)
         llm_tokens_used.labels(model=model, type="completion").inc(completion_tokens)
         llm_tokens_used.labels(model=model, type="total").inc(prompt_tokens + completion_tokens)
+        if self._otel_enabled:
+            attrs = {"llm.model": model, "llm.status": status}
+            self._otel["llm_requests"].add(1, attrs)
+            self._otel["llm_duration"].record(duration, attrs)
+            self._otel["llm_tokens"].add(prompt_tokens, {**attrs, "token.type": "prompt"})
+            self._otel["llm_tokens"].add(completion_tokens, {**attrs, "token.type": "completion"})
 
     def record_db_query(self, operation: str, duration: float):
         """Record database query metrics"""
         db_query_duration_seconds.labels(operation=operation).observe(duration)
+        if self._otel_enabled:
+            self._otel["db_duration"].record(duration, {"db.operation": operation})
 
     def record_redis_operation(
         self, operation: str, status: str, is_cache: bool = False, hit: bool = False
@@ -291,17 +354,25 @@ class MetricsCollector:
     def record_error(self, error_type: str, endpoint: str):
         """Record error metrics"""
         errors_total.labels(error_type=error_type, endpoint=endpoint).inc()
+        if self._otel_enabled:
+            self._otel["errors"].add(1, {"error.type": error_type, "http.route": endpoint})
 
     def record_rate_limit_violation(self, client_type: str, blocked: bool = False):
         """Record rate limiting metrics"""
         rate_limit_exceeded_total.labels(client_type=client_type).inc()
         if blocked:
             rate_limit_blocks_total.inc()
+        if self._otel_enabled:
+            self._otel["rate_limit_exceeded"].add(
+                1, {"client.type": client_type, "blocked": str(blocked)}
+            )
 
     def record_auth_attempt(self, success: bool):
         """Record authentication attempt"""
         status = "success" if success else "failure"
         auth_attempts_total.labels(status=status).inc()
+        if self._otel_enabled:
+            self._otel["auth_attempts"].add(1, {"auth.status": status})
 
     def record_dm_narration(self, duration: float, has_roll: bool, language: str):
         """Record DM narration metrics"""
@@ -372,13 +443,16 @@ class MetricsCollector:
         dm_tool_calls_total.labels(tool_name=tool_name, status=status).inc()
         dm_tool_duration_seconds.labels(tool_name=tool_name).observe(duration)
 
-    def record_image_generation(
-        self, status: str, source: str, duration: Optional[float] = None
-    ):
+    def record_image_generation(self, status: str, source: str, duration: Optional[float] = None):
         """Record image generation"""
         image_generations_total.labels(status=status, source=source).inc()
         if duration is not None:
             image_generation_duration_seconds.observe(duration)
+        if self._otel_enabled:
+            attrs = {"image.status": status, "image.source": source}
+            self._otel["image_generations"].add(1, attrs)
+            if duration is not None:
+                self._otel["image_gen_duration"].record(duration, attrs)
 
     def set_image_cache_size(self, size_bytes: int):
         """Set image cache size gauge"""
