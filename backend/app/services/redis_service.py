@@ -37,8 +37,11 @@ class RedisSessionService:
     async def connect(self):
         """Establish Redis connection."""
         if self._redis is None:
+            url = settings.redis_url
+            # rediss:// URLs require ssl=True for redis.asyncio
+            ssl = url.startswith("rediss://")
             self._redis = await redis.from_url(
-                settings.redis_url, encoding="utf-8", decode_responses=True
+                url, encoding="utf-8", decode_responses=True, ssl=ssl
             )
             logger.info("Redis connection established")
 

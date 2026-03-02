@@ -93,6 +93,9 @@ class Settings(BaseSettings):
     redis_port: int = Field(default=6379, description="Redis port")
     redis_db: int = Field(default=0, description="Redis database number")
     redis_password: str = Field(default="", description="Redis password")
+    redis_url_env: str = Field(
+        default="", alias="REDIS_URL", description="Full Redis URL (overrides host/port/db/password)"
+    )
 
     # PII Encryption
     pii_encryption_key: str = Field(default="", description="Encryption key for PII data at rest")
@@ -115,6 +118,9 @@ class Settings(BaseSettings):
     postgres_db: str = Field(default="mistral_realms", description="PostgreSQL database")
     postgres_user: str = Field(default="postgres", description="PostgreSQL user")
     postgres_password: str = Field(default="postgres", description="PostgreSQL password")
+    database_url_env: str = Field(
+        default="", alias="DATABASE_URL", description="Full database URL (overrides individual PG vars)"
+    )
 
     # CORS
     cors_origins: str = Field(
@@ -161,6 +167,20 @@ class Settings(BaseSettings):
         default="realms-data", description="R2 bucket name for seed data"
     )
 
+    # R2 Image Storage (Cloudflare R2 for generated scene images)
+    r2_endpoint: str = Field(default="", description="R2 S3-compatible endpoint URL")
+    r2_access_key: str = Field(default="", description="R2 access key ID")
+    r2_secret_key: str = Field(default="", description="R2 secret access key")
+    r2_images_bucket: str = Field(default="realms-images", description="R2 bucket for images")
+    r2_images_public_url: str = Field(
+        default="", description="Public URL prefix for R2 images (e.g. https://images.realms.example.com)"
+    )
+
+    @property
+    def r2_images_enabled(self) -> bool:
+        """Check if R2 image storage is configured"""
+        return bool(self.r2_endpoint and self.r2_access_key and self.r2_secret_key)
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins into a list"""
@@ -168,13 +188,24 @@ class Settings(BaseSettings):
 
     @property
     def redis_url(self) -> str:
-        """Get Redis connection URL"""
+        """Get Redis connection URL (prefers REDIS_URL env var if set)"""
+        if self.redis_url_env:
+            # Strip surrounding quotes if present (common with .env files)
+            return self.redis_url_env.strip('"').strip("'")
         password_part = f":{self.redis_password}@" if self.redis_password else ""
         return f"redis://{password_part}{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
     @property
     def database_url(self) -> str:
-        """Get PostgreSQL connection URL"""
+        """Get PostgreSQL connection URL (prefers DATABASE_URL env var if set)"""
+        if self.database_url_env:
+            url = self.database_url_env.strip('"').strip("'")
+            # Convert postgres:// to postgresql+asyncpg:// for SQLAlchemy
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif url.startswith("postgresql://"):
+                url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            return url
         return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
     @property
