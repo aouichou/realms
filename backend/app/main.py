@@ -77,6 +77,7 @@ async def lifespan(app: FastAPI):
             )
             # Initialize OTel metric instruments alongside prometheus_client
             from app.observability.metrics import metrics
+
             metrics.init_otel_instruments()
 
     # Initialize database
@@ -159,6 +160,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=[
+        "Authorization",
         "Content-Type",
         "Accept",
         "Accept-Language",
