@@ -205,7 +205,7 @@ class ImageService:
                 )  # Flush to persist changes but don't commit - let endpoint handle commit
 
                 # If image_path is already a full URL (R2), use it directly
-                stored_path = existing_image.image_path
+                stored_path = str(existing_image.image_path)
                 if stored_path.startswith("http"):
                     full_url = stored_path
                 else:
