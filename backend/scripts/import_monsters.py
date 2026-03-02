@@ -15,6 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
 from app.db.models.creature import Creature
+from scripts.data_utils import get_data_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -69,10 +70,10 @@ def extract_stats_from_description(description: str) -> dict:
 async def import_monsters():
     """Import monsters from JSON file into creatures database."""
     # Load JSON data
-    json_path = Path(__file__).parent.parent / "data" / "monsters.json"
-
-    if not json_path.exists():
-        logger.error(f"Monsters JSON file not found: {json_path}")
+    try:
+        json_path = get_data_path("monsters.json")
+    except FileNotFoundError as e:
+        logger.error(str(e))
         return
 
     logger.info(f"Loading monsters from {json_path}")

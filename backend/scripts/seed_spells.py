@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy import text
 
 from app.db.base import async_session
+from scripts.data_utils import get_data_path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -68,10 +69,10 @@ def normalize_casting_time(time_str):
 
 
 async def main():
-    csv_path = Path("/app/data/dnd-spells.csv")
-
-    if not csv_path.exists():
-        print(f"❌ CSV not found")
+    try:
+        csv_path = get_data_path("dnd-spells.csv")
+    except FileNotFoundError as e:
+        print(f"❌ {e}")
         return
 
     print(f"📖 Loading spells...")

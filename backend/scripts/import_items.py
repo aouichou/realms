@@ -19,6 +19,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
 from app.db.models.item_catalog import ItemCatalog
+from scripts.data_utils import get_data_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -212,10 +213,10 @@ def categorize_item(name: str, props: dict, description: str) -> tuple[str, str]
 async def import_items():
     """Import items from JSON file into database."""
     # Load JSON data
-    json_path = Path(__file__).parent.parent / "data" / "items.json"
-
-    if not json_path.exists():
-        logger.error(f"Items JSON file not found: {json_path}")
+    try:
+        json_path = get_data_path("items.json")
+    except FileNotFoundError as e:
+        logger.error(str(e))
         return
 
     logger.info(f"Loading items from {json_path}")
