@@ -1,6 +1,10 @@
 name: realms-backend
 region: fra
 
+domains:
+  - domain: api.realms.anguelz.tech
+    type: PRIMARY
+
 services:
   - name: backend
     github:
