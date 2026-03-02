@@ -25,7 +25,12 @@ from app.middleware.query_monitor import query_monitor
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.observability.logger import get_logger
-from app.observability.tracing import init_tracing, instrument_app, instrument_sqlalchemy
+from app.observability.tracing import (
+    init_metrics_export,
+    init_tracing,
+    instrument_app,
+    instrument_sqlalchemy,
+)
 from app.routers import health, metrics, models
 from app.services.dm_supervisor import get_dm_supervisor
 from app.services.image_detection_service import get_image_detection_service
@@ -61,6 +66,18 @@ async def lifespan(app: FastAPI):
         instrument_sqlalchemy(engine)
         backend = "Grafana Cloud" if settings.grafana_cloud_enabled else settings.otlp_endpoint
         logger.info("Tracing enabled: exporting to %s", backend)
+
+        # Initialize OTLP metrics export (Grafana Cloud only)
+        if settings.grafana_cloud_enabled:
+            init_metrics_export(
+                service_name=settings.service_name,
+                grafana_otlp_endpoint=settings.grafana_otlp_endpoint,
+                grafana_instance_id=settings.grafana_cloud_instance_id,
+                grafana_api_key=settings.grafana_cloud_api_key,
+            )
+            # Initialize OTel metric instruments alongside prometheus_client
+            from app.observability.metrics import metrics
+            metrics.init_otel_instruments()
 
     # Initialize database
     try:

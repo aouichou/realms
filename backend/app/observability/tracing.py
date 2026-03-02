@@ -1,5 +1,5 @@
 """
-OpenTelemetry distributed tracing
+OpenTelemetry distributed tracing and metrics export.
 Provides tracing for FastAPI, SQLAlchemy, and custom operations.
 
 Supports two backends:
@@ -12,8 +12,10 @@ import functools
 import logging
 from typing import Any, Callable, Optional
 
+from opentelemetry import metrics as otel_metrics
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
     OTLPSpanExporter as OTLPHTTPSpanExporter,
 )
@@ -21,6 +23,8 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -91,6 +95,59 @@ def init_tracing(
 
     # Get tracer
     _tracer = trace.get_tracer(__name__)
+
+
+def init_metrics_export(
+    service_name: str = "mistral-realms-backend",
+    grafana_otlp_endpoint: str = "",
+    grafana_instance_id: str = "",
+    grafana_api_key: str = "",
+    export_interval_ms: int = 60_000,
+) -> None:
+    """
+    Initialize OTLP metrics export to Grafana Cloud.
+
+    Sets up an OTel MeterProvider with a periodic exporter that pushes
+    metrics to Grafana Cloud's OTLP gateway. Only activated when Grafana
+    Cloud credentials are provided.
+
+    Args:
+        service_name: Name of the service for metrics
+        grafana_otlp_endpoint: Grafana Cloud OTLP gateway URL
+        grafana_instance_id: Grafana Cloud instance ID (numeric)
+        grafana_api_key: Grafana Cloud API key
+        export_interval_ms: How often to push metrics (default: 60s)
+    """
+    if not (grafana_otlp_endpoint and grafana_instance_id and grafana_api_key):
+        logger.info("Metrics OTLP export not configured (no Grafana Cloud credentials)")
+        return
+
+    resource = Resource(attributes={SERVICE_NAME: service_name})
+    auth_b64 = _build_grafana_auth_header(grafana_instance_id, grafana_api_key)
+
+    metric_exporter = OTLPMetricExporter(
+        endpoint=f"{grafana_otlp_endpoint.rstrip('/')}/v1/metrics",
+        headers={"Authorization": f"Basic {auth_b64}"},
+    )
+
+    reader = PeriodicExportingMetricReader(
+        metric_exporter,
+        export_interval_millis=export_interval_ms,
+    )
+
+    meter_provider = MeterProvider(resource=resource, metric_readers=[reader])
+    otel_metrics.set_meter_provider(meter_provider)
+
+    logger.info(
+        "Metrics OTLP export: pushing every %ds → %s",
+        export_interval_ms // 1000,
+        grafana_otlp_endpoint,
+    )
+
+
+def get_meter(name: str = __name__) -> otel_metrics.Meter:
+    """Get an OTel Meter for creating metric instruments."""
+    return otel_metrics.get_meter(name)
 
 
 def instrument_app(app) -> None:
