@@ -8,14 +8,16 @@ import { useToast } from '@/components/ui/toast';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 export default function RegisterPage() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const redirectTo = searchParams.get('redirect');
 	const { showToast } = useToast();
 	const { t } = useTranslation();
-	const { register } = useAuth();
+	const { register, claimGuest, isGuest } = useAuth();
 	const [formData, setFormData] = useState({
 		email: '',
 		username: '',
@@ -42,9 +44,15 @@ export default function RegisterPage() {
 		setIsLoading(true);
 
 		try {
-			await register(formData.email, formData.username, formData.password);
-			showToast(t('auth.register.accountCreated'), 'success');
-			router.push('/character/create');
+			if (isGuest) {
+				// Claim the guest account — preserves characters and game progress
+				await claimGuest(formData.email, formData.username, formData.password);
+				showToast(t('auth.register.accountClaimed'), 'success');
+			} else {
+				await register(formData.email, formData.username, formData.password);
+				showToast(t('auth.register.accountCreated'), 'success');
+			}
+			router.push(redirectTo || '/character/select');
 		} catch (error: any) {
 			showToast(error.message || t('auth.register.registerFailed'), 'error');
 		} finally {
@@ -56,9 +64,13 @@ export default function RegisterPage() {
 		<div className="min-h-screen flex items-center justify-center bg-linear-to-br from-primary-900 via-secondary-600 to-primary-900 p-4">
 			<Card className="w-full max-w-md border-neutral-500/20 shadow-2xl">
 				<CardHeader className="space-y-2 text-center">
-					<CardTitle className="font-display text-3xl">{t('auth.register.title')}</CardTitle>
+					<CardTitle className="font-display text-3xl">
+						{isGuest ? t('auth.register.claimTitle') : t('auth.register.title')}
+					</CardTitle>
 					<CardDescription className="font-body">
-						{t('auth.register.subtitle')}
+						{isGuest
+							? t('auth.register.claimSubtitle')
+							: t('auth.register.subtitle')}
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -124,7 +136,11 @@ export default function RegisterPage() {
 							className="w-full font-body bg-accent-600 hover:bg-accent-400 text-primary-900 font-semibold"
 							disabled={isLoading}
 						>
-							{isLoading ? 'Creating Account...' : 'Create Account'}
+							{isLoading
+								? t('auth.register.creatingAccount')
+								: isGuest
+									? t('auth.register.claimButton')
+									: t('auth.register.createButton')}
 						</Button>
 					</form>
 

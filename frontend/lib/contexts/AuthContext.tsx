@@ -14,6 +14,7 @@ interface AuthContextType {
 	register: (email: string, username: string, password: string) => Promise<void>;
 	logout: () => Promise<void>;
 	createGuest: () => Promise<void>;
+	claimGuest: (email: string, username: string, password: string) => Promise<void>;
 	refreshUser: () => Promise<void>;
 }
 
@@ -110,6 +111,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		setUser(user);
 	};
 
+	const claimGuest = async (email: string, username: string, password: string) => {
+		const { user } = await authService.claimGuest(email, username, password);
+		setUser(user);
+	};
+
 	const logout = async () => {
 		await authService.logout();
 		setUser(null);
@@ -133,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		register,
 		logout,
 		createGuest,
+		claimGuest,
 		refreshUser,
 	};
 

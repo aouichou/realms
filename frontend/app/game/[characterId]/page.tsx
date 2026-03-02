@@ -807,8 +807,12 @@ export default function GamePage() {
 								<Button
 									variant="outline"
 									size="sm"
-									className="w-full gap-2 border-accent-600/50 text-accent-200 hover:bg-accent-600/20"
-									onClick={() => router.push('/auth/login')}
+									className="w-full gap-2 border-accent-600/50 text-accent-200 hover:bg-accent-600/20 whitespace-nowrap text-xs"
+									onClick={() =>
+										router.push(
+											`/auth/register?redirect=/game/${params.characterId}`
+										)
+									}
 								>
 									{t('game.guestSaveCta')}
 								</Button>

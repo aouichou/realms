@@ -142,6 +142,7 @@ export const authService = {
 	 */
 	async claimGuest(
 		email: string,
+		username: string,
 		password: string
 	): Promise<{ user: User; tokens: AuthTokens }> {
 		const guestToken = localStorage.getItem('guest_token');
@@ -153,7 +154,7 @@ export const authService = {
 		const response = await fetch(`${API_URL}/api/v1/auth/claim-guest`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ guest_token: guestToken, email, password }),
+			body: JSON.stringify({ guest_token: guestToken, email, username, password }),
 			credentials: 'include', // Send/receive cookies
 		});
 

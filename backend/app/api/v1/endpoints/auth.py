@@ -166,7 +166,11 @@ async def claim_guest(
         HTTPException: 400 if email already registered
     """
     user = await claim_guest_account(
-        db, guest_token=claim_data.guest_token, email=claim_data.email, password=claim_data.password
+        db,
+        guest_token=claim_data.guest_token,
+        email=claim_data.email,
+        username=claim_data.username,
+        password=claim_data.password,
     )
 
     # Generate new tokens

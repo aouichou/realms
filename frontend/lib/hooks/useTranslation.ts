@@ -54,6 +54,8 @@ const translations: Record<Language, any> = {
 			register: {
 				title: "Create Account",
 				subtitle: "Register to save your progress",
+				claimTitle: "Save Your Progress",
+				claimSubtitle: "Add an email and password to keep your characters and game progress",
 				email: "Email",
 				username: "Username",
 				password: "Password",
@@ -63,10 +65,13 @@ const translations: Record<Language, any> = {
 				passwordPlaceholder: "••••••••",
 				createAccount: "Create Account",
 				creatingAccount: "Creating Account...",
+				createButton: "Create Account",
+				claimButton: "Save My Progress",
 				haveAccount: "Already have an account?",
 				signInHere: "Sign in here",
 				agreementText: "By registering, you agree to save your game progress and characters.",
 				accountCreated: "Account created successfully!",
+				accountClaimed: "Account created! Your progress has been saved.",
 				passwordMismatch: "Passwords do not match",
 				registerFailed: "Registration failed"
 			}
@@ -610,6 +615,8 @@ const translations: Record<Language, any> = {
 			register: {
 				title: "Créer un Compte",
 				subtitle: "Inscrivez-vous pour sauvegarder votre progression",
+				claimTitle: "Sauvegardez Votre Progression",
+				claimSubtitle: "Ajoutez un e-mail et un mot de passe pour conserver vos personnages et votre progression",
 				email: "E-mail",
 				username: "Nom d'utilisateur",
 				password: "Mot de passe",
@@ -619,10 +626,13 @@ const translations: Record<Language, any> = {
 				passwordPlaceholder: "••••••••",
 				createAccount: "Créer un compte",
 				creatingAccount: "Création du compte...",
+				createButton: "Créer un compte",
+				claimButton: "Sauvegarder ma progression",
 				haveAccount: "Vous avez déjà un compte ?",
 				signInHere: "Connectez-vous ici",
 				agreementText: "En vous inscrivant, vous acceptez de sauvegarder votre progression de jeu et vos personnages.",
 				accountCreated: "Compte créé avec succès !",
+				accountClaimed: "Compte créé ! Votre progression a été sauvegardée.",
 				passwordMismatch: "Les mots de passe ne correspondent pas",
 				registerFailed: "Échec de l'inscription"
 			}
@@ -682,7 +692,7 @@ const translations: Record<Language, any> = {
 			},
 			dmThinking: "Le MJ réfléchit...",
 			saveGame: "Sauvegarder",
-			guestSaveCta: "Créez un compte pour sauvegarder",
+			guestSaveCta: "Créer un compte",
 			inventory: {
 				title: "Inventaire",
 				carryingCapacity: "Capacité de transport",

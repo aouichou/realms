@@ -219,7 +219,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
 
 
 async def claim_guest_account(
-    db: AsyncSession, guest_token: str, email: str, password: str
+    db: AsyncSession, guest_token: str, email: str, username: str, password: str
 ) -> User:
     """Convert a guest account to a registered account"""
 
@@ -244,6 +244,7 @@ async def claim_guest_account(
     # Convert to registered user
     user.email = encrypt_pii(email)
     user.email_blind_index = create_blind_index(email)
+    user.username = username
     user.password_hash = get_password_hash(password)
     user.is_guest = False
     user.guest_token = None
