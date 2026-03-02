@@ -94,7 +94,9 @@ class Settings(BaseSettings):
     redis_db: int = Field(default=0, description="Redis database number")
     redis_password: str = Field(default="", description="Redis password")
     redis_url_env: str = Field(
-        default="", alias="REDIS_URL", description="Full Redis URL (overrides host/port/db/password)"
+        default="",
+        alias="REDIS_URL",
+        description="Full Redis URL (overrides host/port/db/password)",
     )
 
     # PII Encryption
@@ -119,7 +121,9 @@ class Settings(BaseSettings):
     postgres_user: str = Field(default="postgres", description="PostgreSQL user")
     postgres_password: str = Field(default="postgres", description="PostgreSQL password")
     database_url_env: str = Field(
-        default="", alias="DATABASE_URL", description="Full database URL (overrides individual PG vars)"
+        default="",
+        alias="DATABASE_URL",
+        description="Full database URL (overrides individual PG vars)",
     )
 
     # CORS
@@ -173,7 +177,8 @@ class Settings(BaseSettings):
     r2_secret_key: str = Field(default="", description="R2 secret access key")
     r2_images_bucket: str = Field(default="realms-images", description="R2 bucket for images")
     r2_images_public_url: str = Field(
-        default="", description="Public URL prefix for R2 images (e.g. https://images.realms.example.com)"
+        default="",
+        description="Public URL prefix for R2 images (e.g. https://images.realms.example.com)",
     )
 
     @property

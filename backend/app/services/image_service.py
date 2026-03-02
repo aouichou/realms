@@ -58,6 +58,7 @@ def _get_r2_client():
         )
     return _r2_client
 
+
 # API-level 429 cooldown tracking (Mistral server-side rate limit)
 _api_cooldown_until: float = 0
 RATE_LIMIT_COOLDOWN_SECONDS = int(os.getenv("IMAGE_RATE_LIMIT_COOLDOWN", "300"))  # 5 min default
