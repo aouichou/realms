@@ -9,8 +9,7 @@ const nextConfig: NextConfig = {
 	turbopack: {},
 
 	images: {
-		unoptimized: true, // Disable image optimization for localhost development
-		domains: ['localhost'],
+		unoptimized: true,
 		remotePatterns: [
 			{
 				protocol: 'http',
@@ -19,8 +18,18 @@ const nextConfig: NextConfig = {
 				pathname: '/media/**',
 			},
 			{
-				protocol: 'http',
-				hostname: 'localhost',
+				protocol: 'https',
+				hostname: 'images.realms.anguelz.tech',
+				pathname: '/**',
+			},
+			{
+				protocol: 'https',
+				hostname: '*.r2.dev',
+				pathname: '/**',
+			},
+			{
+				protocol: 'https',
+				hostname: 'api.realms.anguelz.tech',
 				pathname: '/media/**',
 			},
 		],
