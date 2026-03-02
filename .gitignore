@@ -86,3 +86,5 @@ backend/data/
 
 # Wrangler local state
 .wrangler/
+.vercel
+.env*.local
