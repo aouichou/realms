@@ -1,65 +1,65 @@
 # Web Framework
-fastapi==0.128.0
-uvicorn[standard]==0.40.0
-pydantic==2.12.5
-pydantic-settings==2.12.0
+fastapi>=0.128.0
+uvicorn[standard]>=0.40.0
+pydantic>=2.12.5
+pydantic-settings>=2.12.0
 
 # Mistral AI SDK
-mistralai==1.10.0
-tiktoken==0.8.0  # Token counting for context management
+mistralai>=1.10.0
+tiktoken>=0.8.0  # Token counting for context management
 
 # OpenAI SDK (used for OpenAI-compatible providers: Cerebras, Together, Sambanova)
-openai==1.59.7
+openai>=1.59.7
 
 # HTTP & Async
-httpx==0.28.1
-aiofiles==25.1.0
+httpx>=0.28.1
+aiofiles>=25.1.0
 
 # Redis
-redis==7.1.0
-hiredis==3.3.0
+redis>=7.1.0
+hiredis>=3.3.0
 
 # Cloud Storage (Cloudflare R2 via S3 API)
-boto3==1.39.9
+boto3>=1.39.9
 
 # Database
-asyncpg==0.31.0
-sqlalchemy==2.0.45
-alembic==1.17.2
-pgvector==0.4.2  # pgvector Python client for vector embeddings
+asyncpg>=0.31.0
+sqlalchemy>=2.0.45
+alembic>=1.17.2
+pgvector>=0.4.2  # pgvector Python client for vector embeddings
 
 # Security
-python-jose[cryptography]==3.5.0
-bcrypt==5.0.0
-python-multipart==0.0.21
-email-validator==2.3.0
+python-jose[cryptography]>=3.5.0
+bcrypt>=5.0.0
+python-multipart>=0.0.21
+email-validator>=2.3.0
 
 # Observability
-opentelemetry-api==1.38.0
-opentelemetry-sdk==1.38.0
-opentelemetry-instrumentation-fastapi==0.59b0
-opentelemetry-instrumentation-httpx==0.59b0
-opentelemetry-instrumentation-redis==0.59b0
-opentelemetry-instrumentation-sqlalchemy==0.59b0
-opentelemetry-exporter-otlp==1.38.0
-prometheus-client==0.21.1
+opentelemetry-api>=1.38.0
+opentelemetry-sdk>=1.38.0
+opentelemetry-instrumentation-fastapi>=0.59b0
+opentelemetry-instrumentation-httpx>=0.59b0
+opentelemetry-instrumentation-redis>=0.59b0
+opentelemetry-instrumentation-sqlalchemy>=0.59b0
+opentelemetry-exporter-otlp>=1.38.0
+prometheus-client>=0.21.1
 
 # Internationalization
-babel==2.16.0
+babel>=2.16.0
 
 # Semantic Similarity for Image Detection
 -r requirements-transformers.txt
 
 # Development & Testing
-pytest==9.0.2
-pytest-asyncio==1.3.0
-pytest-cov==7.0.0
-httpx-sse==0.4.3
+pytest>=9.0.2
+pytest-asyncio>=1.3.0
+pytest-cov>=7.0.0
+httpx-sse>=0.4.3
 
 # Code Quality
-black==25.12.0
-ruff==0.14.10
-mypy==1.19.1
+black>=25.12.0
+ruff>=0.14.10
+mypy>=1.19.1
 
 # Utilities
-python-dotenv==1.2.1
+python-dotenv>=1.2.1
