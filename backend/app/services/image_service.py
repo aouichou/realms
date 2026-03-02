@@ -5,14 +5,18 @@ import os
 import time
 from datetime import datetime, timezone
 from functools import wraps
+from io import BytesIO
 from pathlib import Path
 from typing import Optional
 
+import boto3
+from botocore.config import Config as BotoConfig
 from mistralai import Mistral
 from mistralai.models import ToolFileChunk
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.observability.logger import get_logger
 from app.schemas.generated_image import GeneratedImage
 from app.services.redis_service import session_service
@@ -32,6 +36,27 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 # Rate limiting storage
 _image_generation_calls = []
+
+# R2 client (initialized lazily)
+_r2_client = None
+
+
+def _get_r2_client():
+    """Get or create the R2 S3 client (lazy singleton)"""
+    global _r2_client
+    if _r2_client is None and settings.r2_images_enabled:
+        _r2_client = boto3.client(
+            "s3",
+            endpoint_url=settings.r2_endpoint,
+            aws_access_key_id=settings.r2_access_key,
+            aws_secret_access_key=settings.r2_secret_key,
+            config=BotoConfig(
+                signature_version="s3v4",
+                retries={"max_attempts": 2, "mode": "standard"},
+            ),
+            region_name="auto",
+        )
+    return _r2_client
 
 # API-level 429 cooldown tracking (Mistral server-side rate limit)
 _api_cooldown_until: float = 0
@@ -178,8 +203,12 @@ class ImageService:
                     db.flush()
                 )  # Flush to persist changes but don't commit - let endpoint handle commit
 
-                # Convert relative path to full URL
-                full_url = f"{API_BASE_URL}{existing_image.image_path}"
+                # If image_path is already a full URL (R2), use it directly
+                stored_path = existing_image.image_path
+                if stored_path.startswith("http"):
+                    full_url = stored_path
+                else:
+                    full_url = f"{API_BASE_URL}{stored_path}"
 
                 logger.info(
                     f"Reusing existing image (hash={desc_hash}, reuse_count={existing_image.reuse_count})"
@@ -284,22 +313,44 @@ Style Requirements:
                         continue
                     file_bytes = self.client.files.download(file_id=chunk.file_id).read()
 
-                    # Save to filesystem
+                    # Save to local filesystem (always, serves as fallback)
                     filename = f"{desc_hash}.png"
                     filepath = MEDIA_ROOT / filename
                     relative_path = f"/media/images/generated/{filename}"
-                    full_url = f"{API_BASE_URL}{relative_path}"
 
                     with open(filepath, "wb") as f:
                         f.write(file_bytes)
 
-                    logger.info(f"Image saved: {filepath} ({len(file_bytes)} bytes)")
+                    logger.info(f"Image saved locally: {filepath} ({len(file_bytes)} bytes)")
 
-                    # Save to database (store relative path for flexibility)
+                    # Upload to R2 if configured
+                    r2_client = _get_r2_client()
+                    if r2_client and settings.r2_images_public_url:
+                        try:
+                            r2_key = f"scenes/{filename}"
+                            r2_client.upload_fileobj(
+                                BytesIO(file_bytes),
+                                settings.r2_images_bucket,
+                                r2_key,
+                                ExtraArgs={"ContentType": "image/png"},
+                            )
+                            # Use R2 public URL
+                            image_path = f"{settings.r2_images_public_url.rstrip('/')}/{r2_key}"
+                            full_url = image_path  # Already a full URL
+                            logger.info(f"Image uploaded to R2: {r2_key}")
+                        except Exception as r2_err:
+                            logger.warning(f"R2 upload failed, using local path: {r2_err}")
+                            image_path = relative_path
+                            full_url = f"{API_BASE_URL}{relative_path}"
+                    else:
+                        image_path = relative_path
+                        full_url = f"{API_BASE_URL}{relative_path}"
+
+                    # Save to database
                     generated_image = GeneratedImage(
                         description_hash=desc_hash,
                         description_text=description,
-                        image_path=relative_path,
+                        image_path=image_path,
                         model_used="mistral-medium-latest",
                         reuse_count=0,
                     )
