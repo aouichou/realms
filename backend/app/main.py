@@ -53,10 +53,14 @@ async def lifespan(app: FastAPI):
             service_name=settings.service_name,
             otlp_endpoint=settings.otlp_endpoint,
             enabled=True,
+            grafana_otlp_endpoint=settings.grafana_otlp_endpoint,
+            grafana_instance_id=settings.grafana_cloud_instance_id,
+            grafana_api_key=settings.grafana_cloud_api_key,
         )
         # Instrument database queries
         instrument_sqlalchemy(engine)
-        logger.info("Tracing enabled: exporting to %s", settings.otlp_endpoint)
+        backend = "Grafana Cloud" if settings.grafana_cloud_enabled else settings.otlp_endpoint
+        logger.info("Tracing enabled: exporting to %s", backend)
 
     # Initialize database
     try:
