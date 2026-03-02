@@ -80,3 +80,9 @@ scripts/.scripts/*
 
 # Database exports
 exports/
+
+# Licensed D&D content (stored privately in Cloudflare R2)
+backend/data/
+
+# Wrangler local state
+.wrangler/

@@ -45,3 +45,6 @@ Dockerfile
 *.log
 *.sqlite
 *.db
+
+# Licensed content (not needed at runtime)
+data/
