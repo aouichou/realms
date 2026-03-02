@@ -9,9 +9,9 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 
-export default function RegisterPage() {
+function RegisterForm() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const redirectTo = searchParams.get('redirect');
@@ -160,5 +160,17 @@ export default function RegisterPage() {
 				</CardContent>
 			</Card>
 		</div>
+	);
+}
+
+export default function RegisterPage() {
+	return (
+		<Suspense fallback={
+			<div className="min-h-screen flex items-center justify-center bg-linear-to-br from-primary-900 via-secondary-600 to-primary-900">
+				<p className="text-accent-200/70">Loading...</p>
+			</div>
+		}>
+			<RegisterForm />
+		</Suspense>
 	);
 }

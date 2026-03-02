@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import Image from 'next/image';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { lazy, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 
 // Lazy load heavy components for better initial load
 const AbilityCheckPanel = lazy(() => import('@/components/AbilityCheckPanel').then(mod => ({ default: mod.AbilityCheckPanel })));
@@ -114,7 +114,7 @@ const formatSkillLabel = (skill?: string) => {
 	return skill.replace(/[_-]/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
 };
 
-export default function GamePage() {
+function GamePageInner() {
 	const params = useParams();
 	const router = useRouter();
 	const { t } = useTranslation();
@@ -1172,5 +1172,17 @@ export default function GamePage() {
 				)}
 			</div>
 		</div>
+	);
+}
+
+export default function GamePage() {
+	return (
+		<Suspense fallback={
+			<div className="min-h-screen flex items-center justify-center bg-primary-900">
+				<p className="text-accent-200/70">Loading game...</p>
+			</div>
+		}>
+			<GamePageInner />
+		</Suspense>
 	);
 }
