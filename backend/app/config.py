@@ -150,9 +150,7 @@ class Settings(BaseSettings):
     )
 
     # Seed Data (Cloudflare R2) — only needed for seeding from a fresh clone
-    seed_data_r2_url: str = Field(
-        default="", description="R2 S3-compatible endpoint for seed data"
-    )
+    seed_data_r2_url: str = Field(default="", description="R2 S3-compatible endpoint for seed data")
     seed_data_r2_access_key: str = Field(
         default="", description="R2 access key for seed data bucket"
     )
