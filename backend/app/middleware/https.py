@@ -48,8 +48,10 @@ class HTTPSEnforcementMiddleware(BaseHTTPMiddleware):
         if not self.is_production:
             return await call_next(request)
 
-        # Get request scheme (http or https)
-        scheme = request.url.scheme
+        # Determine the real scheme — behind a reverse proxy / load balancer
+        # the connection to the app is plain HTTP but the client-facing side
+        # is HTTPS.  The proxy communicates this via X-Forwarded-Proto.
+        scheme = request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip()
 
         # Allow health checks on HTTP (for load balancers)
         if request.url.path in ["/health", "/health/ready", "/health/live"]:
