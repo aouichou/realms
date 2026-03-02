@@ -94,10 +94,11 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Validate CSRF token for protected requests"""
 
+        # Normalise path (strip trailing slash) for exempt check
+        path = request.url.path.rstrip("/") or "/"
+
         # Skip CSRF protection for exempt paths
-        if request.url.path in EXEMPT_PATHS or request.url.path.startswith(
-            ("/docs", "/redoc", "/static")
-        ):
+        if path in EXEMPT_PATHS or path.startswith(("/docs", "/redoc", "/static")):
             return await call_next(request)
 
         # Only check state-changing methods
