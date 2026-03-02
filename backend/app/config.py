@@ -149,6 +149,20 @@ class Settings(BaseSettings):
         default="mistral-realms-backend", description="Service name for tracing"
     )
 
+    # Seed Data (Cloudflare R2) — only needed for seeding from a fresh clone
+    seed_data_r2_url: str = Field(
+        default="", description="R2 S3-compatible endpoint for seed data"
+    )
+    seed_data_r2_access_key: str = Field(
+        default="", description="R2 access key for seed data bucket"
+    )
+    seed_data_r2_secret_key: str = Field(
+        default="", description="R2 secret key for seed data bucket"
+    )
+    seed_data_r2_bucket: str = Field(
+        default="realms-data", description="R2 bucket name for seed data"
+    )
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins into a list"""

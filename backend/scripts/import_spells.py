@@ -17,6 +17,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config import settings
 from app.db.models.enums import CastingTime, SpellSchool
 from app.db.models.spell import Spell
+from scripts.data_utils import get_data_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -124,10 +125,10 @@ def parse_duration(description: str, properties: dict) -> str:
 async def import_spells():
     """Import spells from JSON file into spells database."""
     # Load JSON data
-    json_path = Path(__file__).parent.parent / "data" / "spells.json"
-
-    if not json_path.exists():
-        logger.error(f"Spells JSON file not found: {json_path}")
+    try:
+        json_path = get_data_path("spells.json")
+    except FileNotFoundError as e:
+        logger.error(str(e))
         return
 
     logger.info(f"Loading spells from {json_path}")

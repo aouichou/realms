@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy import text
 
 from app.db.base import async_session
+from scripts.data_utils import get_data_path
 
 # Configure logging
 logging.basicConfig(
@@ -86,10 +87,10 @@ async def seed_spells(force=False):
     """
     logger.info("=== Seeding Spells ===")
 
-    csv_path = Path(__file__).parent.parent / "data" / "dnd-spells.csv"
-
-    if not csv_path.exists():
-        logger.error(f"CSV not found: {csv_path}")
+    try:
+        csv_path = get_data_path("dnd-spells.csv")
+    except FileNotFoundError as e:
+        logger.error(str(e))
         return False
 
     logger.info(f"Loading from {csv_path.name}")

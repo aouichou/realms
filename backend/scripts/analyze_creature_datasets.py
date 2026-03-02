@@ -71,7 +71,9 @@ def parse_creature_line(line: str) -> dict:
 def analyze_datasets():
     """Comprehensive dataset analysis."""
 
-    data_dir = Path(__file__).parent.parent / "data"
+    from scripts.data_utils import get_data_dir
+
+    data_dir = get_data_dir()
 
     all_creatures = []
     creature_names = []

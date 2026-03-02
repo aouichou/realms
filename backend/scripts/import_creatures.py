@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import async_session
 from app.db.models.creature import Creature
+from scripts.data_utils import get_data_path
 
 
 def parse_speed(speed_walk: str, speed_fly: str, speed_swim: str) -> dict:
@@ -185,11 +186,10 @@ async def import_creatures(csv_path: Path, session: AsyncSession):
 
 async def main():
     """Main import function."""
-    csv_path = Path(__file__).parent.parent / "data" / "creatures_master.csv"
-
-    if not csv_path.exists():
-        print(f"❌ Error: {csv_path} not found!")
-        print("Please ensure creatures_master.csv exists in backend/data/")
+    try:
+        csv_path = get_data_path("creatures_master.csv")
+    except FileNotFoundError as e:
+        print(f"❌ {e}")
         sys.exit(1)
 
     print("🎲 Realms Creature Import Tool")
