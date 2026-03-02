@@ -153,11 +153,32 @@ class Settings(BaseSettings):
     # Observability
     tracing_enabled: bool = Field(default=False, description="Enable OpenTelemetry tracing")
     otlp_endpoint: str = Field(
-        default="http://jaeger:4317", description="OTLP collector endpoint (Jaeger)"
+        default="http://jaeger:4317", description="OTLP collector endpoint (gRPC for local Jaeger)"
     )
     service_name: str = Field(
         default="mistral-realms-backend", description="Service name for tracing"
     )
+
+    # Grafana Cloud OTLP (direct push — no collector needed)
+    grafana_otlp_endpoint: str = Field(
+        default="",
+        description="Grafana Cloud OTLP endpoint (e.g. https://otlp-gateway-prod-eu-west-2.grafana.net/otlp)",
+    )
+    grafana_cloud_instance_id: str = Field(
+        default="", description="Grafana Cloud instance ID (numeric, used as OTLP username)"
+    )
+    grafana_cloud_api_key: str = Field(
+        default="", description="Grafana Cloud API key with metrics/traces/logs write scopes"
+    )
+
+    @property
+    def grafana_cloud_enabled(self) -> bool:
+        """Check if Grafana Cloud OTLP export is configured"""
+        return bool(
+            self.grafana_otlp_endpoint
+            and self.grafana_cloud_instance_id
+            and self.grafana_cloud_api_key
+        )
 
     # Seed Data (Cloudflare R2) — only needed for seeding from a fresh clone
     seed_data_r2_url: str = Field(default="", description="R2 S3-compatible endpoint for seed data")
