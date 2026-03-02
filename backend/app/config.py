@@ -231,8 +231,29 @@ class Settings(BaseSettings):
                 url = url.replace("postgres://", "postgresql+asyncpg://", 1)
             elif url.startswith("postgresql://"):
                 url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            # Strip sslmode param — asyncpg uses ssl=True via connect_args instead
+            if "?sslmode=" in url:
+                url = url.split("?sslmode=")[0]
+            elif "&sslmode=" in url:
+                import re
+
+                url = re.sub(r"[&?]sslmode=[^&]*", "", url)
             return url
         return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+
+    @property
+    def database_connect_args(self) -> dict:
+        """Get connect_args for SQLAlchemy engine (SSL for managed databases)"""
+        if self.database_url_env:
+            raw = self.database_url_env.strip('"').strip("'")
+            if "sslmode=" in raw:
+                import ssl as _ssl
+
+                ctx = _ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = _ssl.CERT_NONE
+                return {"ssl": ctx}
+        return {}
 
     @property
     def ai_providers_config(self) -> dict:
