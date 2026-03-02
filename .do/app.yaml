@@ -1,0 +1,138 @@
+name: realms-backend
+region: fra
+
+services:
+  - name: backend
+    github:
+      repo: aouichou/realms
+      branch: main
+      deploy_on_push: true
+    source_dir: /backend
+    dockerfile_path: /backend/Dockerfile
+    http_port: 8000
+    instance_count: 1
+    instance_size_slug: basic-s
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 120
+      period_seconds: 30
+      timeout_seconds: 10
+      success_threshold: 1
+      failure_threshold: 5
+    envs:
+      # Application
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "False"
+      - key: LOG_LEVEL
+        value: WARNING
+      - key: APP_NAME
+        value: mistral-realms
+      - key: PORT
+        value: "8000"
+
+      # CORS
+      - key: CORS_ORIGINS
+        value: "https://realms.anguelz.tech,https://www.realms.anguelz.tech"
+      - key: API_BASE_URL
+        value: "https://api.realms.anguelz.tech"
+      - key: FRONTEND_URL
+        value: "https://realms.anguelz.tech"
+
+      # AI API Keys (encrypted)
+      - key: MISTRAL_API_KEY
+        value: "***REDACTED_CSRF_SECRET***"
+        type: SECRET
+      - key: MISTRAL_MODEL
+        value: mistral-small-latest
+      - key: MISTRAL_MAX_TOKENS
+        value: "2048"
+      - key: MISTRAL_TEMPERATURE
+        value: "0.7"
+      - key: QWEN_API_KEY
+        value: "***REDACTED_MISTRAL_API_KEY***"
+        type: SECRET
+      - key: QWEN_MODEL
+        value: qwen-max
+      - key: QWEN_MAX_TOKENS
+        value: "2048"
+      - key: QWEN_TEMPERATURE
+        value: "0.7"
+      - key: GEMINI_API_KEY
+        value: "***REDACTED_GEMINI_API_KEY***"
+        type: SECRET
+      - key: GEMINI_MODEL
+        value: gemini-3-flash-preview
+      - key: GEMINI_MAX_TOKENS
+        value: "2048"
+      - key: GEMINI_TEMPERATURE
+        value: "0.7"
+      - key: GEMINI_THINKING_LEVEL
+        value: high
+
+      # Image Generation
+      - key: ENABLE_IMAGE_GENERATION
+        value: "true"
+      - key: IMAGE_GENERATION_MAX_PER_HOUR
+        value: "10"
+      - key: MISTRAL_IMAGE_AGENT_ID
+        value: "***REDACTED_MISTRAL_AGENT_ID***"
+        type: SECRET
+
+      # Database (Neon PostgreSQL)
+      - key: DATABASE_URL
+        value: "***REDACTED_DATABASE_URL***"
+        type: SECRET
+
+      # Redis (Upstash)
+      - key: REDIS_URL
+        value: "***REDACTED_REDIS_URL***"
+        type: SECRET
+
+      # Auth
+      - key: JWT_SECRET
+        value: "***REDACTED_JWT_SECRET***"
+        type: SECRET
+
+      # PII Encryption
+      - key: PII_ENCRYPTION_KEY
+        value: "***REDACTED_PII_ENCRYPTION_KEY***"
+        type: SECRET
+
+      # R2 Images (Cloudflare)
+      - key: R2_ENDPOINT
+        value: "https://a1fe8a3e45d7ca8688b8022738641412.r2.cloudflarestorage.com"
+      - key: R2_ACCESS_KEY
+        value: "***REDACTED_R2_ACCESS_KEY***"
+        type: SECRET
+      - key: R2_SECRET_KEY
+        value: "***REDACTED_R2_SECRET_KEY***"
+        type: SECRET
+      - key: R2_IMAGES_BUCKET
+        value: realms-images
+      - key: R2_IMAGES_PUBLIC_URL
+        value: "https://images.realms.anguelz.tech"
+
+      # Observability — Grafana Cloud
+      - key: TRACING_ENABLED
+        value: "true"
+      - key: GRAFANA_OTLP_ENDPOINT
+        value: "https://otlp-gateway-prod-eu-west-2.grafana.net/otlp"
+      - key: GRAFANA_CLOUD_INSTANCE_ID
+        value: "1542577"
+      - key: GRAFANA_CLOUD_API_KEY
+        value: "***REDACTED_GRAFANA_API_KEY***"
+        type: SECRET
+
+      # True Randomness
+      - key: USE_TRUE_RANDOMNESS
+        value: "True"
+      - key: RANDOM_ORG_URL
+        value: "https://www.random.org/integers/"
+      - key: RANDOM_POOL_SIZE
+        value: "200"
+      - key: RANDOM_POOL_MIN_THRESHOLD
+        value: "50"
+      - key: RANDOM_POOL_TIMEOUT
+        value: "30.0"
