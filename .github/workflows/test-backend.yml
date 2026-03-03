@@ -78,13 +78,7 @@ jobs:
           pytest tests/ -q --no-header \
             --ignore=tests/integration \
             --ignore=tests/Local \
-            --ignore=tests/test_api_integration.py \
-            --ignore=tests/test_database_integration.py \
-            --ignore=tests/test_functional_integration.py \
-            --ignore=tests/test_integration.py \
-            --ignore=tests/test_performance_rl148.py \
-            --ignore=tests/test_dm_engine.py \
-            --ignore=tests/test_spell_api.py \
+            --ignore=tests/stale \
             -m "not integration" \
             --cov=app \
             --cov-report=xml:coverage.xml \

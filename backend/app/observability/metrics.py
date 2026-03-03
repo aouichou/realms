@@ -380,7 +380,7 @@ class MetricsCollector:
         # Record if narration included dice rolls
         if has_roll:
             http_requests_total.labels(
-                method="dm_narration", endpoint="/narrate", status_code="200"
+                method="dm_narration", endpoint="/narrate", status="200"
             ).inc()
 
     def set_active_connections(self, count: int):

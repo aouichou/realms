@@ -35,7 +35,7 @@ router = APIRouter()
 @router.get("/characters/{character_id}/companions")
 @trace_async("companions.get_character_companions")
 async def get_character_companions(
-    character_id: int,
+    character_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
@@ -75,7 +75,7 @@ async def get_character_companions(
 @router.get("/characters/{character_id}/companions/active")
 @trace_async("companions.get_active_companions")
 async def get_active_companions(
-    character_id: int,
+    character_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
@@ -119,7 +119,7 @@ async def get_active_companions(
 @router.get("/companions/{companion_id}")
 @trace_async("companions.get_companion")
 async def get_companion(
-    companion_id: int,
+    companion_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -161,7 +161,7 @@ async def get_companion(
 @router.patch("/companions/{companion_id}/loyalty")
 @trace_async("companions.update_loyalty")
 async def update_companion_loyalty(
-    companion_id: int,
+    companion_id: UUID,
     loyalty_change: int,
     event_description: str,
     db: AsyncSession = Depends(get_db),
@@ -223,7 +223,7 @@ async def update_companion_loyalty(
 @router.patch("/companions/{companion_id}/active")
 @trace_async("companions.toggle_active")
 async def toggle_companion_active(
-    companion_id: int,
+    companion_id: UUID,
     is_active: bool,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
