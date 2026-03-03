@@ -56,9 +56,7 @@ class Creature(Base):
     languages = Column(Text)  # "Common, Draconic"
 
     # Challenge and rewards
-    cr = Column(
-        String(100), index=True
-    )  # Challenge Rating: "1/4", "5", "16", etc.
+    cr = Column(String(100), index=True)  # Challenge Rating: "1/4", "5", "16", etc.
     xp = Column(String(100), nullable=True)  # XP value (e.g. "200", "700")
 
     # Abilities and actions (stored as text for DM display)

@@ -433,9 +433,9 @@ async def send_player_action(
             "extra_data": {
                 "dm_duration_seconds": perf_dm_duration,
                 "narration_length": len(result["narration"]),
-                "chars_per_second": len(result["narration"]) / perf_dm_duration
-                if perf_dm_duration > 0
-                else 0,
+                "chars_per_second": (
+                    len(result["narration"]) / perf_dm_duration if perf_dm_duration > 0 else 0
+                ),
             }
         },
     )
@@ -705,10 +705,12 @@ async def send_player_action(
 
     logger.info("Checking scene significance for image generation")
     try:
-        is_significant, similarity_score, matched_template = (
-            get_image_detection_service().is_significant_scene(
-                narration=result["narration"], player_action=request.action
-            )
+        (
+            is_significant,
+            similarity_score,
+            matched_template,
+        ) = get_image_detection_service().is_significant_scene(
+            narration=result["narration"], player_action=request.action
         )
         logger.info(
             f"Scene significance check complete: is_significant={is_significant}, "
@@ -1022,9 +1024,9 @@ async def send_player_action(
                     "dm_narration": perf_dm_duration,
                     "other": perf_total_duration - sum(perf_timings.values()) - perf_dm_duration,
                 },
-                "dm_percentage": (perf_dm_duration / perf_total_duration * 100)
-                if perf_total_duration > 0
-                else 0,
+                "dm_percentage": (
+                    (perf_dm_duration / perf_total_duration * 100) if perf_total_duration > 0 else 0
+                ),
             }
         },
     )
@@ -1032,19 +1034,21 @@ async def send_player_action(
     return DMResponse(
         response=result["narration"],
         roll_request=roll_request,
-        roll_requests=[RollRequest(**req) for req in response_data["roll_requests"]]
-        if response_data.get("roll_requests")
-        else None,
+        roll_requests=(
+            [RollRequest(**req) for req in response_data["roll_requests"]]
+            if response_data.get("roll_requests")
+            else None
+        ),
         quest_complete_id=result.get("quest_complete_id"),
         scene_image_url=scene_image_url,
         tokens_used=result["tokens_used"],
         rolls=response_data.get("rolls"),
-        companion_speech=companion_responses[0]["message"]
-        if companion_responses
-        else None,  # Legacy field for backward compat
-        companion_responses=companion_responses
-        if companion_responses
-        else None,  # New field with full companion data
+        companion_speech=(
+            companion_responses[0]["message"] if companion_responses else None
+        ),  # Legacy field for backward compat
+        companion_responses=(
+            companion_responses if companion_responses else None
+        ),  # New field with full companion data
         warnings=response_data.get("warnings"),
         tool_calls_made=result.get("tool_calls_made"),  # RL-129: Mistral tool calls
         character_updates=result.get("character_updates"),  # RL-129: Character state changes

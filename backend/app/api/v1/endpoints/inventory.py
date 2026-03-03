@@ -135,9 +135,11 @@ async def get_inventory(
         items=list(items),
         current_weight=current_weight,
         carrying_capacity=character.carrying_capacity,
-        weight_percentage=(current_weight / character.carrying_capacity * 100)
-        if character.carrying_capacity > 0
-        else 0,
+        weight_percentage=(
+            (current_weight / character.carrying_capacity * 100)
+            if character.carrying_capacity > 0
+            else 0
+        ),
     )
 
 

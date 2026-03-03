@@ -229,9 +229,9 @@ async def get_session_companions(session_id: str, db: Session = Depends(get_db))
                     id=str(companion.id),
                     name=companion.name,
                     race=companion.race.value,
-                    character_class=companion.character_class.value
-                    if companion.character_class
-                    else None,
+                    character_class=(
+                        companion.character_class.value if companion.character_class else None
+                    ),
                     level=companion.level,
                     personality=companion.personality,
                     background=companion.background,

@@ -87,9 +87,11 @@ async def break_concentration(
     return {
         "character_id": str(character_id),
         "effects_broken": count,
-        "message": f"Broke concentration on {count} effect(s)"
-        if count > 0
-        else "No concentration effects active",
+        "message": (
+            f"Broke concentration on {count} effect(s)"
+            if count > 0
+            else "No concentration effects active"
+        ),
     }
 
 

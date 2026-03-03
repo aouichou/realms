@@ -148,9 +148,9 @@ async def get_rest_status(character_id: int, db: Session = Depends(get_db)):
         "character_id": character.id,
         "current_hp": character.hp_current,
         "max_hp": character.hp_max,
-        "hp_percent": round((character.hp_current / character.hp_max) * 100, 1)
-        if character.hp_max > 0
-        else 0,
+        "hp_percent": (
+            round((character.hp_current / character.hp_max) * 100, 1) if character.hp_max > 0 else 0
+        ),
         "hit_die_type": f"d{hit_die}",
         "available_hit_dice": available_hit_dice,
         "spell_slots": spell_slot_status,
