@@ -246,6 +246,8 @@ class Settings(BaseSettings):
         """Get connect_args for SQLAlchemy engine (SSL for managed databases)"""
         if self.database_url_env:
             raw = self.database_url_env.strip('"').strip("'")
+            if "sslmode=disable" in raw:
+                return {}
             if "sslmode=" in raw:
                 import ssl as _ssl
 
