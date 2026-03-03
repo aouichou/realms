@@ -1,0 +1,89 @@
+# ──────────────────────────────────────────────────────────────
+# Backend Deploy Pipeline
+# Trigger DO deployment after tests pass on main
+# ──────────────────────────────────────────────────────────────
+name: Deploy Backend
+
+on:
+  workflow_run:
+    workflows: ["Test Backend"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to DigitalOcean
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment:
+      name: production
+      url: https://api.realms.anguelz.tech
+    steps:
+      - name: Trigger deployment
+        id: trigger
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://api.digitalocean.com/v2/apps/${{ secrets.DO_APP_ID }}/deployments" \
+            -H "Authorization: Bearer ${{ secrets.DO_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"force_build": true}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::DO API returned $HTTP_CODE: $BODY"
+            exit 1
+          fi
+
+          DEPLOYMENT_ID=$(echo "$BODY" | jq -r '.deployment.id')
+          echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+          echo "Deployment $DEPLOYMENT_ID triggered"
+
+      - name: Poll deployment status
+        run: |
+          DEPLOYMENT_ID="${{ steps.trigger.outputs.deployment_id }}"
+          APP_ID="${{ secrets.DO_APP_ID }}"
+
+          for i in $(seq 1 20); do
+            sleep 30
+            STATUS=$(curl -s \
+              "https://api.digitalocean.com/v2/apps/$APP_ID/deployments/$DEPLOYMENT_ID" \
+              -H "Authorization: Bearer ${{ secrets.DO_API_TOKEN }}" \
+              | jq -r '.deployment.phase')
+
+            echo "Attempt $i/20 — Status: $STATUS"
+
+            case "$STATUS" in
+              ACTIVE)
+                echo "Deployment is ACTIVE"
+                exit 0
+                ;;
+              ERROR|CANCELED)
+                echo "::error::Deployment ended with status: $STATUS"
+                exit 1
+                ;;
+            esac
+          done
+
+          echo "::error::Deployment timed out after 10 minutes"
+          exit 1
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 5); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://api.realms.anguelz.tech/health/ready")
+
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Health check passed (HTTP $HTTP_CODE)"
+              exit 0
+            fi
+            echo "Attempt $i/5 — HTTP $HTTP_CODE, retrying..."
+            sleep 10
+          done
+          echo "::error::Smoke test failed — health endpoint not returning 200"
+          exit 1

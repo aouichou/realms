@@ -10,7 +10,7 @@ services:
     github:
       repo: aouichou/realms
       branch: main
-      deploy_on_push: true
+      deploy_on_push: false
     source_dir: /backend
     dockerfile_path: /backend/Dockerfile
     http_port: 8000
@@ -46,7 +46,7 @@ services:
 
       # AI API Keys (encrypted)
       - key: MISTRAL_API_KEY
-        value: "Wd0SfJzWF1S7SX7YfMch3fUla2JV0ZFq"
+        value: "${MISTRAL_API_KEY}"
         type: SECRET
       - key: MISTRAL_MODEL
         value: mistral-small-latest
@@ -55,7 +55,7 @@ services:
       - key: MISTRAL_TEMPERATURE
         value: "0.7"
       - key: QWEN_API_KEY
-        value: "sk-f646d23794d948c1ab0be051def68e21"
+        value: "${QWEN_API_KEY}"
         type: SECRET
       - key: QWEN_MODEL
         value: qwen-max
@@ -64,7 +64,7 @@ services:
       - key: QWEN_TEMPERATURE
         value: "0.7"
       - key: GEMINI_API_KEY
-        value: "AIzaSyBDl-13ptcqw_LmNocWqGN63dB-TeYRud8"
+        value: "${GEMINI_API_KEY}"
         type: SECRET
       - key: GEMINI_MODEL
         value: gemini-3-flash-preview
@@ -81,37 +81,37 @@ services:
       - key: IMAGE_GENERATION_MAX_PER_HOUR
         value: "10"
       - key: MISTRAL_IMAGE_AGENT_ID
-        value: "ag_019ca4aa6b5f712aaee83c6b1651ca1f"
+        value: "${MISTRAL_IMAGE_AGENT_ID}"
         type: SECRET
 
       # Database (Neon PostgreSQL)
       - key: DATABASE_URL
-        value: "postgresql+asyncpg://neondb_owner:npg_u1BPRxK0LfZz@ep-empty-resonance-aerelj37.c-2.us-east-2.aws.neon.tech:5432/neondb?sslmode=require"
+        value: "${DATABASE_URL}"
         type: SECRET
 
       # Redis (Upstash)
       - key: REDIS_URL
-        value: "rediss://default:AfA0AAIncDI1ZTRiNDdhZGE1ODg0NDhlOGU4MTRkY2QxNGRlNGU2YnAyNjE0OTI@ultimate-lioness-61492.upstash.io:6379"
+        value: "${REDIS_URL}"
         type: SECRET
 
       # Auth
       - key: JWT_SECRET
-        value: "54585eeafefb13e0d9a38c5bc438cd5f7061559bee9119c4ae037a7422e9ebb8"
+        value: "${JWT_SECRET}"
         type: SECRET
 
       # PII Encryption
       - key: PII_ENCRYPTION_KEY
-        value: "bzyir-qulKAdr8U_h-rvaIRwsRhvfvNQAtW4KHgRDLo="
+        value: "${PII_ENCRYPTION_KEY}"
         type: SECRET
 
       # R2 Images (Cloudflare)
       - key: R2_ENDPOINT
         value: "https://a1fe8a3e45d7ca8688b8022738641412.r2.cloudflarestorage.com"
       - key: R2_ACCESS_KEY
-        value: "4acbd4e1ed7c262a9b7ee52827f78bf1"
+        value: "${R2_ACCESS_KEY}"
         type: SECRET
       - key: R2_SECRET_KEY
-        value: "97f08158ac1f628f72d1dcefc84e1ddf598475aad67b19f44543699d78974c90"
+        value: "${R2_SECRET_KEY}"
         type: SECRET
       - key: R2_IMAGES_BUCKET
         value: realms-images
@@ -126,7 +126,7 @@ services:
       - key: GRAFANA_CLOUD_INSTANCE_ID
         value: "1542577"
       - key: GRAFANA_CLOUD_API_KEY
-        value: "glc_eyJvIjoiMTY4NDE2MSIsIm4iOiJyZWFsbXMtdGVsZW1ldHJ5LXJlYWxtcy10ZWxlbWV0cnkiLCJrIjoiYWRpWThneDFxeUs0TTlDbzY2M3A2NnMwIiwibSI6eyJyIjoidXMifX0="
+        value: "${GRAFANA_CLOUD_API_KEY}"
         type: SECRET
 
       # True Randomness

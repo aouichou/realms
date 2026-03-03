@@ -1,0 +1,73 @@
+# ──────────────────────────────────────────────────────────────
+# Dependabot — Automated Dependency Updates
+# ──────────────────────────────────────────────────────────────
+version: 2
+updates:
+  # Python backend dependencies
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Paris
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - backend
+    commit-message:
+      prefix: 'chore(deps):'
+    groups:
+      opentelemetry:
+        patterns:
+          - 'opentelemetry-*'
+      ai-sdks:
+        patterns:
+          - 'mistralai'
+          - 'openai'
+      testing:
+        patterns:
+          - 'pytest*'
+          - 'black'
+          - 'ruff'
+          - 'mypy'
+
+  # Node.js frontend dependencies
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Paris
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - frontend
+    commit-message:
+      prefix: 'chore(deps):'
+    groups:
+      radix:
+        patterns:
+          - '@radix-ui/*'
+      testing:
+        patterns:
+          - 'vitest'
+          - '@vitejs/*'
+          - '@testing-library/*'
+          - '@playwright/*'
+      next:
+        patterns:
+          - 'next'
+          - 'eslint-config-next'
+
+  # GitHub Actions versions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: 'ci(deps):'
