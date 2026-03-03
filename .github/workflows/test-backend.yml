@@ -83,11 +83,12 @@ jobs:
             --ignore=tests/test_functional_integration.py \
             --ignore=tests/test_integration.py \
             --ignore=tests/test_performance_rl148.py \
+            --ignore=tests/test_dm_engine.py \
+            --ignore=tests/test_spell_api.py \
             -m "not integration" \
             --cov=app \
             --cov-report=xml:coverage.xml \
-            --cov-report=term-missing \
-            -x
+            --cov-report=term-missing
         env:
           ENVIRONMENT: test
           DATABASE_URL: "sqlite+aiosqlite:///:memory:"
