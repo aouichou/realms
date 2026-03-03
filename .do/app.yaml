@@ -10,7 +10,7 @@ services:
     github:
       repo: aouichou/realms
       branch: main
-      deploy_on_push: true
+      deploy_on_push: false
     source_dir: /backend
     dockerfile_path: /backend/Dockerfile
     http_port: 8000
@@ -46,7 +46,7 @@ services:
 
       # AI API Keys (encrypted)
       - key: MISTRAL_API_KEY
-        value: "***REDACTED_CSRF_SECRET***"
+        value: "${MISTRAL_API_KEY}"
         type: SECRET
       - key: MISTRAL_MODEL
         value: mistral-small-latest
@@ -55,7 +55,7 @@ services:
       - key: MISTRAL_TEMPERATURE
         value: "0.7"
       - key: QWEN_API_KEY
-        value: "***REDACTED_MISTRAL_API_KEY***"
+        value: "${QWEN_API_KEY}"
         type: SECRET
       - key: QWEN_MODEL
         value: qwen-max
@@ -64,7 +64,7 @@ services:
       - key: QWEN_TEMPERATURE
         value: "0.7"
       - key: GEMINI_API_KEY
-        value: "***REDACTED_GEMINI_API_KEY***"
+        value: "${GEMINI_API_KEY}"
         type: SECRET
       - key: GEMINI_MODEL
         value: gemini-3-flash-preview
@@ -81,37 +81,37 @@ services:
       - key: IMAGE_GENERATION_MAX_PER_HOUR
         value: "10"
       - key: MISTRAL_IMAGE_AGENT_ID
-        value: "***REDACTED_MISTRAL_AGENT_ID***"
+        value: "${MISTRAL_IMAGE_AGENT_ID}"
         type: SECRET
 
       # Database (Neon PostgreSQL)
       - key: DATABASE_URL
-        value: "***REDACTED_DATABASE_URL***"
+        value: "${DATABASE_URL}"
         type: SECRET
 
       # Redis (Upstash)
       - key: REDIS_URL
-        value: "***REDACTED_REDIS_URL***"
+        value: "${REDIS_URL}"
         type: SECRET
 
       # Auth
       - key: JWT_SECRET
-        value: "***REDACTED_JWT_SECRET***"
+        value: "${JWT_SECRET}"
         type: SECRET
 
       # PII Encryption
       - key: PII_ENCRYPTION_KEY
-        value: "***REDACTED_PII_ENCRYPTION_KEY***"
+        value: "${PII_ENCRYPTION_KEY}"
         type: SECRET
 
       # R2 Images (Cloudflare)
       - key: R2_ENDPOINT
         value: "https://a1fe8a3e45d7ca8688b8022738641412.r2.cloudflarestorage.com"
       - key: R2_ACCESS_KEY
-        value: "***REDACTED_R2_ACCESS_KEY***"
+        value: "${R2_ACCESS_KEY}"
         type: SECRET
       - key: R2_SECRET_KEY
-        value: "***REDACTED_R2_SECRET_KEY***"
+        value: "${R2_SECRET_KEY}"
         type: SECRET
       - key: R2_IMAGES_BUCKET
         value: realms-images
@@ -126,7 +126,7 @@ services:
       - key: GRAFANA_CLOUD_INSTANCE_ID
         value: "1542577"
       - key: GRAFANA_CLOUD_API_KEY
-        value: "***REDACTED_GRAFANA_API_KEY***"
+        value: "${GRAFANA_CLOUD_API_KEY}"
         type: SECRET
 
       # True Randomness

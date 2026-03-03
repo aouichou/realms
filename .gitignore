@@ -7,12 +7,11 @@
 # Ignore dev docs (keep private for development)
 docs/
 *.code-workspace
-.github
+.github/*
+!.github/workflows/
+!.github/dependabot.yml
 .codacy/
 backend/tests/Local/*
-
-# Make sure workflows are not ignored
-!.github/workflows/
 
 # Environment files (NEVER commit secrets)
 .env

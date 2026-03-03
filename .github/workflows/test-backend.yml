@@ -1,0 +1,180 @@
+# ──────────────────────────────────────────────────────────────
+# Backend Test Pipeline
+# Lint → Format → Type-check → Unit tests → Integration tests
+# ──────────────────────────────────────────────────────────────
+name: Test Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/test-backend.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/test-backend.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install linting tools
+        run: pip install ruff black mypy
+
+      - name: Ruff (linting)
+        run: ruff check app/
+
+      - name: Black (formatting)
+        run: black --check app/
+
+      - name: Mypy (type checking)
+        run: mypy app/ --ignore-missing-imports --no-error-summary || true
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: |
+          pytest tests/ -q --no-header \
+            --ignore=tests/integration \
+            --ignore=tests/Local \
+            -m "not integration" \
+            --cov=app \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            -x
+        env:
+          ENVIRONMENT: test
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          REDIS_URL: ""
+          JWT_SECRET: "test-secret-key-for-ci-only"
+          MISTRAL_API_KEY: "test-key"
+          PII_ENCRYPTION_KEY: "dGVzdC1lbmNyeXB0aW9uLWtleS1mb3ItY2ktb25seQ=="
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          retention-days: 7
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: realms_user
+          POSTGRES_PASSWORD: realms_password
+          POSTGRES_DB: mistral_realms_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U realms_user"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U realms_user; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
+
+      - name: Run migrations
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: "postgresql+asyncpg://realms_user:realms_password@localhost:5432/mistral_realms_test?sslmode=disable"
+
+      - name: Run integration tests
+        run: |
+          pytest tests/integration/ -q --no-header \
+            --cov=app \
+            --cov-report=xml:coverage-integration.xml \
+            --cov-report=term-missing \
+            -x
+        env:
+          ENVIRONMENT: test
+          DATABASE_URL: "postgresql+asyncpg://realms_user:realms_password@localhost:5432/mistral_realms_test?sslmode=disable"
+          REDIS_URL: "redis://localhost:6379"
+          JWT_SECRET: "test-secret-key-for-ci-only"
+          MISTRAL_API_KEY: "test-key"
+          PII_ENCRYPTION_KEY: "dGVzdC1lbmNyeXB0aW9uLWtleS1mb3ItY2ktb25seQ=="
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-integration
+          path: backend/coverage-integration.xml
+          retention-days: 7
