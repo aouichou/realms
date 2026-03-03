@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, Lightbulb, Sparkles, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface SpellWarningProps {
 	message: string;
@@ -14,6 +14,14 @@ export function SpellWarning({ message, type = 'warning', onDismiss, duration = 
 	const [isVisible, setIsVisible] = useState(true);
 	const [isExiting, setIsExiting] = useState(false);
 
+	const handleDismiss = useCallback(() => {
+		setIsExiting(true);
+		setTimeout(() => {
+			setIsVisible(false);
+			onDismiss?.();
+		}, 300);
+	}, [onDismiss]);
+
 	useEffect(() => {
 		if (duration > 0) {
 			const timer = setTimeout(() => {
@@ -22,15 +30,7 @@ export function SpellWarning({ message, type = 'warning', onDismiss, duration = 
 
 			return () => clearTimeout(timer);
 		}
-	}, [duration]);
-
-	const handleDismiss = () => {
-		setIsExiting(true);
-		setTimeout(() => {
-			setIsVisible(false);
-			onDismiss?.();
-		}, 300);
-	};
+	}, [duration, handleDismiss]);
 
 	if (!isVisible) return null;
 
