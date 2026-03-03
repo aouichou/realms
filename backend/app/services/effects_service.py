@@ -5,7 +5,7 @@ Manages temporary buffs, debuffs, conditions, and spell effects on characters.
 Handles effect application, duration tracking, concentration, and expiration.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
