@@ -11,14 +11,17 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 # Create async engine
-engine = create_async_engine(
-    settings.database_url,
-    echo=settings.debug,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-    connect_args=settings.database_connect_args,
-)
+_engine_kwargs: dict = {
+    "echo": settings.debug,
+    "pool_pre_ping": True,
+    "connect_args": settings.database_connect_args,
+}
+# pool_size/max_overflow not supported by SQLite/StaticPool
+if not settings.database_url.startswith("sqlite"):
+    _engine_kwargs["pool_size"] = 10
+    _engine_kwargs["max_overflow"] = 20
+
+engine = create_async_engine(settings.database_url, **_engine_kwargs)
 
 # Create async session factory
 async_session = async_sessionmaker(

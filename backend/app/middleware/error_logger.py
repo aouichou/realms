@@ -16,9 +16,13 @@ from app.observability.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Error log directory - use /app/logs/errors inside container
+# Error log directory - use /app/logs/errors inside container, fallback for non-container envs
 ERROR_LOG_DIR = Path("/app/logs/errors")
-ERROR_LOG_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    ERROR_LOG_DIR.mkdir(parents=True, exist_ok=True)
+except PermissionError:
+    ERROR_LOG_DIR = Path("logs/errors")
+    ERROR_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class ErrorLoggerMiddleware(BaseHTTPMiddleware):
