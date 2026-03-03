@@ -175,9 +175,11 @@ class DMSupervisor:
                                     "file": file_name,
                                     "section": title,
                                     "text": chunk_text,
-                                    "preview": chunk_text[:200] + "..."
-                                    if len(chunk_text) > 200
-                                    else chunk_text,
+                                    "preview": (
+                                        chunk_text[:200] + "..."
+                                        if len(chunk_text) > 200
+                                        else chunk_text
+                                    ),
                                 }
                             )
                             current_chunk = []
@@ -194,9 +196,11 @@ class DMSupervisor:
                                 "file": file_name,
                                 "section": title,
                                 "text": chunk_text,
-                                "preview": chunk_text[:200] + "..."
-                                if len(chunk_text) > 200
-                                else chunk_text,
+                                "preview": (
+                                    chunk_text[:200] + "..."
+                                    if len(chunk_text) > 200
+                                    else chunk_text
+                                ),
                             }
                         )
 

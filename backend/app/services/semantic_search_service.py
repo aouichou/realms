@@ -168,9 +168,11 @@ class SemanticSearchService:
                 "name": item.name,
                 "category": item.category,
                 "rarity": item.rarity,
-                "description": item.description[:200] + "..."
-                if len(item.description) > 200
-                else item.description,
+                "description": (
+                    item.description[:200] + "..."
+                    if len(item.description) > 200
+                    else item.description
+                ),
                 "damage_type": item.damage_type,
                 "cost_gp": item.cost_gp,
                 "similarity": round(similarity, 3),
@@ -271,9 +273,11 @@ class SemanticSearchService:
                 "ac": creature.ac,
                 "hp": creature.hp,
                 "alignment": creature.alignment,
-                "traits_preview": (creature.traits[:150] + "...")
-                if creature.traits and len(creature.traits) > 150
-                else creature.traits,
+                "traits_preview": (
+                    (creature.traits[:150] + "...")
+                    if creature.traits and len(creature.traits) > 150
+                    else creature.traits
+                ),
                 "similarity": round(similarity, 3),
             }
             for creature, similarity in top_creatures
@@ -364,9 +368,11 @@ class SemanticSearchService:
                 "casting_time": str(spell.casting_time),
                 "range": spell.range,
                 "duration": spell.duration,
-                "description": spell.description[:200] + "..."
-                if len(spell.description) > 200
-                else spell.description,
+                "description": (
+                    spell.description[:200] + "..."
+                    if len(spell.description) > 200
+                    else spell.description
+                ),
                 "damage_type": spell.damage_type,
                 "is_concentration": spell.is_concentration,
                 "similarity": round(similarity, 3),

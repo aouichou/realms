@@ -121,9 +121,9 @@ async def start_combat(request: StartCombatRequest, db: AsyncSession = Depends(g
         participants=list(combat.participants),
         turn_order=combat.turn_order,
         combat_log=combat.combat_log,
-        current_participant=combat.participants[combat.current_turn]
-        if combat.participants
-        else None,
+        current_participant=(
+            combat.participants[combat.current_turn] if combat.participants else None
+        ),
     )
 
 
@@ -157,9 +157,9 @@ async def get_combat_status(combat_id: UUID, db: AsyncSession = Depends(get_db))
         participants=list(combat.participants),
         turn_order=combat.turn_order,
         combat_log=combat.combat_log,
-        current_participant=combat.participants[combat.current_turn]
-        if combat.participants
-        else None,
+        current_participant=(
+            combat.participants[combat.current_turn] if combat.participants else None
+        ),
     )
 
 
@@ -411,7 +411,7 @@ async def update_participant_hp(
         participants=list(combat.participants),
         turn_order=combat.turn_order,
         combat_log=combat.combat_log,
-        current_participant=combat.participants[combat.current_turn]
-        if combat.participants
-        else None,
+        current_participant=(
+            combat.participants[combat.current_turn] if combat.participants else None
+        ),
     )

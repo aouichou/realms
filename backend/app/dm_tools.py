@@ -292,12 +292,27 @@ GAME_MASTER_TOOLS: list[dict[str, Any]] = [
                     },
                     "category": {
                         "type": "string",
-                        "enum": ["weapon", "armor", "shield", "potion", "scroll", "wondrous_item", "general"],
+                        "enum": [
+                            "weapon",
+                            "armor",
+                            "shield",
+                            "potion",
+                            "scroll",
+                            "wondrous_item",
+                            "general",
+                        ],
                         "description": "Filter by item category",
                     },
                     "rarity": {
                         "type": "string",
-                        "enum": ["common", "uncommon", "rare", "very rare", "legendary", "artifact"],
+                        "enum": [
+                            "common",
+                            "uncommon",
+                            "rare",
+                            "very rare",
+                            "legendary",
+                            "artifact",
+                        ],
                         "description": "Filter by rarity for magic items",
                     },
                     "semantic": {
@@ -370,7 +385,16 @@ GAME_MASTER_TOOLS: list[dict[str, Any]] = [
                     },
                     "school": {
                         "type": "string",
-                        "enum": ["abjuration", "conjuration", "divination", "enchantment", "evocation", "illusion", "necromancy", "transmutation"],
+                        "enum": [
+                            "abjuration",
+                            "conjuration",
+                            "divination",
+                            "enchantment",
+                            "evocation",
+                            "illusion",
+                            "necromancy",
+                            "transmutation",
+                        ],
                         "description": "Filter by spell school",
                     },
                     "semantic": {

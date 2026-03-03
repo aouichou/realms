@@ -59,22 +59,24 @@ async def export_user_data(
                 "id": str(c.id),
                 "name": c.name,
                 "race": c.race.value if hasattr(c, "race") and c.race else None,
-                "character_class": c.character_class.value
-                if hasattr(c, "character_class") and c.character_class
-                else None,
+                "character_class": (
+                    c.character_class.value
+                    if hasattr(c, "character_class") and c.character_class
+                    else None
+                ),
                 "level": c.level if hasattr(c, "level") else None,
-                "created_at": c.created_at.isoformat()
-                if hasattr(c, "created_at") and c.created_at
-                else None,
+                "created_at": (
+                    c.created_at.isoformat() if hasattr(c, "created_at") and c.created_at else None
+                ),
             }
             for c in user.characters
         ],
         "game_sessions": [
             {
                 "id": str(s.id),
-                "started_at": s.started_at.isoformat()
-                if hasattr(s, "started_at") and s.started_at
-                else None,
+                "started_at": (
+                    s.started_at.isoformat() if hasattr(s, "started_at") and s.started_at else None
+                ),
                 "is_active": s.is_active if hasattr(s, "is_active") else None,
             }
             for s in user.game_sessions

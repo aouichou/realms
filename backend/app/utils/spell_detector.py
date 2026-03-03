@@ -323,11 +323,7 @@ def consume_spell_slot(character: Character, spell_level: int) -> tuple[bool, Op
         ordinal = (
             "st"
             if spell_level == 1
-            else "nd"
-            if spell_level == 2
-            else "rd"
-            if spell_level == 3
-            else "th"
+            else "nd" if spell_level == 2 else "rd" if spell_level == 3 else "th"
         )
         warning = f"⚠️ No {spell_level}{ordinal} level spell slots remaining"
         return False, warning

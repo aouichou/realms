@@ -1676,7 +1676,9 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
 ⚠️ CONTEXT WARNING: Conversation is becoming very long ({count} messages).
 Consider finding a natural break point to end this session.
 Long conversations may degrade quality. Suggest resting or reaching a milestone.
-""".format(count=history_length)
+""".format(
+                count=history_length
+            )
             messages.append({"role": "system", "content": context_warning})
             logger.warning(f"Long conversation detected: {history_length} messages")
 

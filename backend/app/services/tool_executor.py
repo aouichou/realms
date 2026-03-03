@@ -1110,9 +1110,11 @@ async def _execute_search_spells(
             "casting_time": str(spell.casting_time),
             "range": spell.range,
             "duration": spell.duration,
-            "description": spell.description[:150] + "..."
-            if len(spell.description) > 150
-            else spell.description,
+            "description": (
+                spell.description[:150] + "..."
+                if len(spell.description) > 150
+                else spell.description
+            ),
             "damage_type": spell.damage_type,
             "is_concentration": spell.is_concentration,
         }

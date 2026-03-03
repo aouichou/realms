@@ -286,6 +286,7 @@ class AdaptiveNarrationService:
         # (Avoids "You study..." templates firing for spell saves)
         if tool_args.get("roll_type") == "saving_throw":
             import random as _random
+
             save_templates = [
                 "You brace yourself, steeling your will against the incoming threat.",
                 "Magic bears down on you, testing your defenses.",
