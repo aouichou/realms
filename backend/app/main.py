@@ -230,7 +230,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             cleaned_error["detail"] = str(error["ctx"]["error"])
         if "input" in error:
             inp = error["input"]
-            cleaned_error["input"] = inp.decode("utf-8", errors="replace") if isinstance(inp, bytes) else inp
+            cleaned_error["input"] = (
+                inp.decode("utf-8", errors="replace") if isinstance(inp, bytes) else inp
+            )
         cleaned_errors.append(cleaned_error)
 
     return JSONResponse(
