@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy import and_, desc, select, text
+from sqlalchemy import and_, desc, literal_column, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AdventureMemory, EventType
@@ -115,10 +115,11 @@ class MemoryService:
         # Calculate similarity: 1 - (embedding <=> query_embedding)
         embedding_array_str = "[" + ",".join(map(str, query_embedding)) + "]"
 
-        # Use parameterized query to avoid SQL injection warnings
-        # pgvector requires the <=> operator which isn't natively supported by SQLAlchemy
-        similarity_expr = text("1 - (embedding::vector <=> :query_embedding::vector)").bindparams(
-            query_embedding=embedding_array_str
+        # Use literal_column to avoid SQLAlchemy text() parameter binding issues
+        # with PostgreSQL's ::vector cast syntax (SA can't parse :param::type correctly)
+        # The embedding values are generated internally (not user input), so safe to inline
+        similarity_expr = literal_column(
+            f"(1 - (embedding::vector <=> '{embedding_array_str}'::vector))"
         )
 
         # Build query
