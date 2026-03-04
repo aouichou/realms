@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 from httpx import AsyncClient
 
-from app.db.models import Character, Session
+from app.db.models import Character, GameSession
 
 
 @pytest.mark.asyncio
@@ -18,9 +18,7 @@ class TestConversationEndpoints:
     @pytest.fixture
     async def test_session(self, test_db, test_character):
         """Create test session"""
-        session = Session(
-            id=uuid4(), character_id=test_character.id, active=True, title="Test Adventure"
-        )
+        session = GameSession(id=uuid4(), character_id=test_character.id, is_active=True)
         test_db.add(session)
         await test_db.commit()
         await test_db.refresh(session)

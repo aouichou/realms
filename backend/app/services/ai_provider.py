@@ -40,6 +40,7 @@ class AIProvider(ABC):
         self.priority = priority
         self._status = ProviderStatus.AVAILABLE
         self._last_error: Optional[str] = None
+        self._error_at: float = 0.0  # timestamp when ERROR status was set
 
     @abstractmethod
     async def generate_narration(
@@ -132,8 +133,12 @@ class AIProvider(ABC):
             status: New status
             error: Optional error message
         """
+        import time
+
         self._status = status
         self._last_error = error
+        if status == ProviderStatus.ERROR:
+            self._error_at = time.time()
 
     def get_last_error(self) -> Optional[str]:
         """Get last error message."""
