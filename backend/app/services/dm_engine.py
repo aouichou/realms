@@ -18,7 +18,7 @@ from app.observability.logger import get_logger
 from app.observability.metrics import metrics
 from app.observability.tracing import trace_async
 from app.services.adaptive_narration_service import get_adaptive_narration_service
-from app.services.ai_provider import ProviderUnavailableError, RateLimitError
+from app.services.ai_provider import AIProvider, ProviderUnavailableError, RateLimitError
 from app.services.message_summarizer import MessageSummarizer
 from app.services.provider_selector import provider_selector
 from app.services.token_counter import TokenCounter
@@ -1051,7 +1051,7 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
 
     async def _call_provider_with_tools(
         self,
-        provider: "AIProvider",
+        provider: AIProvider,
         messages: List[Dict[str, Any]],
     ):
         """
