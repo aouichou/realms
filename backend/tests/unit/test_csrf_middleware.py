@@ -57,6 +57,14 @@ def _make_app() -> FastAPI:
     async def _claim():
         return {"ok": True}
 
+    @app.post("/api/v1/auth/refresh")
+    async def _refresh():
+        return {"ok": True}
+
+    @app.post("/api/v1/auth/logout")
+    async def _logout():
+        return {"ok": True}
+
     @app.post("/test/")
     async def _post_trailing():
         return {"ok": True}
@@ -192,6 +200,20 @@ class TestCSRFMiddlewareDispatch:
         app = _make_app()
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.post("/api/v1/auth/claim-guest")
+            assert resp.status_code == 200
+
+    async def test_exempt_path_refresh(self):
+        """Refresh uses httpOnly cookie auth, not CSRF-vulnerable."""
+        app = _make_app()
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/v1/auth/refresh")
+            assert resp.status_code == 200
+
+    async def test_exempt_path_logout(self):
+        """Logout uses httpOnly cookie; worst-case is forced logout."""
+        app = _make_app()
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/v1/auth/logout")
             assert resp.status_code == 200
 
     async def test_trailing_slash_normalised(self):
