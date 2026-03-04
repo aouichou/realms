@@ -1049,6 +1049,61 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
         """
         return self.SYSTEM_PROMPTS.get(language, self.SYSTEM_PROMPTS["en"])
 
+    async def _call_provider_with_tools(
+        self,
+        provider: "AIProvider",
+        messages: List[Dict[str, Any]],
+    ):
+        """
+        Call a single provider with tool-calling support.
+
+        Dispatches to the correct SDK (Mistral, Qwen/OpenAI-compatible, etc.).
+        Raises on any error so the caller can fall back to the next provider.
+        """
+        provider_name = provider.name
+
+        if provider_name == "qwen":
+            from app.services.qwen_provider import QwenProvider
+
+            if isinstance(provider, QwenProvider):
+                return await provider.client.chat.completions.create(
+                    model=provider.model,
+                    messages=messages,  # type: ignore[arg-type]
+                    tools=GAME_MASTER_TOOLS,  # type: ignore[arg-type]
+                    temperature=0.7,
+                    max_tokens=2048,
+                )
+            raise Exception(f"Expected QwenProvider but got {type(provider).__name__}")
+
+        if provider_name == "mistral":
+            import asyncio
+
+            from mistralai import Mistral
+
+            from app.config import settings
+
+            mistral_client = Mistral(api_key=settings.mistral_api_key)
+            return await asyncio.to_thread(
+                mistral_client.chat.complete,
+                model=settings.mistral_model,
+                messages=messages,  # type: ignore[arg-type]
+                tools=GAME_MASTER_TOOLS,  # type: ignore[arg-type]
+                temperature=0.7,
+                max_tokens=2048,
+            )
+
+        # Generic OpenAI-compatible provider
+        if hasattr(provider, "client") and hasattr(provider, "model"):
+            return await provider.client.chat.completions.create(  # type: ignore[attr-defined]
+                model=provider.model,  # type: ignore[attr-defined]
+                messages=messages,  # type: ignore[arg-type]
+                tools=GAME_MASTER_TOOLS,  # type: ignore[arg-type]
+                temperature=0.7,
+                max_tokens=2048,
+            )
+
+        raise Exception(f"Provider {provider_name} does not support tool calling API")
+
     async def call_dm_with_tools(
         self,
         messages: List[Dict[str, Any]],
@@ -1091,62 +1146,41 @@ Rappelez-vous: D&D a des défis, des dangers et des résultats incertains. Utili
             logger.info(f"Tool calling iteration {iteration}/{max_iterations}")
 
             try:
-                # Get current provider for tool calling
-                provider = await self.provider_selector.select_provider()
-                provider_name = provider.name
-                selected_provider_name = provider_name  # Track for logging
-                selected_provider_model = getattr(provider, "model", "default")
+                # ── Provider fallback loop ──────────────────────────────
+                # Try each provider in priority order until one succeeds.
+                # On API errors (auth, rate limit, network) skip to the
+                # next provider without modifying global provider status.
+                response = None
+                last_provider_error = None
+                tried_providers: set[str] = set()
 
-                # Call provider with tools (supports Qwen, Mistral, others with OpenAI-compatible APIs)
-                if provider_name == "qwen":
-                    # Qwen uses AsyncOpenAI client
-                    from app.services.qwen_provider import QwenProvider
+                for provider in self.provider_selector.providers:
+                    if provider.name in tried_providers:
+                        continue
+                    if not await provider.is_available():
+                        continue
 
-                    if isinstance(provider, QwenProvider):
-                        response = await provider.client.chat.completions.create(
-                            model=provider.model,
-                            messages=current_messages,  # type: ignore[arg-type]
-                            tools=GAME_MASTER_TOOLS,  # type: ignore[arg-type]
-                            temperature=0.7,
-                            max_tokens=2048,
+                    provider_name = provider.name
+                    selected_provider_name = provider_name
+                    selected_provider_model = getattr(provider, "model", "default")
+                    tried_providers.add(provider_name)
+
+                    try:
+                        response = await self._call_provider_with_tools(provider, current_messages)
+                        break  # success – stop trying providers
+                    except Exception as provider_err:
+                        last_provider_error = provider_err
+                        logger.warning(
+                            f"Provider {provider_name} failed for tool calling: {provider_err}. "
+                            "Trying next provider..."
                         )
-                    else:
-                        raise Exception(f"Expected QwenProvider but got {type(provider).__name__}")
+                        continue
 
-                elif provider_name == "mistral":
-                    # Mistral uses Mistral SDK
-                    import asyncio
-
-                    from mistralai import Mistral
-
-                    from app.config import settings
-
-                    mistral_client = Mistral(api_key=settings.mistral_api_key)
-                    response = await asyncio.to_thread(
-                        mistral_client.chat.complete,
-                        model=settings.mistral_model,
-                        messages=current_messages,  # type: ignore[arg-type]
-                        tools=GAME_MASTER_TOOLS,  # type: ignore[arg-type]
-                        temperature=0.7,
-                        max_tokens=2048,
+                if response is None:
+                    raise Exception(
+                        f"All AI providers failed for tool calling. "
+                        f"Last error: {last_provider_error}"
                     )
-                else:
-                    # Other providers - check if they have OpenAI-compatible client
-                    logger.warning(
-                        f"Provider {provider_name} may not support tool calling, attempting generic approach..."
-                    )
-                    if hasattr(provider, "client") and hasattr(provider, "model"):
-                        response = await provider.client.chat.completions.create(  # type: ignore[attr-defined]
-                            model=provider.model,  # type: ignore[attr-defined]
-                            messages=current_messages,  # type: ignore[arg-type]
-                            tools=GAME_MASTER_TOOLS,  # type: ignore[arg-type]
-                            temperature=0.7,
-                            max_tokens=2048,
-                        )
-                    else:
-                        raise Exception(
-                            f"Provider {provider_name} does not support tool calling API"
-                        )
 
                 assistant_message = response.choices[0].message
 

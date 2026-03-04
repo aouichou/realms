@@ -452,6 +452,8 @@ class TestCallDmWithTools:
 
         mock_provider.client.chat.completions.create = AsyncMock(return_value=mock_response)
 
+        mock_provider.is_available = AsyncMock(return_value=True)
+        engine.provider_selector.providers = [mock_provider]
         engine.provider_selector.select_provider = AsyncMock(return_value=mock_provider)
 
         with patch("app.services.dm_supervisor.get_dm_supervisor") as mock_sup:
@@ -493,6 +495,8 @@ class TestCallDmWithTools:
         mock_response.usage = MagicMock(total_tokens=50)
 
         mock_provider.client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_provider.is_available = AsyncMock(return_value=True)
+        engine.provider_selector.providers = [mock_provider]
         engine.provider_selector.select_provider = AsyncMock(return_value=mock_provider)
 
         with patch(
@@ -520,6 +524,8 @@ class TestCallDmWithTools:
         mock_provider.model = "test-model"
         mock_provider.client.chat.completions.create = AsyncMock(side_effect=Exception("API down"))
 
+        mock_provider.is_available = AsyncMock(return_value=True)
+        engine.provider_selector.providers = [mock_provider]
         engine.provider_selector.select_provider = AsyncMock(return_value=mock_provider)
 
         result = await engine.call_dm_with_tools(

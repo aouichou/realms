@@ -257,7 +257,7 @@ class MistralProvider(AIProvider):
         """
         Check if Mistral provider is available.
 
-        If rate-limited, automatically becomes available after cooldown period.
+        If rate-limited or in error, automatically becomes available after cooldown.
         """
         # If rate limited, check if cooldown period has elapsed
         if self._status == ProviderStatus.RATE_LIMITED:
@@ -276,7 +276,24 @@ class MistralProvider(AIProvider):
                     return False
             return False
 
-        # Rate-limited providers should be unavailable to trigger fallback
+        # Auto-recover from ERROR after a cooldown (e.g. transient 401/500)
+        if self._status == ProviderStatus.ERROR:
+            error_cooldown = 120.0  # 2 minutes
+            if self._error_at > 0:
+                elapsed = time.time() - self._error_at
+                if elapsed >= error_cooldown:
+                    logger.info(
+                        f"Mistral error cooldown elapsed ({elapsed:.1f}s), "
+                        "marking as available for retry"
+                    )
+                    self.set_status(ProviderStatus.AVAILABLE)
+                    return True
+                else:
+                    remaining = error_cooldown - elapsed
+                    logger.debug(f"Mistral still in error cooldown ({remaining:.1f}s remaining)")
+                    return False
+            return False
+
         return self._status == ProviderStatus.AVAILABLE
 
     async def generate_chat_stream(
