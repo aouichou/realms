@@ -35,6 +35,8 @@ EXEMPT_PATHS = {
     "/api/v1/auth/register",  # Register generates new CSRF token
     "/api/v1/auth/guest",  # Guest login generates new CSRF token
     "/api/v1/auth/claim-guest",  # Guest claim generates new CSRF token
+    "/api/v1/auth/refresh",  # Uses httpOnly refresh-token cookie (not CSRF-vulnerable)
+    "/api/v1/auth/logout",  # Uses httpOnly cookie; worst-case is forced logout
 }
 
 
