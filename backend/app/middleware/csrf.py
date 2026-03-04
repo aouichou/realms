@@ -67,14 +67,14 @@ def set_csrf_cookie(response: Response, token: str):
         max_age=7 * 24 * 60 * 60,  # 7 days (same as refresh token)
         httponly=False,  # Must be readable by JavaScript
         secure=IS_PRODUCTION,  # HTTPS only in production
-        samesite="strict",  # Strict for CSRF protection
+        samesite="lax",  # Lax — consistent with auth cookies; strict blocks cross-subdomain
         path="/",
     )
 
 
 def clear_csrf_cookie(response: Response):
     """Clear CSRF token cookie"""
-    response.delete_cookie(key=CSRF_TOKEN_NAME, samesite="strict")
+    response.delete_cookie(key=CSRF_TOKEN_NAME, samesite="lax")
 
 
 class CSRFProtectionMiddleware(BaseHTTPMiddleware):

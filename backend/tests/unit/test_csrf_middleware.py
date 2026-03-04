@@ -101,14 +101,14 @@ class TestSetCsrfCookie:
         assert kwargs[1]["key"] == CSRF_TOKEN_NAME
         assert kwargs[1]["value"] == "test-token-value"
         assert kwargs[1]["httponly"] is False
-        assert kwargs[1]["samesite"] == "strict"
+        assert kwargs[1]["samesite"] == "lax"
 
 
 class TestClearCsrfCookie:
     def test_clears_cookie(self):
         response = MagicMock()
         clear_csrf_cookie(response)
-        response.delete_cookie.assert_called_once_with(key=CSRF_TOKEN_NAME, samesite="strict")
+        response.delete_cookie.assert_called_once_with(key=CSRF_TOKEN_NAME, samesite="lax")
 
 
 # ---------------------------------------------------------------------------
