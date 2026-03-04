@@ -153,7 +153,48 @@ app = FastAPI(
 )
 
 
-# CORS Middleware — restrict to only the methods and headers the frontend uses
+# ─── Middleware Stack ───────────────────────────────────────────────────────────
+# Starlette builds middleware onion in reverse declaration order:
+#   first add_middleware() call → INNERMOST  (closest to app)
+#   last  add_middleware() call → OUTERMOST  (first to see request)
+#
+# Desired request flow (outer → inner):
+#   CORS → Performance → RateLimit → Observability → Language
+#   → ErrorLogger → CSRF → HTTPS → SecurityHeaders → App
+# ────────────────────────────────────────────────────────────────────────────────
+
+# Innermost — Security headers (OWASP best practices)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# HTTPS enforcement (redirects HTTP to HTTPS in production)
+app.add_middleware(HTTPSEnforcementMiddleware, hsts_max_age=31536000)  # 1 year
+
+# CSRF protection (Double Submit Cookie pattern)
+app.add_middleware(CSRFProtectionMiddleware)
+
+# Error logging (captures errors to file)
+app.add_middleware(ErrorLoggerMiddleware)
+
+# Language detection (sets language context)
+app.add_middleware(LanguageMiddleware)
+
+# Observability (correlation IDs, metrics, logging)
+app.add_middleware(ObservabilityMiddleware)
+
+# Rate limiting
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=settings.rate_limit_per_minute,
+    requests_per_hour=settings.rate_limit_per_hour,
+    burst_threshold=settings.rate_limit_burst_threshold,
+    block_duration=settings.rate_limit_block_duration,
+)
+
+# Performance monitoring
+app.add_middleware(PerformanceMiddleware)
+
+# Outermost — CORS (must wrap ALL responses so browsers always get CORS headers,
+# even on 403/429 early returns from CSRF or rate-limit middleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -178,36 +219,6 @@ app.add_middleware(
     ],
     max_age=600,  # Cache preflight for 10 minutes
 )
-
-# Security headers (OWASP best practices)
-app.add_middleware(SecurityHeadersMiddleware)
-
-# HTTPS enforcement (redirects HTTP to HTTPS in production)
-app.add_middleware(HTTPSEnforcementMiddleware, hsts_max_age=31536000)  # 1 year
-
-# CSRF protection middleware (must be after CORS, before rate limiting)
-app.add_middleware(CSRFProtectionMiddleware)
-
-# Error logging middleware (captures errors to file - must be early in chain)
-app.add_middleware(ErrorLoggerMiddleware)
-
-# Language detection middleware (sets language context)
-app.add_middleware(LanguageMiddleware)
-
-# Observability middleware (correlation IDs, metrics, logging)
-app.add_middleware(ObservabilityMiddleware)
-
-# Rate limiting middleware (before performance to track blocked requests)
-app.add_middleware(
-    RateLimitMiddleware,
-    requests_per_minute=settings.rate_limit_per_minute,
-    requests_per_hour=settings.rate_limit_per_hour,
-    burst_threshold=settings.rate_limit_burst_threshold,
-    block_duration=settings.rate_limit_block_duration,
-)
-
-# Performance monitoring middleware
-app.add_middleware(PerformanceMiddleware)
 
 # Instrument FastAPI with OpenTelemetry
 if settings.tracing_enabled:
