@@ -54,13 +54,6 @@ async def lifespan(app: FastAPI):
     # Initialize OpenTelemetry tracing
     if settings.tracing_enabled:
         logger.info("Initializing OpenTelemetry tracing...")
-        print(
-            f"OTLP DEBUG: endpoint={settings.grafana_otlp_endpoint} "
-            f"instance_id={settings.grafana_cloud_instance_id} "
-            f"key_prefix={settings.grafana_cloud_api_key[:10] if settings.grafana_cloud_api_key else 'EMPTY'} "
-            f"key_len={len(settings.grafana_cloud_api_key)}",
-            flush=True,
-        )
         init_tracing(
             service_name=settings.service_name,
             otlp_endpoint=settings.otlp_endpoint,
