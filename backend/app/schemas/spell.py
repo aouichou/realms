@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SpellBase(BaseModel):
@@ -42,11 +42,10 @@ class SpellCreate(SpellBase):
 class SpellResponse(SpellBase):
     """Schema for spell response"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class SpellListResponse(BaseModel):
@@ -84,8 +83,7 @@ class CharacterSpellResponse(BaseModel):
     spell: SpellResponse
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PrepareSpellsRequest(BaseModel):
@@ -129,5 +127,4 @@ class SpellSlotsResponse(BaseModel):
     character_name: str
     spell_slots: Dict[str, Dict[str, int]]  # {"1": {"total": 4, "used": 1}, ...}
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

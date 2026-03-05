@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SceneStructure(BaseModel):
@@ -30,6 +30,8 @@ class AdventureCreate(BaseModel):
 class AdventureResponse(BaseModel):
     """Schema for adventure API responses"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     character_id: UUID
     setting: str
@@ -41,9 +43,6 @@ class AdventureResponse(BaseModel):
     is_completed: bool
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class AdventureUpdate(BaseModel):
