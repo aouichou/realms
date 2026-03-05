@@ -136,17 +136,31 @@ class SaveService:
         Returns:
             List of save dictionaries
         """
-        # Get all sessions for user
-        result = await db.execute(select(GameSession).where(GameSession.user_id == user_id))
-        sessions = result.scalars().all()
+        if not session_service.redis:
+            return []
+
+        # RL-304: Only fetch session IDs (not full objects) to reduce DB load
+        from sqlalchemy import select as sa_select
+
+        result = await db.execute(
+            sa_select(GameSession.id)
+            .where(GameSession.user_id == user_id)
+            .order_by(GameSession.last_activity_at.desc())
+            .limit(50)  # RL-304: cap to avoid unbounded queries
+        )
+        session_ids = result.scalars().all()
+
+        if not session_ids:
+            return []
+
+        # RL-304: Batch Redis lookups with MGET instead of N individual GETs
+        save_keys = [f"save:{sid}" for sid in session_ids]
+        save_values = await session_service.redis.mget(*save_keys)  # type: ignore[misc]
 
         saves = []
-        for session in sessions:
-            save_key = f"save:{session.id}"
-            if session_service.redis:
-                save_data = await session_service.redis.get(save_key)  # type: ignore[misc]
-                if save_data:
-                    saves.append(json.loads(save_data))
+        for save_data in save_values:
+            if save_data:
+                saves.append(json.loads(save_data))
 
         return sorted(saves, key=lambda x: x["timestamp"], reverse=True)
 

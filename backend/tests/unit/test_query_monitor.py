@@ -20,8 +20,8 @@ class TestQueryPerformanceMonitorInit:
         assert qm.queries == []
 
     def test_thresholds(self):
-        assert QueryPerformanceMonitor.SLOW_QUERY_THRESHOLD == 0.5
-        assert QueryPerformanceMonitor.VERY_SLOW_QUERY_THRESHOLD == 2.0
+        assert QueryPerformanceMonitor.SLOW_QUERY_THRESHOLD == 1.0
+        assert QueryPerformanceMonitor.VERY_SLOW_QUERY_THRESHOLD == 3.0
 
 
 # ---------------------------------------------------------------------------

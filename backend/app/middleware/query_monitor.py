@@ -26,8 +26,8 @@ class QueryPerformanceMonitor:
     - Query count tracking per request
     """
 
-    SLOW_QUERY_THRESHOLD = 0.5  # Warn if query takes > 500ms
-    VERY_SLOW_QUERY_THRESHOLD = 2.0  # Error if query takes > 2s
+    SLOW_QUERY_THRESHOLD = 1.0  # Warn if query takes > 1s (RL-304: raised from 0.5s)
+    VERY_SLOW_QUERY_THRESHOLD = 3.0  # Error if query takes > 3s (RL-304: raised from 2s)
 
     def __init__(self):
         self.query_count = 0
