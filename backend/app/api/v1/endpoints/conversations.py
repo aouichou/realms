@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.base import get_db
 from app.db.models import Character, CharacterQuest, Quest, QuestState
@@ -187,11 +188,20 @@ async def send_player_action(
         perf_start_total = time.time()
         perf_timings = {}
 
-        # Get character for context
+        # Get character for context (RL-304: eager load relationships to prevent N+1)
         logger.info(f"Fetching character {request.character_id}")
         perf_start_db = time.time()
         try:
-            result = await db.execute(select(Character).where(Character.id == request.character_id))
+            result = await db.execute(
+                select(Character)
+                .where(Character.id == request.character_id)
+                .options(
+                    selectinload(Character.character_spells),
+                    selectinload(Character.items),
+                    selectinload(Character.companions),
+                    selectinload(Character.active_effects),
+                )
+            )
             character = result.scalar_one_or_none()
             logger.info(f"Character fetched: {character is not None}")
         except Exception as e:
@@ -298,22 +308,10 @@ async def send_player_action(
         if character.spell_slots:
             character_context["spell_slots"] = character.spell_slots
 
-        # Count prepared spells
-        from app.db.models import CharacterSpell
-
-        logger.info(f"Querying prepared spells for character {character.id}")
-        try:
-            prepared_spells_result = await db.execute(
-                select(CharacterSpell).where(
-                    CharacterSpell.character_id == character.id,
-                    CharacterSpell.is_prepared,
-                )
-            )
-            prepared_spells = prepared_spells_result.scalars().all()
-            logger.info(f"Found {len(prepared_spells)} prepared spells")
-        except Exception as e:
-            logger.error(f"ERROR querying prepared spells: {type(e).__name__}: {e}")
-            raise
+        # Count prepared spells (RL-304: use eager-loaded relationship instead of N+1 query)
+        logger.info(f"Counting prepared spells for character {character.id}")
+        prepared_spells = [spell for spell in character.character_spells if spell.is_prepared]
+        logger.info(f"Found {len(prepared_spells)} prepared spells")
         character_context["prepared_spells_count"] = len(prepared_spells)
 
     # Add active quest info if any
@@ -905,18 +903,10 @@ async def send_player_action(
     # Generate companion responses if any active companions (RL-131)
     companion_responses = []
     try:
-        from app.db.models import Companion
         from app.services.companion_service import CompanionService
 
-        # Get active companions for this character
-        result_companions = await db.execute(
-            select(Companion).where(
-                Companion.character_id == request.character_id,
-                Companion.is_active,
-                Companion.is_alive,
-            )
-        )
-        active_companions = result_companions.scalars().all()
+        # Get active companions (RL-304: use eager-loaded relationship, filter in-memory)
+        active_companions = [c for c in character.companions if c.is_active and c.is_alive]
 
         if active_companions:
             logger.info(

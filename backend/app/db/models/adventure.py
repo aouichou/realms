@@ -20,6 +20,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -137,6 +138,12 @@ class AdventureMemory(Base):
 
     # Relationships
     session = relationship("GameSession", back_populates="memories")
+
+    # RL-304: Composite indexes for common query patterns
+    __table_args__ = (
+        Index("ix_memories_session_importance", "session_id", "importance", "timestamp"),
+        Index("ix_memories_session_created", "session_id", "created_at"),
+    )
 
     def __repr__(self) -> str:
         return f"<AdventureMemory(id={self.id}, event_type={self.event_type}, importance={self.importance})>"

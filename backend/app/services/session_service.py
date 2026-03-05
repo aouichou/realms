@@ -84,17 +84,20 @@ class GameSessionService:
         Returns:
             Tuple of (sessions list, total count)
         """
+        from sqlalchemy import func
+
         query = select(GameSession).where(GameSession.user_id == user_id)
 
         if active_only:
             query = query.where(GameSession.is_active.is_(True))
 
-        # Get total count
-        count_result = await db.execute(query)
-        total = len(count_result.all())
+        # RL-304: Use a proper count query instead of fetching all rows
+        count_query = select(func.count()).select_from(query.subquery())
+        count_result = await db.execute(count_query)
+        total = count_result.scalar() or 0
 
         # Get paginated results
-        query = query.offset(skip).limit(limit).order_by(GameSession.last_activity_at.desc())
+        query = query.order_by(GameSession.last_activity_at.desc()).offset(skip).limit(limit)
         result = await db.execute(query)
         sessions = result.scalars().all()
 

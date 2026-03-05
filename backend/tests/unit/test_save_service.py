@@ -229,14 +229,19 @@ async def test_list_saves_with_saves(db_session):
 
     redis = _mock_redis()
 
-    async def _get_side_effect(key):
-        if str(s1.id) in key:
-            return save1
-        if str(s2.id) in key:
-            return save2
-        return None
+    # RL-304: list_saves now uses MGET for batch Redis lookups
+    async def _mget_side_effect(*keys):
+        results = []
+        for key in keys:
+            if str(s1.id) in key:
+                results.append(save1)
+            elif str(s2.id) in key:
+                results.append(save2)
+            else:
+                results.append(None)
+        return results
 
-    redis.get = AsyncMock(side_effect=_get_side_effect)
+    redis.mget = AsyncMock(side_effect=_mget_side_effect)
 
     with patch("app.services.save_service.session_service") as mock_ss:
         mock_ss.redis = redis

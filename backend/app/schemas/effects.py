@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -129,6 +129,21 @@ class ActiveEffect(Base):
     # Relationships
     character: Mapped["Character"] = relationship("Character", back_populates="active_effects")
     session: Mapped["GameSession"] = relationship("GameSession", back_populates="active_effects")
+
+    # RL-304: Composite indexes for common query patterns
+    __table_args__ = (
+        Index(
+            "ix_effects_char_active",
+            "character_id",
+            "session_id",
+            postgresql_where="is_active = TRUE",
+        ),
+        Index(
+            "ix_effects_expires",
+            "expires_at",
+            postgresql_where="expires_at IS NOT NULL",
+        ),
+    )
 
     def __repr__(self) -> str:
         return f"<ActiveEffect(id={self.id}, name={self.name}, type={self.effect_type}, char={self.character_id})>"
