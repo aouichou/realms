@@ -133,7 +133,7 @@ class ImageService:
                 tools=[{"type": "image_generation"}],
             )
             self.agent_id = agent.id
-            logger.info(f"Image generation agent created: {agent.id}")
+            logger.error(f"Image generation agent created: {agent.id}")
             logger.info(
                 "💡 TIP: Set MISTRAL_IMAGE_AGENT_ID=%s in .env to reuse this agent", agent.id
             )
@@ -220,7 +220,7 @@ class ImageService:
             # Build enhanced prompt
             image_prompt = self._build_image_prompt(scene_description, character_description)
 
-            logger.info(f"Generating new image for scene (hash={desc_hash})")
+            logger.error(f"Generating new image for scene (hash={desc_hash})")
 
             # Start conversation with agent
             response = self.client.beta.conversations.start(
@@ -228,7 +228,7 @@ class ImageService:
             )
 
             logger.info("Agent response received")
-            logger.info(
+            logger.error(
                 f"Response has outputs: {hasattr(response, 'outputs') and len(response.outputs) > 0 if hasattr(response, 'outputs') else False}"
             )
 
