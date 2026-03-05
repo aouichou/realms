@@ -5,7 +5,7 @@ NPC and companion management API endpoints
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.db.base import get_db
@@ -34,6 +34,8 @@ class NPCCreate(BaseModel):
 
 
 class NPCResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     race: str
@@ -43,9 +45,6 @@ class NPCResponse(BaseModel):
     background: Optional[str]
     hp_current: int
     hp_max: int
-
-    class Config:
-        from_attributes = True
 
 
 @router.post("/npcs")

@@ -10,9 +10,10 @@ from pathlib import Path
 from typing import Optional
 
 import boto3
+import httpx
 from botocore.config import Config as BotoConfig
 from mistralai import Mistral
-from mistralai.models import ToolFileChunk
+from mistralai.models import ImageURLChunk, ToolFileChunk
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -133,7 +134,7 @@ class ImageService:
                 tools=[{"type": "image_generation"}],
             )
             self.agent_id = agent.id
-            logger.error(f"Image generation agent created: {agent.id}")
+            logger.info(f"Image generation agent created: {agent.id}")
             logger.info(
                 "💡 TIP: Set MISTRAL_IMAGE_AGENT_ID=%s in .env to reuse this agent", agent.id
             )
@@ -220,20 +221,23 @@ class ImageService:
             # Build enhanced prompt
             image_prompt = self._build_image_prompt(scene_description, character_description)
 
-            logger.error(f"Generating new image for scene (hash={desc_hash})")
+            logger.info(f"Generating new image for scene (hash={desc_hash})")
 
             # Start conversation with agent
             response = self.client.beta.conversations.start(
                 agent_id=self.agent_id, inputs=image_prompt
             )
 
-            logger.info("Agent response received")
-            logger.error(
-                f"Response has outputs: {hasattr(response, 'outputs') and len(response.outputs) > 0 if hasattr(response, 'outputs') else False}"
-            )
+            output_count = len(response.outputs) if hasattr(response, "outputs") else 0
+            logger.info(f"Agent response received, outputs: {output_count}")
 
             # Extract and save image
             image_url = await self._process_agent_response(response, desc_hash, db, normalized_desc)
+
+            if image_url:
+                logger.info(f"Image generated successfully: {image_url}")
+            else:
+                logger.warning("Image generation returned no image URL")
 
             return image_url
 
@@ -304,72 +308,103 @@ Style Requirements:
                 return None
 
             for i, chunk in enumerate(last_output.content):
+                chunk_type = type(chunk).__name__
                 logger.info(
-                    f"Chunk {i}: type={type(chunk)}, is_tool_file={isinstance(chunk, ToolFileChunk)}"
+                    f"Chunk {i}: type={chunk_type}, is_tool_file={isinstance(chunk, ToolFileChunk)}"
                 )
+
+                file_bytes: Optional[bytes] = None
+
+                # Handle ToolFileChunk (image file from agent — legacy path)
                 if isinstance(chunk, ToolFileChunk):
-                    # Download image bytes
                     if not self.client:
                         logger.error("Cannot download file: Mistral client not initialized")
                         continue
                     file_bytes = self.client.files.download(file_id=chunk.file_id).read()
 
-                    # Save to local filesystem (always, serves as fallback)
-                    filename = f"{desc_hash}.png"
-                    filepath = MEDIA_ROOT / filename
-                    relative_path = f"/media/images/generated/{filename}"
+                # Handle ImageURLChunk (direct image URL — newer SDK versions)
+                elif isinstance(chunk, ImageURLChunk):
+                    image_url_value = chunk.image_url
+                    # image_url can be an ImageURL object or a plain str
+                    url = (
+                        image_url_value.url
+                        if hasattr(image_url_value, "url")
+                        else str(image_url_value)
+                    )
+                    logger.info(f"Downloading image from URL: {url[:120]}...")
+                    try:
+                        async with httpx.AsyncClient(timeout=30) as http:
+                            resp = await http.get(url)
+                            resp.raise_for_status()
+                            file_bytes = resp.content
+                    except Exception as dl_err:
+                        logger.error(f"Failed to download image from URL: {dl_err}")
+                        continue
+                else:
+                    continue
 
-                    with open(filepath, "wb") as f:
-                        f.write(file_bytes)
+                if not file_bytes or len(file_bytes) < 100:
+                    logger.warning(
+                        f"Empty or too small file ({len(file_bytes) if file_bytes else 0} bytes)"
+                    )
+                    continue
 
-                    logger.info(f"Image saved locally: {filepath} ({len(file_bytes)} bytes)")
+                # Save to local filesystem (always, serves as fallback)
+                filename = f"{desc_hash}.png"
+                filepath = MEDIA_ROOT / filename
+                relative_path = f"/media/images/generated/{filename}"
 
-                    # Upload to R2 if configured
-                    r2_client = _get_r2_client()
-                    if r2_client and settings.r2_images_public_url:
-                        try:
-                            r2_key = f"scenes/{filename}"
-                            r2_client.upload_fileobj(
-                                BytesIO(file_bytes),
-                                settings.r2_images_bucket,
-                                r2_key,
-                                ExtraArgs={"ContentType": "image/png"},
-                            )
-                            # Use R2 public URL
-                            image_path = f"{settings.r2_images_public_url.rstrip('/')}/{r2_key}"
-                            full_url = image_path  # Already a full URL
-                            logger.info(f"Image uploaded to R2: {r2_key}")
-                        except Exception as r2_err:
-                            logger.warning(f"R2 upload failed, using local path: {r2_err}")
-                            image_path = relative_path
-                            full_url = f"{API_BASE_URL}{relative_path}"
-                    else:
+                with open(filepath, "wb") as f:
+                    f.write(file_bytes)
+
+                logger.info(f"Image saved locally: {filepath} ({len(file_bytes)} bytes)")
+
+                # Upload to R2 if configured
+                r2_client = _get_r2_client()
+                if r2_client and settings.r2_images_public_url:
+                    try:
+                        r2_key = f"scenes/{filename}"
+                        r2_client.upload_fileobj(
+                            BytesIO(file_bytes),
+                            settings.r2_images_bucket,
+                            r2_key,
+                            ExtraArgs={"ContentType": "image/png"},
+                        )
+                        # Use R2 public URL
+                        image_path = f"{settings.r2_images_public_url.rstrip('/')}/{r2_key}"
+                        full_url = image_path  # Already a full URL
+                        logger.info(f"Image uploaded to R2: {r2_key}")
+                    except Exception as r2_err:
+                        logger.warning(f"R2 upload failed, using local path: {r2_err}")
                         image_path = relative_path
                         full_url = f"{API_BASE_URL}{relative_path}"
+                else:
+                    image_path = relative_path
+                    full_url = f"{API_BASE_URL}{relative_path}"
 
-                    # Save to database
-                    generated_image = GeneratedImage(
-                        description_hash=desc_hash,
-                        description_text=description,
-                        image_path=image_path,
-                        model_used="mistral-medium-latest",
-                        reuse_count=0,
+                # Save to database
+                generated_image = GeneratedImage(
+                    description_hash=desc_hash,
+                    description_text=description,
+                    image_path=image_path,
+                    model_used="mistral-medium-latest",
+                    reuse_count=0,
+                )
+                db.add(generated_image)
+                await db.flush()  # Flush to persist but don't commit - let endpoint handle commit
+
+                # Cache in Redis (store full URL)
+                if session_service.redis:
+                    cache_key = f"scene_image:{desc_hash}"
+                    await session_service.redis.setex(  # type: ignore[misc]
+                        cache_key, IMAGE_CACHE_TTL, full_url
                     )
-                    db.add(generated_image)
-                    await (
-                        db.flush()
-                    )  # Flush to persist but don't commit - let endpoint handle commit
 
-                    # Cache in Redis (store full URL)
-                    if session_service.redis:
-                        cache_key = f"scene_image:{desc_hash}"
-                        await session_service.redis.setex(  # type: ignore[misc]
-                            cache_key, IMAGE_CACHE_TTL, full_url
-                        )
+                return full_url
 
-                    return full_url
-
-            logger.warning("No image file found in agent response")
+            # Log all chunk types for debugging
+            chunk_types = [type(c).__name__ for c in last_output.content]
+            logger.warning(f"No image chunk found in response. Chunk types: {chunk_types}")
             return None
 
         except Exception as e:

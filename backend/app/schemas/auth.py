@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.core.password_validator import validate_password
 
@@ -63,15 +63,14 @@ class RefreshTokenRequest(BaseModel):
 class UserResponse(BaseModel):
     """Schema for user response"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     username: str
     email: Optional[str] = None
     is_guest: bool
     created_at: datetime
     last_login: Optional[datetime]
-
-    class Config:
-        from_attributes = True
 
     @classmethod
     def from_orm(cls, user) -> "UserResponse":

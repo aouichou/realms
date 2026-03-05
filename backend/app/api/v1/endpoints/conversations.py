@@ -172,9 +172,9 @@ async def send_player_action(
     )
     # Set logging context for this request
     with log_context(
-        session_id=int(str(request.session_id).replace("-", "")[:8], 16)
-        if request.session_id
-        else 0,
+        session_id=(
+            int(str(request.session_id).replace("-", "")[:8], 16) if request.session_id else 0
+        ),
         character_id=int(str(request.character_id).replace("-", "")[:8], 16),
     ):
         logger.info(

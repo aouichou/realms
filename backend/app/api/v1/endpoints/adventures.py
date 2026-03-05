@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
@@ -151,6 +151,8 @@ class CustomAdventureRequest(BaseModel):
 class CustomAdventureResponse(BaseModel):
     """Response with generated custom adventure"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     character_id: UUID
     setting: str
@@ -161,9 +163,6 @@ class CustomAdventureResponse(BaseModel):
     scenes: Any  # JSONB field from database
     is_completed: bool
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 @router.post("/generate", response_model=CustomAdventureResponse)

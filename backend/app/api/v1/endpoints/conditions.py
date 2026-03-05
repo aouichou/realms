@@ -5,7 +5,7 @@ Character conditions and status effects API endpoints
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.db.base import get_db
@@ -21,14 +21,13 @@ class AddConditionRequest(BaseModel):
 
 
 class ConditionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     condition: str
     duration: int
     source: Optional[str]
     applied_at: str
-
-    class Config:
-        from_attributes = True
 
 
 # Condition descriptions and effects

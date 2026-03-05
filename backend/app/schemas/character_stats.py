@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class SkillData(BaseModel):
@@ -72,5 +72,4 @@ class CharacterStatsResponse(BaseModel):
     # Equipped items providing bonuses
     equipped_items: List[EquippedItemBonus]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

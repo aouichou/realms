@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MessageCreate(BaseModel):
@@ -30,8 +30,7 @@ class MessageResponse(BaseModel):
     companion_id: Optional[UUID] = None  # RL-131: Link to companion if role is 'companion'
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConversationHistoryResponse(BaseModel):

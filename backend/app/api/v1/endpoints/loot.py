@@ -296,7 +296,7 @@ async def get_recipes(skill: Optional[str] = None):
     if skill:
         recipes = [r for r in recipes if r.required_skill.lower() == skill.lower()]
 
-    return {"recipes": [r.dict() for r in recipes]}
+    return {"recipes": [r.model_dump() for r in recipes]}
 
 
 @router.post("/crafting/craft")
