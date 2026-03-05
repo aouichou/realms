@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy import and_, desc, literal_column, select, text
+from sqlalchemy import and_, desc, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AdventureMemory, EventType
