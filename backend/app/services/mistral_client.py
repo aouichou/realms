@@ -115,9 +115,11 @@ class MistralClient:
 
                 if not stream and response.usage:
                     # Update span with token counts
-                    span.set_attribute("llm.prompt_tokens", response.usage.prompt_tokens)
-                    span.set_attribute("llm.completion_tokens", response.usage.completion_tokens)
-                    span.set_attribute("llm.total_tokens", response.usage.total_tokens)
+                    span.set_usage(
+                        prompt_tokens=response.usage.prompt_tokens,
+                        completion_tokens=response.usage.completion_tokens,
+                        total_tokens=response.usage.total_tokens,
+                    )
 
                     # Record metrics
                     duration = time.time() - start_time
