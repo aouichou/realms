@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.observability.logger import get_logger
+from app.observability.metrics import metrics
 from app.schemas.generated_image import GeneratedImage
 from app.services.redis_service import session_service
 
@@ -215,6 +216,7 @@ class ImageService:
                 logger.info(
                     f"Reusing existing image (hash={desc_hash}, reuse_count={existing_image.reuse_count})"
                 )
+                metrics.record_image_generation(status="cached", source="cache")
                 return full_url
 
         try:
@@ -222,6 +224,7 @@ class ImageService:
             image_prompt = self._build_image_prompt(scene_description, character_description)
 
             logger.info(f"Generating new image for scene (hash={desc_hash})")
+            gen_start = time.time()
 
             # Start conversation with agent
             response = self.client.beta.conversations.start(
@@ -234,15 +237,23 @@ class ImageService:
             # Extract and save image
             image_url = await self._process_agent_response(response, desc_hash, db, normalized_desc)
 
+            gen_duration = time.time() - gen_start
             if image_url:
                 logger.info(f"Image generated successfully: {image_url}")
+                metrics.record_image_generation(
+                    status="success", source="mistral", duration=gen_duration
+                )
             else:
                 logger.warning("Image generation returned no image URL")
+                metrics.record_image_generation(
+                    status="failure", source="mistral", duration=gen_duration
+                )
 
             return image_url
 
         except Exception as e:
             error_str = str(e)
+            metrics.record_image_generation(status="failure", source="mistral")
             if "429" in error_str or "rate limit" in error_str.lower():
                 _api_cooldown_until = time.time() + RATE_LIMIT_COOLDOWN_SECONDS
                 logger.warning(

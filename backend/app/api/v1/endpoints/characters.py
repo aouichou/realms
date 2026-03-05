@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import GameSession, User
 from app.middleware.auth import get_current_active_user
+from app.observability.metrics import metrics
 from app.observability.tracing import trace_async
 from app.schemas.character import (
     CharacterCreate,
@@ -41,6 +42,10 @@ async def create_character(
         Created character
     """
     character = await CharacterService.create_character(db, character_data, current_user.id)
+    metrics.record_character_creation(
+        character_class=character_data.character_class,
+        race=character_data.race,
+    )
     return character
 
 
