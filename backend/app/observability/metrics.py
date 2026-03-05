@@ -212,6 +212,14 @@ enrichment_cache_performance = Counter(
     registry=registry,
 )
 
+# Character creation metrics
+character_creations_total = Counter(
+    "character_creations_total",
+    "Total characters created",
+    ["character_class", "race"],
+    registry=registry,
+)
+
 # DM tool metrics
 dm_tool_calls_total = Counter(
     "dm_tool_calls_total",
@@ -301,6 +309,12 @@ class MetricsCollector:
             "image_gen_duration": meter.create_histogram(
                 "image.generation.duration", description="Image generation time", unit="s"
             ),
+            "active_sessions": meter.create_up_down_counter(
+                "sessions.active", description="Active user sessions", unit="1"
+            ),
+            "character_creations": meter.create_counter(
+                "character.creations", description="Characters created", unit="1"
+            ),
         }
         self._otel_enabled = True
 
@@ -382,6 +396,14 @@ class MetricsCollector:
             http_requests_total.labels(
                 method="dm_narration", endpoint="/narrate", status="200"
             ).inc()
+
+    def record_character_creation(self, character_class: str, race: str):
+        """Record character creation event"""
+        character_creations_total.labels(character_class=character_class, race=race).inc()
+        if self._otel_enabled:
+            self._otel["character_creations"].add(
+                1, {"character.class": character_class, "character.race": race}
+            )
 
     def set_active_connections(self, count: int):
         """Set active database connections gauge"""
