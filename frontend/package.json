@@ -43,7 +43,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.1.1",
+    "eslint-config-next": "16.1.6",
     "jsdom": "^28.1.0",
     "knip": "^5.85.0",
     "tailwindcss": "^4",
