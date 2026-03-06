@@ -981,7 +981,11 @@ async def send_player_action(
                                         "companion_name": companion.name,
                                         "message": companion_message,
                                         "loyalty": companion.loyalty,
-                                        "relationship_status": companion.relationship_status.value,
+                                        "relationship_status": (
+                                            companion.relationship_status.value
+                                            if hasattr(companion.relationship_status, "value")
+                                            else companion.relationship_status
+                                        ),
                                     }
                                 )
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
@@ -261,3 +262,305 @@ async def test_ability_check_with_matching_skill(client, db_session):
     data = resp.json()
     assert data["skill"] == "athletics"
     assert data["ability"] == "strength"
+
+
+# ---------------------------------------------------------------------------
+# NEW TESTS — targeting missed lines 83-145
+# ---------------------------------------------------------------------------
+
+
+async def test_ability_check_with_disadvantage(client, db_session):
+    """Disadvantage rolls 2d20 and takes the lower."""
+    user = make_user()
+    char = make_character(user=user, dexterity=14)
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/dice/check",
+        json={
+            "character_id": str(char.id),
+            "ability": "dexterity",
+            "disadvantage": True,
+        },
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["disadvantage"] is True
+    assert data["advantage"] is False
+    assert len(data["rolls"]) == 2
+    # The used roll should be the minimum of the two
+    assert data["roll"] == min(data["rolls"])
+
+
+async def test_ability_check_all_abilities(client, db_session):
+    """Exercise every ability score lookup (lines 90-97)."""
+    user = make_user()
+    char = make_character(
+        user=user,
+        strength=18,
+        dexterity=14,
+        constitution=16,
+        intelligence=12,
+        wisdom=10,
+        charisma=8,
+    )
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    expected = {
+        "strength": (18, 4),
+        "dexterity": (14, 2),
+        "constitution": (16, 3),
+        "intelligence": (12, 1),
+        "wisdom": (10, 0),
+        "charisma": (8, -1),
+    }
+    for ability, (score, modifier) in expected.items():
+        resp = await client.post(
+            "/api/v1/dice/check",
+            json={"character_id": str(char.id), "ability": ability},
+        )
+        assert resp.status_code == 200, f"Failed for {ability}"
+        data = resp.json()
+        assert data["ability_score"] == score, f"Wrong score for {ability}"
+        assert data["ability_modifier"] == modifier, f"Wrong modifier for {ability}"
+
+
+async def test_ability_check_with_reason(client, db_session):
+    """Verify the reason field is echoed back."""
+    user = make_user()
+    char = make_character(user=user)
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/dice/check",
+        json={
+            "character_id": str(char.id),
+            "ability": "wisdom",
+            "reason": "Checking for traps",
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["reason"] == "Checking for traps"
+
+
+async def test_ability_check_dc_success_deterministic(client, db_session):
+    """Patch random to guarantee success against DC."""
+    user = make_user()
+    char = make_character(user=user, strength=20)  # modifier = +5
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    with patch("app.api.v1.endpoints.dice.random.randint", return_value=15):
+        resp = await client.post(
+            "/api/v1/dice/check",
+            json={"character_id": str(char.id), "ability": "strength", "dc": 15},
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["roll"] == 15
+    assert data["total"] == 20  # 15 + 5
+    assert data["dc"] == 15
+    assert data["success"] is True
+
+
+async def test_ability_check_dc_failure_deterministic(client, db_session):
+    """Patch random to guarantee failure against DC."""
+    user = make_user()
+    char = make_character(user=user, strength=8)  # modifier = -1
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    with patch("app.api.v1.endpoints.dice.random.randint", return_value=5):
+        resp = await client.post(
+            "/api/v1/dice/check",
+            json={"character_id": str(char.id), "ability": "strength", "dc": 10},
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["roll"] == 5
+    assert data["total"] == 4  # 5 + (-1)
+    assert data["dc"] == 10
+    assert data["success"] is False
+
+
+async def test_ability_check_advantage_deterministic(client, db_session):
+    """Patch random to verify advantage takes the higher roll."""
+    user = make_user()
+    char = make_character(user=user, dexterity=10)  # modifier = 0
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    with patch("app.api.v1.endpoints.dice.random.randint", side_effect=[7, 15]):
+        resp = await client.post(
+            "/api/v1/dice/check",
+            json={
+                "character_id": str(char.id),
+                "ability": "dexterity",
+                "advantage": True,
+            },
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["rolls"] == [7, 15]
+    assert data["roll"] == 15  # advantage takes max
+    assert data["total"] == 15
+
+
+async def test_ability_check_disadvantage_deterministic(client, db_session):
+    """Patch random to verify disadvantage takes the lower roll."""
+    user = make_user()
+    char = make_character(user=user, wisdom=10)  # modifier = 0
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    with patch("app.api.v1.endpoints.dice.random.randint", side_effect=[18, 4]):
+        resp = await client.post(
+            "/api/v1/dice/check",
+            json={
+                "character_id": str(char.id),
+                "ability": "wisdom",
+                "disadvantage": True,
+            },
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["rolls"] == [18, 4]
+    assert data["roll"] == 4  # disadvantage takes min
+    assert data["total"] == 4
+
+
+async def test_ability_check_breakdown_format(client, db_session):
+    """Verify breakdown string includes roll, modifier, and total."""
+    user = make_user()
+    char = make_character(user=user, charisma=16)  # modifier = +3
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    with patch("app.api.v1.endpoints.dice.random.randint", return_value=12):
+        resp = await client.post(
+            "/api/v1/dice/check",
+            json={"character_id": str(char.id), "ability": "charisma"},
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "1d20(12)" in data["breakdown"]
+    assert "+3" in data["breakdown"]
+    assert "CHA" in data["breakdown"]
+    assert "= 15" in data["breakdown"]
+
+
+async def test_ability_check_negative_modifier_breakdown(client, db_session):
+    """Verify breakdown shows negative modifier correctly."""
+    user = make_user()
+    char = make_character(user=user, intelligence=6)  # modifier = -2
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    with patch("app.api.v1.endpoints.dice.random.randint", return_value=10):
+        resp = await client.post(
+            "/api/v1/dice/check",
+            json={"character_id": str(char.id), "ability": "intelligence"},
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ability_modifier"] == -2
+    assert data["total"] == 8  # 10 + (-2)
+    assert "-2" in data["breakdown"]
+    assert "INT" in data["breakdown"]
+
+
+async def test_ability_check_zero_modifier(client, db_session):
+    """Ability score of 10/11 gives +0 modifier — breakdown should not show modifier."""
+    user = make_user()
+    char = make_character(user=user, constitution=10)  # modifier = 0
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    with patch("app.api.v1.endpoints.dice.random.randint", return_value=14):
+        resp = await client.post(
+            "/api/v1/dice/check",
+            json={"character_id": str(char.id), "ability": "constitution"},
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ability_modifier"] == 0
+    assert data["total"] == 14
+    # With zero modifier, breakdown should just have roll and total
+    assert "1d20(14)" in data["breakdown"]
+    assert "= 14" in data["breakdown"]
+
+
+async def test_ability_check_proficiency_bonus_returned(client, db_session):
+    """Verify proficiency_bonus field is calculated from level."""
+    user = make_user()
+    char = make_character(user=user, level=5, strength=10)
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/dice/check",
+        json={"character_id": str(char.id), "ability": "strength"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["proficiency_bonus"] == 3  # level 5 → +3
+    assert data["is_proficient"] is False  # always False for now
+
+
+async def test_ability_check_character_name_returned(client, db_session):
+    """Verify character_name is populated in the response."""
+    user = make_user()
+    char = make_character(user=user, name="Gandalf the Grey", wisdom=18)
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/dice/check",
+        json={"character_id": str(char.id), "ability": "wisdom"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["character_name"] == "Gandalf the Grey"
+
+
+async def test_ability_check_skill_perception_wisdom(client, db_session):
+    """Perception uses wisdom — should succeed with correct ability."""
+    user = make_user()
+    char = make_character(user=user, wisdom=16)
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/dice/check",
+        json={
+            "character_id": str(char.id),
+            "ability": "wisdom",
+            "skill": "perception",
+        },
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["skill"] == "perception"
+    assert data["ability"] == "wisdom"
+    assert data["ability_modifier"] == 3
+
+
+async def test_ability_check_skill_stealth_wrong_ability(client, db_session):
+    """Stealth uses dexterity — sending with strength should 400."""
+    user = make_user()
+    char = make_character(user=user)
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/dice/check",
+        json={
+            "character_id": str(char.id),
+            "ability": "strength",
+            "skill": "stealth",
+        },
+    )
+    assert resp.status_code == 400
+    assert "dexterity" in resp.json()["detail"].lower()

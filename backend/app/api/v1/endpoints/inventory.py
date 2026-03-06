@@ -74,7 +74,7 @@ async def add_item(character_id: UUID, item_data: ItemCreate, db: AsyncSession =
         result_session = await db.execute(
             select(GameSession)
             .where(GameSession.character_id == character_id)
-            .order_by(GameSession.created_at.desc())
+            .order_by(GameSession.started_at.desc())
             .limit(1)
         )
         session = result_session.scalar_one_or_none()
