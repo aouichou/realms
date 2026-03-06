@@ -100,6 +100,44 @@ async def test_create_session_with_location(client, db_session, auth_user):
     assert resp.json()["current_location"] == "Dragon's Lair"
 
 
+async def test_create_session_with_companion(client, db_session, auth_user):
+    """Create a session that includes a companion_id."""
+    user, headers = auth_user
+    char = make_character(user=user)
+    db_session.add(char)
+    await db_session.flush()
+
+    companion_id = uuid.uuid4()
+    body = {
+        "character_id": str(char.id),
+        "companion_id": str(companion_id),
+    }
+    resp = await client.post(BASE, json=body, headers=headers)
+    assert resp.status_code == 201
+    assert resp.json()["companion_id"] == str(companion_id)
+
+
+async def test_create_session_redis_state_creation(client, db_session, auth_user, monkeypatch):
+    """Verify that Redis create_session_state is called during creation."""
+    from app.services.redis_service import session_service
+
+    mock_create = AsyncMock(return_value={})
+    monkeypatch.setattr(session_service, "create_session_state", mock_create)
+
+    user, headers = auth_user
+    char = make_character(user=user)
+    db_session.add(char)
+    await db_session.flush()
+
+    body = {"character_id": str(char.id), "current_location": "Forest"}
+    resp = await client.post(BASE, json=body, headers=headers)
+    assert resp.status_code == 201
+    mock_create.assert_awaited_once()
+    call_kwargs = mock_create.call_args.kwargs
+    assert call_kwargs["character_id"] == char.id
+    assert call_kwargs["current_location"] == "Forest"
+
+
 # ===========================================================================
 # GET /api/v1/sessions/{session_id}
 # ===========================================================================
@@ -139,6 +177,30 @@ async def test_get_session_without_state(client, db_session):
     assert data["conversation_history"] is None
 
 
+async def test_get_session_with_redis_state(client, db_session, monkeypatch):
+    """When Redis returns state data, it should be included in the response."""
+    from app.services.redis_service import session_service
+
+    redis_state = {"state": {"hp": 20, "location": "Cave"}}
+    conversation = [{"role": "user", "content": "I look around"}]
+    monkeypatch.setattr(session_service, "get_session_state", AsyncMock(return_value=redis_state))
+    monkeypatch.setattr(
+        session_service, "get_conversation_history", AsyncMock(return_value=conversation)
+    )
+
+    user = make_user()
+    char = make_character(user=user)
+    session = make_session(user=user, character=char)
+    db_session.add_all([user, char, session])
+    await db_session.flush()
+
+    resp = await client.get(f"{BASE}/{session.id}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["state"] == {"hp": 20, "location": "Cave"}
+    assert data["conversation_history"] == conversation
+
+
 # ===========================================================================
 # GET /api/v1/sessions
 # ===========================================================================
@@ -173,6 +235,88 @@ async def test_list_sessions_active_only(client, db_session):
     assert data[0]["is_active"] is True
 
 
+async def test_list_sessions_pagination(client, db_session):
+    """Verify skip and limit parameters work correctly."""
+    user = make_user()
+    char = make_character(user=user)
+    sessions = [make_session(user=user, character=char) for _ in range(5)]
+    db_session.add_all([user, char, *sessions])
+    await db_session.flush()
+
+    # Get first page (2 items)
+    resp = await client.get(BASE, params={"user_id": str(user.id), "skip": 0, "limit": 2})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2
+
+    # Get second page
+    resp2 = await client.get(BASE, params={"user_id": str(user.id), "skip": 2, "limit": 2})
+    assert resp2.status_code == 200
+    data2 = resp2.json()
+    assert len(data2) == 2
+
+    # Ensure no overlap
+    ids_page1 = {d["id"] for d in data}
+    ids_page2 = {d["id"] for d in data2}
+    assert ids_page1.isdisjoint(ids_page2)
+
+
+# ===========================================================================
+# GET /api/v1/sessions/active/current
+# ===========================================================================
+
+
+async def test_get_active_session_happy(client, db_session):
+    """Get the user's currently active session."""
+    user = make_user()
+    char = make_character(user=user)
+    session = make_session(user=user, character=char, is_active=True)
+    db_session.add_all([user, char, session])
+    await db_session.flush()
+
+    resp = await client.get(f"{BASE}/active/current", params={"user_id": str(user.id)})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["id"] == str(session.id)
+    assert data["is_active"] is True
+
+
+async def test_get_active_session_not_found(client, db_session):
+    """No active session for user → 404."""
+    user = make_user()
+    char = make_character(user=user)
+    session = make_session(user=user, character=char, is_active=False)
+    db_session.add_all([user, char, session])
+    await db_session.flush()
+
+    resp = await client.get(f"{BASE}/active/current", params={"user_id": str(user.id)})
+    assert resp.status_code == 404
+
+
+async def test_get_active_session_with_redis_state(client, db_session, monkeypatch):
+    """Active session endpoint includes Redis state."""
+    from app.services.redis_service import session_service
+
+    redis_state = {"state": {"turn": 3}}
+    conversation = [{"role": "assistant", "content": "You see a dark cave."}]
+    monkeypatch.setattr(session_service, "get_session_state", AsyncMock(return_value=redis_state))
+    monkeypatch.setattr(
+        session_service, "get_conversation_history", AsyncMock(return_value=conversation)
+    )
+
+    user = make_user()
+    char = make_character(user=user)
+    session = make_session(user=user, character=char, is_active=True)
+    db_session.add_all([user, char, session])
+    await db_session.flush()
+
+    resp = await client.get(f"{BASE}/active/current", params={"user_id": str(user.id)})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["state"] == {"turn": 3}
+    assert len(data["conversation_history"]) == 1
+
+
 # ===========================================================================
 # PATCH /api/v1/sessions/{session_id}
 # ===========================================================================
@@ -196,6 +340,95 @@ async def test_update_session_not_found(client):
     body = {"current_location": "Nowhere"}
     resp = await client.patch(f"{BASE}/{fake_id}", json=body)
     assert resp.status_code == 404
+
+
+async def test_update_session_is_active(client, db_session):
+    """Update is_active field via PATCH."""
+    user = make_user()
+    char = make_character(user=user)
+    session = make_session(user=user, character=char, is_active=True)
+    db_session.add_all([user, char, session])
+    await db_session.flush()
+
+    body = {"is_active": False}
+    resp = await client.patch(f"{BASE}/{session.id}", json=body)
+    assert resp.status_code == 200
+    assert resp.json()["is_active"] is False
+
+
+# ===========================================================================
+# PATCH /api/v1/sessions/{session_id}/state
+# ===========================================================================
+
+
+async def test_update_session_state_happy(client, db_session, monkeypatch):
+    """Update session state in Redis."""
+    from app.services.redis_service import session_service
+
+    updated_state = {"state": {"hp": 15, "location": "Dungeon"}}
+    monkeypatch.setattr(
+        session_service, "update_session_state", AsyncMock(return_value=updated_state)
+    )
+    mock_refresh = AsyncMock()
+    monkeypatch.setattr(session_service, "refresh_ttl", mock_refresh)
+
+    user = make_user()
+    char = make_character(user=user)
+    session = make_session(user=user, character=char)
+    db_session.add_all([user, char, session])
+    await db_session.flush()
+
+    body = {"current_location": "Dungeon", "state_data": {"hp": 15}}
+    resp = await client.patch(f"{BASE}/{session.id}/state", json=body)
+    assert resp.status_code == 200
+    mock_refresh.assert_awaited_once_with(session.id)
+
+
+async def test_update_session_state_session_not_found(client, db_session):
+    """Session doesn't exist in DB → 404."""
+    fake_id = uuid.uuid4()
+    body = {"current_location": "Nowhere"}
+    resp = await client.patch(f"{BASE}/{fake_id}/state", json=body)
+    assert resp.status_code == 404
+
+
+async def test_update_session_state_redis_not_found(client, db_session, monkeypatch):
+    """Session exists in DB but not in Redis → 404."""
+    from app.services.redis_service import session_service
+
+    monkeypatch.setattr(session_service, "update_session_state", AsyncMock(return_value=None))
+
+    user = make_user()
+    char = make_character(user=user)
+    session = make_session(user=user, character=char)
+    db_session.add_all([user, char, session])
+    await db_session.flush()
+
+    body = {"state_data": {"hp": 10}}
+    resp = await client.patch(f"{BASE}/{session.id}/state", json=body)
+    assert resp.status_code == 404
+    assert "Redis" in resp.json()["detail"]
+
+
+async def test_update_session_state_location_only(client, db_session, monkeypatch):
+    """Update only the location, no state_data."""
+    from app.services.redis_service import session_service
+
+    updated_state = {"state": {"location": "Forest"}}
+    monkeypatch.setattr(
+        session_service, "update_session_state", AsyncMock(return_value=updated_state)
+    )
+    monkeypatch.setattr(session_service, "refresh_ttl", AsyncMock())
+
+    user = make_user()
+    char = make_character(user=user)
+    session = make_session(user=user, character=char)
+    db_session.add_all([user, char, session])
+    await db_session.flush()
+
+    body = {"current_location": "Forest"}
+    resp = await client.patch(f"{BASE}/{session.id}/state", json=body)
+    assert resp.status_code == 200
 
 
 # ===========================================================================
@@ -241,6 +474,24 @@ async def test_delete_session_not_found(client):
     fake_id = uuid.uuid4()
     resp = await client.delete(f"{BASE}/{fake_id}")
     assert resp.status_code == 404
+
+
+async def test_delete_session_cleans_redis(client, db_session, monkeypatch):
+    """Verify that Redis delete_session_state is called during deletion."""
+    from app.services.redis_service import session_service
+
+    mock_delete = AsyncMock()
+    monkeypatch.setattr(session_service, "delete_session_state", mock_delete)
+
+    user = make_user()
+    char = make_character(user=user)
+    session = make_session(user=user, character=char)
+    db_session.add_all([user, char, session])
+    await db_session.flush()
+
+    resp = await client.delete(f"{BASE}/{session.id}")
+    assert resp.status_code == 204
+    mock_delete.assert_awaited_once_with(session.id)
 
 
 # ===========================================================================

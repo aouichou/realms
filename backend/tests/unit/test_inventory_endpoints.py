@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
 
-from tests.factories import make_character, make_item, make_user
+from tests.factories import make_character, make_item, make_session, make_user
 
 # -- Strip problematic middleware (CSRF, rate-limit, HTTPS) for tests ------
 
@@ -126,6 +127,98 @@ async def test_add_item_exceeds_weight_capacity(client, db_session):
     assert "capacity" in resp.json()["detail"].lower()
 
 
+async def test_add_item_exceeds_weight_with_existing_items(client, db_session):
+    """Adding new item when existing items already consume most capacity."""
+    user = make_user()
+    char = make_character(user=user, carrying_capacity=15)
+    existing = make_item(character=char, weight=10.0, quantity=1)
+    db_session.add_all([user, char, existing])
+    await db_session.flush()
+
+    body = {
+        "name": "Heavy Shield",
+        "item_type": "armor",
+        "weight": 6.0,
+        "value": 10,
+        "quantity": 1,
+    }
+    resp = await client.post(_inv_url(char.id, "/add"), json=body)
+    assert resp.status_code == 400
+    assert "capacity" in resp.json()["detail"].lower()
+
+
+async def test_add_item_equipped_true(client, db_session):
+    """Add an item that is immediately equipped."""
+    user = make_user()
+    char = make_character(user=user)
+    db_session.add_all([user, char])
+    await db_session.flush()
+
+    body = {
+        "name": "Shield",
+        "item_type": "armor",
+        "weight": 6.0,
+        "value": 10,
+        "equipped": True,
+    }
+    resp = await client.post(_inv_url(char.id, "/add"), json=body)
+    assert resp.status_code == 201
+    assert resp.json()["equipped"] is True
+
+
+async def test_add_item_memory_capture_with_session(client, db_session):
+    """When a GameSession exists for the character, memory capture is invoked."""
+    user = make_user()
+    char = make_character(user=user)
+    session = make_session(user=user, character=char, is_active=True)
+    db_session.add_all([user, char, session])
+    await db_session.flush()
+
+    with patch(
+        "app.api.v1.endpoints.inventory.MemoryCaptureService.capture_loot",
+        new_callable=AsyncMock,
+    ) as mock_loot:
+        body = {
+            "name": "Golden Ring",
+            "item_type": "misc",
+            "weight": 0.1,
+            "value": 100,
+            "quantity": 1,
+        }
+        resp = await client.post(_inv_url(char.id, "/add"), json=body)
+        assert resp.status_code == 201
+        mock_loot.assert_awaited_once()
+        call_kwargs = mock_loot.call_args
+        assert (
+            "Golden Ring" in call_kwargs.kwargs.get("items", call_kwargs[1].get("items", [""]))[0]
+        )
+
+
+async def test_add_item_memory_capture_failure_still_succeeds(client, db_session):
+    """If memory capture raises, the item is still created successfully."""
+    user = make_user()
+    char = make_character(user=user)
+    session = make_session(user=user, character=char, is_active=True)
+    db_session.add_all([user, char, session])
+    await db_session.flush()
+
+    with patch(
+        "app.api.v1.endpoints.inventory.MemoryCaptureService.capture_loot",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("Redis down"),
+    ):
+        body = {
+            "name": "Broken Amulet",
+            "item_type": "misc",
+            "weight": 0.2,
+            "value": 5,
+            "quantity": 1,
+        }
+        resp = await client.post(_inv_url(char.id, "/add"), json=body)
+        assert resp.status_code == 201
+        assert resp.json()["name"] == "Broken Amulet"
+
+
 # ===========================================================================
 # GET /api/v1/characters/{character_id}/inventory
 # ===========================================================================
@@ -195,6 +288,38 @@ async def test_get_inventory_character_not_found(client, db_session):
     assert resp.status_code == 404
 
 
+async def test_get_inventory_weight_percentage(client, db_session):
+    """Verify weight_percentage is calculated correctly."""
+    user = make_user()
+    char = make_character(user=user, carrying_capacity=100)
+    item = make_item(character=char, weight=25.0, quantity=2)  # 50 lbs total
+    db_session.add_all([user, char, item])
+    await db_session.flush()
+
+    resp = await client.get(_inv_url(char.id))
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["current_weight"] == 50.0
+    assert data["weight_percentage"] == pytest.approx(50.0)
+
+
+async def test_get_inventory_filter_by_type_and_equipped(client, db_session):
+    """Combine both item_type and equipped filters."""
+    user = make_user()
+    char = make_character(user=user)
+    i1 = make_item(character=char, name="Equipped Sword", item_type="weapon", equipped=True)
+    i2 = make_item(character=char, name="Stashed Sword", item_type="weapon", equipped=False)
+    i3 = make_item(character=char, name="Worn Armor", item_type="armor", equipped=True)
+    db_session.add_all([user, char, i1, i2, i3])
+    await db_session.flush()
+
+    resp = await client.get(_inv_url(char.id) + "?item_type=weapon&equipped=true")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["items"]) == 1
+    assert data["items"][0]["name"] == "Equipped Sword"
+
+
 # ===========================================================================
 # PATCH /api/v1/characters/{char}/inventory/{item}/equip
 # ===========================================================================
@@ -231,6 +356,19 @@ async def test_toggle_equip_not_found(client, db_session):
     await db_session.flush()
 
     resp = await client.patch(_inv_url(char.id, f"/{uuid.uuid4()}/equip"))
+    assert resp.status_code == 404
+
+
+async def test_toggle_equip_wrong_character(client, db_session):
+    """Item belongs to char1 but request uses char2's ID → 404."""
+    user = make_user()
+    char1 = make_character(user=user)
+    char2 = make_character(user=user)
+    item = make_item(character=char1, equipped=False)
+    db_session.add_all([user, char1, char2, item])
+    await db_session.flush()
+
+    resp = await client.patch(_inv_url(char2.id, f"/{item.id}/equip"))
     assert resp.status_code == 404
 
 
@@ -285,6 +423,48 @@ async def test_update_item_not_found(client, db_session):
     assert resp.status_code == 404
 
 
+async def test_update_item_equipped_field(client, db_session):
+    """Update only the equipped field via PATCH."""
+    user = make_user()
+    char = make_character(user=user)
+    item = make_item(character=char, equipped=False)
+    db_session.add_all([user, char, item])
+    await db_session.flush()
+
+    resp = await client.patch(_inv_url(char.id, f"/{item.id}"), json={"equipped": True})
+    assert resp.status_code == 200
+    assert resp.json()["equipped"] is True
+
+
+async def test_update_item_multiple_fields(client, db_session):
+    """Update quantity, equipped, and properties in one request."""
+    user = make_user()
+    char = make_character(user=user)
+    item = make_item(character=char, quantity=1, equipped=False)
+    db_session.add_all([user, char, item])
+    await db_session.flush()
+
+    body = {"quantity": 3, "equipped": True, "properties": {"enchanted": True}}
+    resp = await client.patch(_inv_url(char.id, f"/{item.id}"), json=body)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["quantity"] == 3
+    assert data["equipped"] is True
+    assert data["properties"]["enchanted"] is True
+
+
+async def test_update_item_negative_quantity_rejected(client, db_session):
+    """Negative quantity is rejected by schema validation (quantity >= 0)."""
+    user = make_user()
+    char = make_character(user=user)
+    item = make_item(character=char, quantity=2)
+    db_session.add_all([user, char, item])
+    await db_session.flush()
+
+    resp = await client.patch(_inv_url(char.id, f"/{item.id}"), json={"quantity": -1})
+    assert resp.status_code == 422
+
+
 # ===========================================================================
 # DELETE /api/v1/characters/{char}/inventory/{item}
 # ===========================================================================
@@ -332,3 +512,16 @@ async def test_add_multiple_items_weight_tracking(client, db_session):
     data = resp.json()
     assert len(data["items"]) == 2
     assert data["current_weight"] == 9.0
+
+
+async def test_delete_item_wrong_character(client, db_session):
+    """Deleting an item that belongs to another character returns 404."""
+    user = make_user()
+    char1 = make_character(user=user)
+    char2 = make_character(user=user)
+    item = make_item(character=char1)
+    db_session.add_all([user, char1, char2, item])
+    await db_session.flush()
+
+    resp = await client.delete(_inv_url(char2.id, f"/{item.id}"))
+    assert resp.status_code == 404
