@@ -65,6 +65,14 @@ def _make_app() -> FastAPI:
     async def _logout():
         return {"ok": True}
 
+    @app.post("/api/v1/auth/forgot-password")
+    async def _forgot_password():
+        return {"ok": True}
+
+    @app.post("/api/v1/auth/reset-password")
+    async def _reset_password():
+        return {"ok": True}
+
     @app.post("/test/")
     async def _post_trailing():
         return {"ok": True}
@@ -214,6 +222,20 @@ class TestCSRFMiddlewareDispatch:
         app = _make_app()
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.post("/api/v1/auth/logout")
+            assert resp.status_code == 200
+
+    async def test_exempt_path_forgot_password(self):
+        """Forgot-password is public/unauthenticated — no CSRF cookie yet."""
+        app = _make_app()
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/v1/auth/forgot-password")
+            assert resp.status_code == 200
+
+    async def test_exempt_path_reset_password(self):
+        """Reset-password uses a one-time token from email, not session-based."""
+        app = _make_app()
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/api/v1/auth/reset-password")
             assert resp.status_code == 200
 
     async def test_trailing_slash_normalised(self):
