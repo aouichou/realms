@@ -4,12 +4,14 @@ Implements AIProvider interface for Together.ai API (OpenAI-compatible)
 Wide model selection with $25 one-time credits (never expires)
 """
 
+import time
 from typing import Any, Dict, List
 
 from openai import APIError, AsyncOpenAI
 from openai import RateLimitError as OpenAIRateLimitError
 
 from app.observability.logger import get_logger
+from app.observability.metrics import metrics
 from app.services.ai_provider import (
     AIProvider,
     ProviderStatus,
@@ -93,6 +95,7 @@ class TogetherProvider(AIProvider):
             ProviderUnavailableError: If the API is unavailable
             RateLimitError: If rate limit is exceeded
         """
+        start_time = time.time()
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -106,21 +109,41 @@ class TogetherProvider(AIProvider):
             if not content:
                 raise ProviderUnavailableError("Together.ai returned empty response")
 
+            duration = time.time() - start_time
+            prompt_t = (
+                int(getattr(response.usage, "prompt_tokens", 0) or 0) if response.usage else 0
+            )
+            completion_t = (
+                int(getattr(response.usage, "completion_tokens", 0) or 0) if response.usage else 0
+            )
+            metrics.record_llm_request(
+                model=self.model,
+                status="success",
+                duration=duration,
+                prompt_tokens=prompt_t,
+                completion_tokens=completion_t,
+            )
             self.set_status(ProviderStatus.AVAILABLE)
             return content
 
         except OpenAIRateLimitError as e:
+            duration = time.time() - start_time
+            metrics.record_llm_request(model=self.model, status="error", duration=duration)
             logger.warning(f"Together.ai rate limit exceeded: {e}")
             self.set_status(ProviderStatus.RATE_LIMITED, str(e))
             retry_after = getattr(e, "retry_after", None) or 3600  # Default 1 hour
             raise RateLimitError(str(e), retry_after=retry_after)
 
         except APIError as e:
+            duration = time.time() - start_time
+            metrics.record_llm_request(model=self.model, status="error", duration=duration)
             logger.error(f"Together.ai API error: {e}")
             self.set_status(ProviderStatus.ERROR, str(e))
             raise ProviderUnavailableError(f"Together.ai provider error: {str(e)}")
 
         except Exception as e:
+            duration = time.time() - start_time
+            metrics.record_llm_request(model=self.model, status="error", duration=duration)
             logger.error(f"Unexpected Together.ai error: {e}")
             self.set_status(ProviderStatus.ERROR, str(e))
             raise ProviderUnavailableError(f"Together.ai provider error: {str(e)}")

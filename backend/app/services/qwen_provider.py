@@ -3,12 +3,14 @@ Qwen (Alibaba Cloud DashScope) Provider
 Implements AIProvider interface for Alibaba Cloud Qwen models via OpenAI-compatible API
 """
 
+import time
 from typing import Any, Dict, List
 
 from openai import APIError, AsyncOpenAI
 from openai import RateLimitError as OpenAIRateLimitError
 
 from app.observability.logger import get_logger
+from app.observability.metrics import metrics
 from app.services.ai_provider import (
     AIProvider,
     ProviderStatus,
@@ -97,6 +99,7 @@ class QwenProvider(AIProvider):
             ProviderUnavailableError: If the API is unavailable
             RateLimitError: If rate limit is exceeded
         """
+        start_time = time.time()
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -110,10 +113,26 @@ class QwenProvider(AIProvider):
             if not content:
                 raise ProviderUnavailableError("Qwen returned empty response")
 
+            duration = time.time() - start_time
+            prompt_t = (
+                int(getattr(response.usage, "prompt_tokens", 0) or 0) if response.usage else 0
+            )
+            completion_t = (
+                int(getattr(response.usage, "completion_tokens", 0) or 0) if response.usage else 0
+            )
+            metrics.record_llm_request(
+                model=self.model,
+                status="success",
+                duration=duration,
+                prompt_tokens=prompt_t,
+                completion_tokens=completion_t,
+            )
             self.set_status(ProviderStatus.AVAILABLE)
             return content
 
         except OpenAIRateLimitError as e:
+            duration = time.time() - start_time
+            metrics.record_llm_request(model=self.model, status="error", duration=duration)
             logger.warning(f"Qwen rate limit exceeded: {e}")
             self.set_status(ProviderStatus.RATE_LIMITED, str(e))
             # Extract retry_after from headers if available
@@ -121,11 +140,15 @@ class QwenProvider(AIProvider):
             raise RateLimitError(str(e), retry_after=retry_after)
 
         except APIError as e:
+            duration = time.time() - start_time
+            metrics.record_llm_request(model=self.model, status="error", duration=duration)
             logger.error(f"Qwen API error: {e}")
             self.set_status(ProviderStatus.ERROR, str(e))
             raise ProviderUnavailableError(f"Qwen API error: {e}")
 
         except Exception as e:
+            duration = time.time() - start_time
+            metrics.record_llm_request(model=self.model, status="error", duration=duration)
             logger.error(f"Unexpected Qwen error: {e}")
             self.set_status(ProviderStatus.ERROR, str(e))
             raise ProviderUnavailableError(f"Qwen error: {e}")

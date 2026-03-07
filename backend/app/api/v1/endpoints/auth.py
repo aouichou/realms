@@ -19,6 +19,7 @@ from app.db.base import get_db
 from app.db.models import User
 from app.middleware.auth import get_current_user
 from app.middleware.csrf import generate_csrf_token, set_csrf_cookie
+from app.observability.metrics import metrics
 from app.schemas.auth import (
     ClaimGuestAccount,
     GuestTokenResponse,
@@ -91,6 +92,7 @@ async def login(login_data: UserLogin, response: Response, db: AsyncSession = De
     """
     user = await authenticate_user(db, login_data.email, login_data.password)
     # authenticate_user raises HTTPException on failure (401 or 423)
+    metrics.record_auth_attempt(success=True)
 
     # Generate tokens
     access_token = create_access_token(data={"sub": str(user.id)})

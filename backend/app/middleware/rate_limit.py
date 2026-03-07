@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.observability.logger import get_logger
+from app.observability.metrics import metrics as app_metrics
 from app.services.redis_service import session_service
 
 logger = get_logger(__name__)
@@ -338,6 +339,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 # Check if blocked
                 if await self._redis_is_blocked(r, identifier):
                     logger.warning(f"Blocked client attempted request: {identifier}")
+                    client_type = "user" if identifier.startswith("user:") else "ip"
+                    app_metrics.record_rate_limit_violation(client_type, blocked=True)
                     return JSONResponse(
                         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                         content={
@@ -363,6 +366,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                             "method": request.method,
                         },
                     )
+                    client_type = "user" if identifier.startswith("user:") else "ip"
+                    app_metrics.record_rate_limit_violation(client_type, blocked="burst" in reason)
                     return JSONResponse(
                         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                         content={
@@ -405,6 +410,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         if self._mem_is_blocked(identifier):
             logger.warning(f"Blocked client attempted request: {identifier}")
+            client_type = "user" if identifier.startswith("user:") else "ip"
+            app_metrics.record_rate_limit_violation(client_type, blocked=True)
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 content={
@@ -427,6 +434,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "method": request.method,
                 },
             )
+            client_type = "user" if identifier.startswith("user:") else "ip"
+            app_metrics.record_rate_limit_violation(client_type, blocked="burst" in reason)
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 content={
