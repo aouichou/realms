@@ -189,7 +189,7 @@ async def apply_indexes():
     # Import here to avoid issues when just printing report
     from sqlalchemy import text
 
-    from app.db.base import async_engine
+    from app.db.base import async_engine  # type: ignore
 
     print("\n🚀 Applying indexes...")
     print("   Using CONCURRENTLY mode (no table locks)\n")
