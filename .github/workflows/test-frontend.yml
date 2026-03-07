@@ -128,7 +128,7 @@ jobs:
       - run: npm ci
 
       - name: Download build
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v7
         with:
           name: nextjs-build
           path: frontend/.next/
