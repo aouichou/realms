@@ -11,6 +11,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.observability.logger import get_logger
+from app.observability.metrics import metrics
 
 logger = get_logger(__name__)
 
@@ -45,6 +46,11 @@ class QueryPerformanceMonitor:
         @event.listens_for(Engine, "after_cursor_execute")
         def after_cursor_execute(conn, _cursor, statement, _parameters, _context, _executemany):
             total = time.time() - conn.info["query_start_time"].pop()
+
+            # Determine SQL operation type for metrics
+            op = statement.strip().split()[0].upper() if statement.strip() else "UNKNOWN"
+            if op in ("SELECT", "INSERT", "UPDATE", "DELETE"):
+                metrics.record_db_query(operation=op, duration=total)
 
             # Log slow queries
             if total > QueryPerformanceMonitor.VERY_SLOW_QUERY_THRESHOLD:

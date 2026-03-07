@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.pii_encryption import create_blind_index, encrypt_pii
 from app.core.security import get_password_hash, verify_password
 from app.db.models import User
+from app.observability.metrics import metrics
 from app.services.redis_service import session_service
 
 # Lockout configuration
@@ -169,6 +170,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     # Check lockout
     is_locked, lockout_remaining = await _check_lockout(email)
     if is_locked:
+        metrics.record_auth_attempt(success=False)
         raise HTTPException(
             status_code=status.HTTP_423_LOCKED,
             detail={
@@ -186,6 +188,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
 
     if not user or not user.password_hash or not verify_password(password, user.password_hash):
         # Record failure (even for non-existent users — prevent enumeration)
+        metrics.record_auth_attempt(success=False)
         remaining, lockout_duration = await _record_failed_attempt(email)
 
         detail: dict = {

@@ -337,11 +337,10 @@ Style Requirements:
                 elif isinstance(chunk, ImageURLChunk):
                     image_url_value = chunk.image_url
                     # image_url can be an ImageURL object or a plain str
-                    url = (
-                        image_url_value.url
-                        if hasattr(image_url_value, "url")
-                        else str(image_url_value)
-                    )
+                    if isinstance(image_url_value, str):
+                        url = image_url_value
+                    else:
+                        url = str(getattr(image_url_value, "url", image_url_value))
                     logger.info(f"Downloading image from URL: {url[:120]}...")
                     try:
                         async with httpx.AsyncClient(timeout=30) as http:

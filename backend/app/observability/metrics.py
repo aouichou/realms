@@ -270,6 +270,9 @@ class MetricsCollector:
         # OTel instruments (initialized lazily via init_otel_instruments)
         self._otel_enabled = False
         self._otel = {}
+        # Track previous values for OTel UpDownCounter delta calculation
+        self._prev_active_sessions = 0
+        self._prev_active_conversations = 0
 
     def init_otel_instruments(self):
         """Initialize OpenTelemetry metric instruments for dual-write."""
@@ -279,41 +282,47 @@ class MetricsCollector:
 
         self._otel = {
             "http_requests": meter.create_counter(
-                "http.requests", description="Total HTTP requests", unit="1"
+                "http_requests", description="Total HTTP requests", unit="1"
             ),
             "http_duration": meter.create_histogram(
-                "http.request.duration", description="HTTP request duration", unit="s"
+                "http_request_duration", description="HTTP request duration", unit="s"
             ),
             "llm_requests": meter.create_counter(
-                "llm.requests", description="Total LLM API requests", unit="1"
+                "llm_requests", description="Total LLM API requests", unit="1"
             ),
             "llm_tokens": meter.create_counter(
-                "llm.tokens.used", description="Total tokens used", unit="1"
+                "llm_tokens_used", description="Total tokens used", unit="1"
             ),
             "llm_duration": meter.create_histogram(
-                "llm.request.duration", description="LLM request duration", unit="s"
+                "llm_request_duration", description="LLM request duration", unit="s"
             ),
             "db_duration": meter.create_histogram(
-                "db.query.duration", description="Database query duration", unit="s"
+                "db_query_duration", description="Database query duration", unit="s"
             ),
             "errors": meter.create_counter("errors", description="Total errors by type", unit="1"),
             "rate_limit_exceeded": meter.create_counter(
-                "rate_limit.exceeded", description="Rate limit violations", unit="1"
+                "rate_limit_exceeded", description="Rate limit violations", unit="1"
+            ),
+            "rate_limit_blocks": meter.create_counter(
+                "rate_limit_blocks", description="Rate limit blocks (DDoS)", unit="1"
             ),
             "auth_attempts": meter.create_counter(
-                "auth.attempts", description="Authentication attempts", unit="1"
+                "auth_attempts", description="Authentication attempts", unit="1"
             ),
             "image_generations": meter.create_counter(
-                "image.generations", description="Image generations", unit="1"
+                "image_generations", description="Image generations", unit="1"
             ),
             "image_gen_duration": meter.create_histogram(
-                "image.generation.duration", description="Image generation time", unit="s"
+                "image_generation_duration", description="Image generation time", unit="s"
             ),
             "active_sessions": meter.create_up_down_counter(
-                "sessions.active", description="Active user sessions", unit="1"
+                "active_sessions", description="Active user sessions", unit="1"
+            ),
+            "active_conversations": meter.create_up_down_counter(
+                "active_conversations", description="Active AI conversations", unit="1"
             ),
             "character_creations": meter.create_counter(
-                "character.creations", description="Characters created", unit="1"
+                "character_creations", description="Characters created", unit="1"
             ),
         }
         self._otel_enabled = True
@@ -323,7 +332,7 @@ class MetricsCollector:
         http_requests_total.labels(method=method, endpoint=endpoint, status=status).inc()
         http_request_duration_seconds.labels(method=method, endpoint=endpoint).observe(duration)
         if self._otel_enabled:
-            attrs = {"http.method": method, "http.route": endpoint, "http.status_code": status}
+            attrs = {"method": method, "endpoint": endpoint, "status": str(status)}
             self._otel["http_requests"].add(1, attrs)
             self._otel["http_duration"].record(duration, attrs)
 
@@ -342,17 +351,20 @@ class MetricsCollector:
         llm_tokens_used.labels(model=model, type="completion").inc(completion_tokens)
         llm_tokens_used.labels(model=model, type="total").inc(prompt_tokens + completion_tokens)
         if self._otel_enabled:
-            attrs = {"llm.model": model, "llm.status": status}
+            attrs = {"model": model, "status": status}
             self._otel["llm_requests"].add(1, attrs)
             self._otel["llm_duration"].record(duration, attrs)
-            self._otel["llm_tokens"].add(prompt_tokens, {**attrs, "token.type": "prompt"})
-            self._otel["llm_tokens"].add(completion_tokens, {**attrs, "token.type": "completion"})
+            self._otel["llm_tokens"].add(prompt_tokens, {**attrs, "type": "prompt"})
+            self._otel["llm_tokens"].add(completion_tokens, {**attrs, "type": "completion"})
+            self._otel["llm_tokens"].add(
+                prompt_tokens + completion_tokens, {**attrs, "type": "total"}
+            )
 
     def record_db_query(self, operation: str, duration: float):
         """Record database query metrics"""
         db_query_duration_seconds.labels(operation=operation).observe(duration)
         if self._otel_enabled:
-            self._otel["db_duration"].record(duration, {"db.operation": operation})
+            self._otel["db_duration"].record(duration, {"operation": operation})
 
     def record_redis_operation(
         self, operation: str, status: str, is_cache: bool = False, hit: bool = False
@@ -369,7 +381,7 @@ class MetricsCollector:
         """Record error metrics"""
         errors_total.labels(error_type=error_type, endpoint=endpoint).inc()
         if self._otel_enabled:
-            self._otel["errors"].add(1, {"error.type": error_type, "http.route": endpoint})
+            self._otel["errors"].add(1, {"error_type": error_type, "endpoint": endpoint})
 
     def record_rate_limit_violation(self, client_type: str, blocked: bool = False):
         """Record rate limiting metrics"""
@@ -377,16 +389,16 @@ class MetricsCollector:
         if blocked:
             rate_limit_blocks_total.inc()
         if self._otel_enabled:
-            self._otel["rate_limit_exceeded"].add(
-                1, {"client.type": client_type, "blocked": str(blocked)}
-            )
+            self._otel["rate_limit_exceeded"].add(1, {"client_type": client_type})
+            if blocked:
+                self._otel["rate_limit_blocks"].add(1)
 
     def record_auth_attempt(self, success: bool):
         """Record authentication attempt"""
         status = "success" if success else "failure"
         auth_attempts_total.labels(status=status).inc()
         if self._otel_enabled:
-            self._otel["auth_attempts"].add(1, {"auth.status": status})
+            self._otel["auth_attempts"].add(1, {"status": status})
 
     def record_dm_narration(self, duration: float, has_roll: bool, language: str):
         """Record DM narration metrics"""
@@ -402,7 +414,7 @@ class MetricsCollector:
         character_creations_total.labels(character_class=character_class, race=race).inc()
         if self._otel_enabled:
             self._otel["character_creations"].add(
-                1, {"character.class": character_class, "character.race": race}
+                1, {"character_class": character_class, "race": race}
             )
 
     def set_active_connections(self, count: int):
@@ -412,10 +424,18 @@ class MetricsCollector:
     def set_active_sessions(self, count: int):
         """Set active sessions gauge"""
         active_sessions.set(count)
+        if self._otel_enabled:
+            delta = count - self._prev_active_sessions
+            self._prev_active_sessions = count
+            self._otel["active_sessions"].add(delta)
 
     def set_active_conversations(self, count: int):
         """Set active conversations gauge"""
         active_conversations.set(count)
+        if self._otel_enabled:
+            delta = count - self._prev_active_conversations
+            self._prev_active_conversations = count
+            self._otel["active_conversations"].add(delta)
 
     def record_companion_response(self, companion_name: str, status: str, duration: float):
         """Record companion AI response metrics"""
@@ -471,7 +491,7 @@ class MetricsCollector:
         if duration is not None:
             image_generation_duration_seconds.observe(duration)
         if self._otel_enabled:
-            attrs = {"image.status": status, "image.source": source}
+            attrs = {"status": status, "source": source}
             self._otel["image_generations"].add(1, attrs)
             if duration is not None:
                 self._otel["image_gen_duration"].record(duration, attrs)

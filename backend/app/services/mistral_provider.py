@@ -125,7 +125,19 @@ class MistralProvider(AIProvider):
                     self._last_usage = None
 
             duration = time.time() - start_time
-            metrics.record_llm_request(model=model, status="success", duration=duration)
+            prompt_t = (
+                int(getattr(response.usage, "prompt_tokens", 0) or 0) if response.usage else 0
+            )
+            completion_t = (
+                int(getattr(response.usage, "completion_tokens", 0) or 0) if response.usage else 0
+            )
+            metrics.record_llm_request(
+                model=model,
+                status="success",
+                duration=duration,
+                prompt_tokens=prompt_t,
+                completion_tokens=completion_t,
+            )
             self.set_status(ProviderStatus.AVAILABLE)
 
             content = response.choices[0].message.content
@@ -215,7 +227,19 @@ class MistralProvider(AIProvider):
                     self._last_usage = None
 
             duration = time.time() - start_time
-            metrics.record_llm_request(model=model, status="success", duration=duration)
+            prompt_t = (
+                int(getattr(response.usage, "prompt_tokens", 0) or 0) if response.usage else 0
+            )
+            completion_t = (
+                int(getattr(response.usage, "completion_tokens", 0) or 0) if response.usage else 0
+            )
+            metrics.record_llm_request(
+                model=model,
+                status="success",
+                duration=duration,
+                prompt_tokens=prompt_t,
+                completion_tokens=completion_t,
+            )
             self.set_status(ProviderStatus.AVAILABLE)
 
             content = response.choices[0].message.content
@@ -352,7 +376,14 @@ class MistralProvider(AIProvider):
                         }
 
             duration = time.time() - start_time
-            metrics.record_llm_request(model=model, status="success", duration=duration)
+            usage = self._last_usage or {}
+            metrics.record_llm_request(
+                model=model,
+                status="success",
+                duration=duration,
+                prompt_tokens=usage.get("prompt_tokens", 0) or 0,
+                completion_tokens=usage.get("completion_tokens", 0) or 0,
+            )
             self.set_status(ProviderStatus.AVAILABLE)
 
         except Exception as e:
