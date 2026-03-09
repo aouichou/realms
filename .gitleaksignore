@@ -1,0 +1,9 @@
+# Test-only CI encryption key (base64 of "test-encryption-key-for-ci-only")
+a809efc3f89f852cf32c1c78d27eefce5cddce36:.github/workflows/test-backend.yml:generic-api-key:91
+a809efc3f89f852cf32c1c78d27eefce5cddce36:.github/workflows/test-backend.yml:generic-api-key:172
+3de03faafdbc3f7b6e1eaf0a10765bf12abb3971:.github/workflows/test-backend.yml:generic-api-key:91
+3de03faafdbc3f7b6e1eaf0a10765bf12abb3971:.github/workflows/test-backend.yml:generic-api-key:172
+
+# Local dev Grafana default credentials in observability test script
+7c374c5f0ba858896ce4a0e8ac48fba25a5acf22:scripts/test-observability.sh:curl-auth-user:54
+7c374c5f0ba858896ce4a0e8ac48fba25a5acf22:scripts/test-observability.sh:curl-auth-user:63
