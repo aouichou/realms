@@ -3,6 +3,7 @@ Character progression and leveling API endpoints
 """
 
 from typing import Dict
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -86,7 +87,7 @@ def can_level_up(xp: int, current_level: int) -> bool:
 
 @router.post("/characters/{character_id}/add-xp")
 async def add_experience(
-    character_id: int,
+    character_id: UUID,
     request: AddXPRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -96,7 +97,7 @@ async def add_experience(
     Returns updated XP and whether character can level up
     """
     character = db.query(Character).filter(Character.id == character_id).first()
-    if not character:
+    if not character or character.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Character not found")
 
     # Add XP
@@ -119,7 +120,7 @@ async def add_experience(
 
 @router.get("/characters/{character_id}/xp-progress")
 async def get_xp_progress(
-    character_id: int,
+    character_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -127,7 +128,7 @@ async def get_xp_progress(
     Get character's XP progress and leveling information
     """
     character = db.query(Character).filter(Character.id == character_id).first()
-    if not character:
+    if not character or character.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Character not found")
 
     current_level_xp = get_xp_for_level(character.level)
@@ -153,7 +154,7 @@ async def get_xp_progress(
 
 @router.post("/characters/{character_id}/level-up")
 async def level_up_character(
-    character_id: int,
+    character_id: UUID,
     request: LevelUpRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -163,7 +164,7 @@ async def level_up_character(
     Grants HP increase, updates proficiency bonus, updates spell slots
     """
     character = db.query(Character).filter(Character.id == character_id).first()
-    if not character:
+    if not character or character.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Character not found")
 
     # Check if can level up

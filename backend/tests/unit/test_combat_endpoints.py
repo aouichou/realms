@@ -49,12 +49,11 @@ async def _patch_commit(db_session):
 # ===========================================================================
 
 
-async def _seed_session_and_character(db_session):
+async def _seed_session_and_character(db_session, user):
     """Create a user, character, and session for combat tests."""
-    user = make_user()
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
     return user, char, session
 
@@ -65,8 +64,9 @@ async def _seed_session_and_character(db_session):
 
 
 @pytest.mark.asyncio
-async def test_start_combat_happy_path(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_start_combat_happy_path(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     body = {
         "session_id": str(session.id),
         "participants": [
@@ -90,7 +90,7 @@ async def test_start_combat_happy_path(client, db_session, auth_headers):
             },
         ],
     }
-    resp = await client.post("/api/v1/combat/start", json=body, headers=auth_headers)
+    resp = await client.post("/api/v1/combat/start", json=body, headers=headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["is_active"] is True
@@ -99,20 +99,22 @@ async def test_start_combat_happy_path(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_start_combat_session_not_found(client, db_session, auth_headers):
+async def test_start_combat_session_not_found(client, db_session, auth_user):
+    user, headers = auth_user
     body = {
         "session_id": str(uuid.uuid4()),
         "participants": [
             {"name": "X", "initiative": 1, "hp_current": 1, "hp_max": 1, "ac": 10},
         ],
     }
-    resp = await client.post("/api/v1/combat/start", json=body, headers=auth_headers)
+    resp = await client.post("/api/v1/combat/start", json=body, headers=headers)
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_start_combat_already_active(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_start_combat_already_active(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     combat = make_combat(session=session, is_active=True)
     db_session.add(combat)
     await db_session.flush()
@@ -123,16 +125,17 @@ async def test_start_combat_already_active(client, db_session, auth_headers):
             {"name": "Player", "initiative": 10, "hp_current": 12, "hp_max": 12, "ac": 16},
         ],
     }
-    resp = await client.post("/api/v1/combat/start", json=body, headers=auth_headers)
+    resp = await client.post("/api/v1/combat/start", json=body, headers=headers)
     assert resp.status_code == 400
     assert "already in progress" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_start_combat_with_character_id_dex_modifier(client, db_session, auth_headers):
+async def test_start_combat_with_character_id_dex_modifier(client, db_session, auth_user):
+    user, headers = auth_user
     """Start combat with a participant that has a character_id so the
     DEX-modifier branch is exercised (lines 73-76)."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     body = {
         "session_id": str(session.id),
         "participants": [
@@ -157,7 +160,7 @@ async def test_start_combat_with_character_id_dex_modifier(client, db_session, a
             },
         ],
     }
-    resp = await client.post("/api/v1/combat/start", json=body, headers=auth_headers)
+    resp = await client.post("/api/v1/combat/start", json=body, headers=headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["is_active"] is True
@@ -168,10 +171,11 @@ async def test_start_combat_with_character_id_dex_modifier(client, db_session, a
 
 
 @pytest.mark.asyncio
-async def test_start_combat_with_nonexistent_character_id(client, db_session, auth_headers):
+async def test_start_combat_with_nonexistent_character_id(client, db_session, auth_user):
+    user, headers = auth_user
     """character_id is supplied but resolves to no character — dex_modifier
     stays 0 (branch at line 75 is False)."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     body = {
         "session_id": str(session.id),
         "participants": [
@@ -187,16 +191,17 @@ async def test_start_combat_with_nonexistent_character_id(client, db_session, au
             },
         ],
     }
-    resp = await client.post("/api/v1/combat/start", json=body, headers=auth_headers)
+    resp = await client.post("/api/v1/combat/start", json=body, headers=headers)
     assert resp.status_code == 201
     data = resp.json()
     assert len(data["participants"]) == 1
 
 
 @pytest.mark.asyncio
-async def test_start_combat_initiative_sorting(client, db_session, auth_headers):
+async def test_start_combat_initiative_sorting(client, db_session, auth_user):
+    user, headers = auth_user
     """Verify participants are returned sorted by initiative (descending)."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
 
     # Use many participants to increase confidence the sort is correct
     body = {
@@ -206,7 +211,7 @@ async def test_start_combat_initiative_sorting(client, db_session, auth_headers)
             for i in range(4)
         ],
     }
-    resp = await client.post("/api/v1/combat/start", json=body, headers=auth_headers)
+    resp = await client.post("/api/v1/combat/start", json=body, headers=headers)
     assert resp.status_code == 201
     data = resp.json()
     initiatives = [p["initiative"] for p in data["participants"]]
@@ -219,13 +224,14 @@ async def test_start_combat_initiative_sorting(client, db_session, auth_headers)
 
 
 @pytest.mark.asyncio
-async def test_get_combat_status(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_get_combat_status(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     combat = make_combat(session=session)
     db_session.add(combat)
     await db_session.flush()
 
-    resp = await client.get(f"/api/v1/combat/{combat.id}/status", headers=auth_headers)
+    resp = await client.get(f"/api/v1/combat/{combat.id}/status", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["combat_id"] == str(combat.id)
@@ -233,15 +239,17 @@ async def test_get_combat_status(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_get_combat_status_not_found(client, db_session, auth_headers):
-    resp = await client.get(f"/api/v1/combat/{uuid.uuid4()}/status", headers=auth_headers)
+async def test_get_combat_status_not_found(client, db_session, auth_user):
+    user, headers = auth_user
+    resp = await client.get(f"/api/v1/combat/{uuid.uuid4()}/status", headers=headers)
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_get_combat_status_includes_current_participant(client, db_session, auth_headers):
+async def test_get_combat_status_includes_current_participant(client, db_session, auth_user):
+    user, headers = auth_user
     """Verify current_participant is populated from the participants list."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Alice",
@@ -266,21 +274,22 @@ async def test_get_combat_status_includes_current_participant(client, db_session
     db_session.add(combat)
     await db_session.flush()
 
-    resp = await client.get(f"/api/v1/combat/{combat.id}/status", headers=auth_headers)
+    resp = await client.get(f"/api/v1/combat/{combat.id}/status", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["current_participant"]["name"] == "Bob"
 
 
 @pytest.mark.asyncio
-async def test_get_combat_status_empty_participants(client, db_session, auth_headers):
+async def test_get_combat_status_empty_participants(client, db_session, auth_user):
+    user, headers = auth_user
     """When participants list is empty, current_participant should be None."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     combat = make_combat(session=session, participants=[], turn_order=[], current_turn=0)
     db_session.add(combat)
     await db_session.flush()
 
-    resp = await client.get(f"/api/v1/combat/{combat.id}/status", headers=auth_headers)
+    resp = await client.get(f"/api/v1/combat/{combat.id}/status", headers=headers)
     assert resp.status_code == 200
     assert resp.json()["current_participant"] is None
 
@@ -291,8 +300,9 @@ async def test_get_combat_status_empty_participants(client, db_session, auth_hea
 
 
 @pytest.mark.asyncio
-async def test_combat_action_attack(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_combat_action_attack(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -323,7 +333,7 @@ async def test_combat_action_attack(client, db_session, auth_headers):
     await db_session.flush()
 
     body = {"action_type": "attack", "target_index": 1, "damage": 5}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["success"] is True
@@ -332,8 +342,9 @@ async def test_combat_action_attack(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_combat_action_attack_no_target(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_combat_action_attack_no_target(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -350,15 +361,16 @@ async def test_combat_action_attack_no_target(client, db_session, auth_headers):
     await db_session.flush()
 
     body = {"action_type": "attack"}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 400
     assert "Target required" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_combat_action_attack_critical_hit(client, db_session, auth_headers):
+async def test_combat_action_attack_critical_hit(client, db_session, auth_user):
+    user, headers = auth_user
     """Force a natural 20 to exercise critical-hit branch (line ~225-229)."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Fighter",
@@ -387,7 +399,7 @@ async def test_combat_action_attack_critical_hit(client, db_session, auth_header
 
     with patch("app.api.v1.endpoints.combat.random.randint", return_value=20):
         body = {"action_type": "attack", "target_index": 1, "damage": 16}
-        resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["damage_dealt"] == 16
@@ -395,9 +407,10 @@ async def test_combat_action_attack_critical_hit(client, db_session, auth_header
 
 
 @pytest.mark.asyncio
-async def test_combat_action_attack_normal_hit(client, db_session, auth_headers):
+async def test_combat_action_attack_normal_hit(client, db_session, auth_user):
+    user, headers = auth_user
     """Force roll high enough to hit but not 20 — normal hit branch."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Fighter",
@@ -427,7 +440,7 @@ async def test_combat_action_attack_normal_hit(client, db_session, auth_headers)
     # Roll 15 + attack_bonus(5) = 20 >= AC 10 → hit (but not crit since roll != 20)
     with patch("app.api.v1.endpoints.combat.random.randint", return_value=15):
         body = {"action_type": "attack", "target_index": 1, "damage": 7}
-        resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["damage_dealt"] == 7
@@ -436,9 +449,10 @@ async def test_combat_action_attack_normal_hit(client, db_session, auth_headers)
 
 
 @pytest.mark.asyncio
-async def test_combat_action_attack_miss(client, db_session, auth_headers):
+async def test_combat_action_attack_miss(client, db_session, auth_user):
+    user, headers = auth_user
     """Force roll low enough to miss — miss branch."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Fighter",
@@ -468,7 +482,7 @@ async def test_combat_action_attack_miss(client, db_session, auth_headers):
     # Roll 1 + 5 = 6 < AC 25 → miss
     with patch("app.api.v1.endpoints.combat.random.randint", return_value=1):
         body = {"action_type": "attack", "target_index": 1}
-        resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["damage_dealt"] is None
@@ -476,8 +490,9 @@ async def test_combat_action_attack_miss(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_combat_action_dodge(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_combat_action_dodge(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -494,14 +509,15 @@ async def test_combat_action_dodge(client, db_session, auth_headers):
     await db_session.flush()
 
     body = {"action_type": "dodge"}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     assert "Dodge" in resp.json()["log_entry"]
 
 
 @pytest.mark.asyncio
-async def test_combat_action_use_item(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_combat_action_use_item(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -518,15 +534,16 @@ async def test_combat_action_use_item(client, db_session, auth_headers):
     await db_session.flush()
 
     body = {"action_type": "use_item"}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     assert resp.json()["healing_done"] is not None
 
 
 @pytest.mark.asyncio
-async def test_combat_action_use_item_with_explicit_healing(client, db_session, auth_headers):
+async def test_combat_action_use_item_with_explicit_healing(client, db_session, auth_user):
+    user, headers = auth_user
     """use_item with explicit damage= value used as healing amount."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Cleric",
@@ -543,7 +560,7 @@ async def test_combat_action_use_item_with_explicit_healing(client, db_session, 
     await db_session.flush()
 
     body = {"action_type": "use_item", "damage": 10}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["healing_done"] == 10
@@ -551,9 +568,10 @@ async def test_combat_action_use_item_with_explicit_healing(client, db_session, 
 
 
 @pytest.mark.asyncio
-async def test_combat_action_use_item_caps_at_max_hp(client, db_session, auth_headers):
+async def test_combat_action_use_item_caps_at_max_hp(client, db_session, auth_user):
+    user, headers = auth_user
     """Healing should not exceed hp_max."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Ranger",
@@ -570,15 +588,16 @@ async def test_combat_action_use_item_caps_at_max_hp(client, db_session, auth_he
     await db_session.flush()
 
     body = {"action_type": "use_item", "damage": 50}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     # healing_done reports the raw value, but HP is capped in the participant
     assert resp.json()["healing_done"] == 50
 
 
 @pytest.mark.asyncio
-async def test_combat_action_end_turn(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_combat_action_end_turn(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -595,34 +614,37 @@ async def test_combat_action_end_turn(client, db_session, auth_headers):
     await db_session.flush()
 
     body = {"action_type": "end_turn"}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     assert "ends their turn" in resp.json()["log_entry"]
 
 
 @pytest.mark.asyncio
-async def test_combat_action_not_found(client, db_session, auth_headers):
+async def test_combat_action_not_found(client, db_session, auth_user):
+    user, headers = auth_user
     body = {"action_type": "dodge"}
-    resp = await client.post(f"/api/v1/combat/{uuid.uuid4()}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{uuid.uuid4()}/action", json=body, headers=headers)
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_combat_action_not_active(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_combat_action_not_active(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     combat = make_combat(session=session, is_active=False)
     db_session.add(combat)
     await db_session.flush()
 
     body = {"action_type": "dodge"}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 400
     assert "not active" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_combat_action_cast_spell_with_target(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_combat_action_cast_spell_with_target(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Wizard",
@@ -650,16 +672,17 @@ async def test_combat_action_cast_spell_with_target(client, db_session, auth_hea
     await db_session.flush()
 
     body = {"action_type": "cast_spell", "target_index": 1, "damage": 8}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["damage_dealt"] == 8
 
 
 @pytest.mark.asyncio
-async def test_combat_action_cast_spell_without_target(client, db_session, auth_headers):
+async def test_combat_action_cast_spell_without_target(client, db_session, auth_user):
+    user, headers = auth_user
     """Cast spell with no target — only the base log entry, no damage."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Sorcerer",
@@ -676,7 +699,7 @@ async def test_combat_action_cast_spell_without_target(client, db_session, auth_
     await db_session.flush()
 
     body = {"action_type": "cast_spell"}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert "casts a spell" in data["log_entry"]
@@ -684,9 +707,10 @@ async def test_combat_action_cast_spell_without_target(client, db_session, auth_
 
 
 @pytest.mark.asyncio
-async def test_combat_action_dash(client, db_session, auth_headers):
+async def test_combat_action_dash(client, db_session, auth_user):
+    user, headers = auth_user
     """Exercise the DASH branch."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Rogue",
@@ -703,15 +727,16 @@ async def test_combat_action_dash(client, db_session, auth_headers):
     await db_session.flush()
 
     body = {"action_type": "dash"}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     assert "Dash" in resp.json()["log_entry"]
 
 
 @pytest.mark.asyncio
-async def test_combat_action_help(client, db_session, auth_headers):
+async def test_combat_action_help(client, db_session, auth_user):
+    user, headers = auth_user
     """Exercise the HELP branch."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Bard",
@@ -728,15 +753,16 @@ async def test_combat_action_help(client, db_session, auth_headers):
     await db_session.flush()
 
     body = {"action_type": "help"}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     assert "Help" in resp.json()["log_entry"]
 
 
 @pytest.mark.asyncio
-async def test_combat_action_unknown_type(client, db_session, auth_headers):
+async def test_combat_action_unknown_type(client, db_session, auth_user):
+    user, headers = auth_user
     """Exercise the else branch for an unrecognised action type."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Monk",
@@ -753,14 +779,15 @@ async def test_combat_action_unknown_type(client, db_session, auth_headers):
     await db_session.flush()
 
     body = {"action_type": "flurry_of_blows"}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     assert "flurry_of_blows" in resp.json()["log_entry"]
 
 
 @pytest.mark.asyncio
-async def test_combat_action_with_notes(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_combat_action_with_notes(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -777,15 +804,16 @@ async def test_combat_action_with_notes(client, db_session, auth_headers):
     await db_session.flush()
 
     body = {"action_type": "dash", "notes": "Running away!"}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
     assert "Running away!" in resp.json()["log_entry"]
 
 
 @pytest.mark.asyncio
-async def test_combat_action_advances_turn(client, db_session, auth_headers):
+async def test_combat_action_advances_turn(client, db_session, auth_user):
+    user, headers = auth_user
     """After an action, current_turn should advance by one."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "P1",
@@ -813,18 +841,19 @@ async def test_combat_action_advances_turn(client, db_session, auth_headers):
     await db_session.flush()
 
     body = {"action_type": "dodge"}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
 
     # After the action, check status shows turn advanced
-    status_resp = await client.get(f"/api/v1/combat/{combat.id}/status", headers=auth_headers)
+    status_resp = await client.get(f"/api/v1/combat/{combat.id}/status", headers=headers)
     assert status_resp.json()["current_turn"] == 1
 
 
 @pytest.mark.asyncio
-async def test_combat_action_round_wraps(client, db_session, auth_headers):
+async def test_combat_action_round_wraps(client, db_session, auth_user):
+    user, headers = auth_user
     """When the last participant acts, turn wraps to 0 and round increments."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Solo",
@@ -847,10 +876,10 @@ async def test_combat_action_round_wraps(client, db_session, auth_headers):
     await db_session.flush()
 
     body = {"action_type": "end_turn"}
-    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+    resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
 
-    status_resp = await client.get(f"/api/v1/combat/{combat.id}/status", headers=auth_headers)
+    status_resp = await client.get(f"/api/v1/combat/{combat.id}/status", headers=headers)
     data = status_resp.json()
     assert data["current_turn"] == 0
     assert data["round_number"] == 2
@@ -859,9 +888,10 @@ async def test_combat_action_round_wraps(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_combat_action_attack_reduces_target_hp_to_zero(client, db_session, auth_headers):
+async def test_combat_action_attack_reduces_target_hp_to_zero(client, db_session, auth_user):
+    user, headers = auth_user
     """Attack damage should not reduce HP below 0."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Fighter",
@@ -891,11 +921,11 @@ async def test_combat_action_attack_reduces_target_hp_to_zero(client, db_session
     # Force a hit with a lot of damage
     with patch("app.api.v1.endpoints.combat.random.randint", return_value=18):
         body = {"action_type": "attack", "target_index": 1, "damage": 50}
-        resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"/api/v1/combat/{combat.id}/action", json=body, headers=headers)
     assert resp.status_code == 200
 
     # Check HP didn't go below 0
-    status = await client.get(f"/api/v1/combat/{combat.id}/status", headers=auth_headers)
+    status = await client.get(f"/api/v1/combat/{combat.id}/status", headers=headers)
     target = status.json()["participants"][1]
     assert target["hp_current"] == 0
 
@@ -906,8 +936,9 @@ async def test_combat_action_attack_reduces_target_hp_to_zero(client, db_session
 
 
 @pytest.mark.asyncio
-async def test_end_combat(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_end_combat(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -937,7 +968,7 @@ async def test_end_combat(client, db_session, auth_headers):
         "capture_combat_event",
         new_callable=AsyncMock,
     ):
-        resp = await client.post(f"/api/v1/combat/{combat.id}/end", headers=auth_headers)
+        resp = await client.post(f"/api/v1/combat/{combat.id}/end", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["participants_survived"] == 1
@@ -946,15 +977,17 @@ async def test_end_combat(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_end_combat_not_found(client, db_session, auth_headers):
-    resp = await client.post(f"/api/v1/combat/{uuid.uuid4()}/end", headers=auth_headers)
+async def test_end_combat_not_found(client, db_session, auth_user):
+    user, headers = auth_user
+    resp = await client.post(f"/api/v1/combat/{uuid.uuid4()}/end", headers=headers)
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_end_combat_defeat_outcome(client, db_session, auth_headers):
+async def test_end_combat_defeat_outcome(client, db_session, auth_user):
+    user, headers = auth_user
     """All player characters defeated — memory capture records 'defeat'."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -982,7 +1015,7 @@ async def test_end_combat_defeat_outcome(client, db_session, auth_headers):
         "app.api.v1.endpoints.combat.MemoryCaptureService.capture_combat_event",
         mock_capture,
     ):
-        resp = await client.post(f"/api/v1/combat/{combat.id}/end", headers=auth_headers)
+        resp = await client.post(f"/api/v1/combat/{combat.id}/end", headers=headers)
 
     assert resp.status_code == 200
     data = resp.json()
@@ -997,9 +1030,10 @@ async def test_end_combat_defeat_outcome(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_end_combat_duration_calculated(client, db_session, auth_headers):
+async def test_end_combat_duration_calculated(client, db_session, auth_user):
+    user, headers = auth_user
     """When started_at is set, duration_seconds should be computed."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     started = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
     participants = [
         {
@@ -1019,7 +1053,7 @@ async def test_end_combat_duration_calculated(client, db_session, auth_headers):
         "app.api.v1.endpoints.combat.MemoryCaptureService.capture_combat_event",
         new_callable=AsyncMock,
     ):
-        resp = await client.post(f"/api/v1/combat/{combat.id}/end", headers=auth_headers)
+        resp = await client.post(f"/api/v1/combat/{combat.id}/end", headers=headers)
 
     assert resp.status_code == 200
     data = resp.json()
@@ -1029,9 +1063,10 @@ async def test_end_combat_duration_calculated(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_end_combat_duration_always_computed(client, db_session, auth_headers):
+async def test_end_combat_duration_always_computed(client, db_session, auth_user):
+    user, headers = auth_user
     """started_at is NOT NULL so duration_seconds is always computed."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -1050,7 +1085,7 @@ async def test_end_combat_duration_always_computed(client, db_session, auth_head
         "app.api.v1.endpoints.combat.MemoryCaptureService.capture_combat_event",
         new_callable=AsyncMock,
     ):
-        resp = await client.post(f"/api/v1/combat/{combat.id}/end", headers=auth_headers)
+        resp = await client.post(f"/api/v1/combat/{combat.id}/end", headers=headers)
 
     assert resp.status_code == 200
     assert resp.json()["duration_seconds"] is not None
@@ -1058,10 +1093,11 @@ async def test_end_combat_duration_always_computed(client, db_session, auth_head
 
 
 @pytest.mark.asyncio
-async def test_end_combat_memory_capture_failure_logged(client, db_session, auth_headers):
+async def test_end_combat_memory_capture_failure_logged(client, db_session, auth_user):
+    user, headers = auth_user
     """If MemoryCaptureService.capture_combat_event raises, it's caught
     and the endpoint still returns 200."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -1081,7 +1117,7 @@ async def test_end_combat_memory_capture_failure_logged(client, db_session, auth
         new_callable=AsyncMock,
         side_effect=RuntimeError("redis down"),
     ):
-        resp = await client.post(f"/api/v1/combat/{combat.id}/end", headers=auth_headers)
+        resp = await client.post(f"/api/v1/combat/{combat.id}/end", headers=headers)
 
     # Should still succeed — the error is caught
     assert resp.status_code == 200
@@ -1090,9 +1126,10 @@ async def test_end_combat_memory_capture_failure_logged(client, db_session, auth
 
 
 @pytest.mark.asyncio
-async def test_end_combat_all_survived(client, db_session, auth_headers):
+async def test_end_combat_all_survived(client, db_session, auth_user):
+    user, headers = auth_user
     """All participants alive — survived count equals total."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Paladin",
@@ -1119,7 +1156,7 @@ async def test_end_combat_all_survived(client, db_session, auth_headers):
         "app.api.v1.endpoints.combat.MemoryCaptureService.capture_combat_event",
         new_callable=AsyncMock,
     ):
-        resp = await client.post(f"/api/v1/combat/{combat.id}/end", headers=auth_headers)
+        resp = await client.post(f"/api/v1/combat/{combat.id}/end", headers=headers)
 
     assert resp.status_code == 200
     data = resp.json()
@@ -1135,8 +1172,9 @@ async def test_end_combat_all_survived(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_update_participant_hp_damage(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_update_participant_hp_damage(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -1154,7 +1192,7 @@ async def test_update_participant_hp_damage(client, db_session, auth_headers):
     resp = await client.patch(
         f"/api/v1/combat/{combat.id}/participants/0/hp",
         params={"hp_change": -5},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -1163,8 +1201,9 @@ async def test_update_participant_hp_damage(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_update_participant_hp_healing(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_update_participant_hp_healing(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -1182,7 +1221,7 @@ async def test_update_participant_hp_healing(client, db_session, auth_headers):
     resp = await client.patch(
         f"/api/v1/combat/{combat.id}/participants/0/hp",
         params={"hp_change": 4},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -1190,18 +1229,20 @@ async def test_update_participant_hp_healing(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_update_participant_hp_not_found(client, db_session, auth_headers):
+async def test_update_participant_hp_not_found(client, db_session, auth_user):
+    user, headers = auth_user
     resp = await client.patch(
         f"/api/v1/combat/{uuid.uuid4()}/participants/0/hp",
         params={"hp_change": -5},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_update_participant_hp_invalid_index(client, db_session, auth_headers):
-    user, char, session = await _seed_session_and_character(db_session)
+async def test_update_participant_hp_invalid_index(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -1219,16 +1260,17 @@ async def test_update_participant_hp_invalid_index(client, db_session, auth_head
     resp = await client.patch(
         f"/api/v1/combat/{combat.id}/participants/5/hp",
         params={"hp_change": -5},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 400
     assert "Invalid participant index" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_update_participant_hp_negative_index(client, db_session, auth_headers):
+async def test_update_participant_hp_negative_index(client, db_session, auth_user):
+    user, headers = auth_user
     """Negative participant index should be rejected."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -1246,16 +1288,17 @@ async def test_update_participant_hp_negative_index(client, db_session, auth_hea
     resp = await client.patch(
         f"/api/v1/combat/{combat.id}/participants/-1/hp",
         params={"hp_change": -5},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 400
     assert "Invalid participant index" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_update_participant_hp_floor_at_zero(client, db_session, auth_headers):
+async def test_update_participant_hp_floor_at_zero(client, db_session, auth_user):
+    user, headers = auth_user
     """Massive damage should floor HP at 0, not go negative."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -1273,16 +1316,17 @@ async def test_update_participant_hp_floor_at_zero(client, db_session, auth_head
     resp = await client.patch(
         f"/api/v1/combat/{combat.id}/participants/0/hp",
         params={"hp_change": -100},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 200
     assert resp.json()["participants"][0]["hp_current"] == 0
 
 
 @pytest.mark.asyncio
-async def test_update_participant_hp_cap_at_max(client, db_session, auth_headers):
+async def test_update_participant_hp_cap_at_max(client, db_session, auth_user):
+    user, headers = auth_user
     """Healing beyond hp_max should cap at hp_max."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Player",
@@ -1300,16 +1344,17 @@ async def test_update_participant_hp_cap_at_max(client, db_session, auth_headers
     resp = await client.patch(
         f"/api/v1/combat/{combat.id}/participants/0/hp",
         params={"hp_change": 100},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 200
     assert resp.json()["participants"][0]["hp_current"] == 12
 
 
 @pytest.mark.asyncio
-async def test_update_participant_hp_damage_log_entry(client, db_session, auth_headers):
+async def test_update_participant_hp_damage_log_entry(client, db_session, auth_user):
+    user, headers = auth_user
     """Damage produces a 'takes X damage' combat log entry."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Knight",
@@ -1327,7 +1372,7 @@ async def test_update_participant_hp_damage_log_entry(client, db_session, auth_h
     resp = await client.patch(
         f"/api/v1/combat/{combat.id}/participants/0/hp",
         params={"hp_change": -8},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 200
     log = resp.json()["combat_log"]
@@ -1336,9 +1381,10 @@ async def test_update_participant_hp_damage_log_entry(client, db_session, auth_h
 
 
 @pytest.mark.asyncio
-async def test_update_participant_hp_healing_log_entry(client, db_session, auth_headers):
+async def test_update_participant_hp_healing_log_entry(client, db_session, auth_user):
+    user, headers = auth_user
     """Healing produces a 'healed for X HP' combat log entry."""
-    user, char, session = await _seed_session_and_character(db_session)
+    user, char, session = await _seed_session_and_character(db_session, user)
     participants = [
         {
             "name": "Knight",
@@ -1356,7 +1402,7 @@ async def test_update_participant_hp_healing_log_entry(client, db_session, auth_
     resp = await client.patch(
         f"/api/v1/combat/{combat.id}/participants/0/hp",
         params={"hp_change": 5},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 200
     log = resp.json()["combat_log"]

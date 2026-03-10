@@ -3,6 +3,7 @@ Rest mechanics API endpoints
 """
 
 from typing import List
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -39,7 +40,7 @@ CLASS_HIT_DICE = {
 
 @router.post("/characters/{character_id}/rest")
 async def take_rest(
-    character_id: int,
+    character_id: UUID,
     request: RestRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -50,7 +51,7 @@ async def take_rest(
     Long rest: Restore all HP, spell slots, and half of spent hit dice
     """
     character = db.query(Character).filter(Character.id == character_id).first()
-    if not character:
+    if not character or character.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Character not found")
 
     # Get character's hit die
@@ -124,7 +125,7 @@ async def take_rest(
 
 @router.get("/characters/{character_id}/rest-status")
 async def get_rest_status(
-    character_id: int,
+    character_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -133,7 +134,7 @@ async def get_rest_status(
     Shows available hit dice and spell slot status
     """
     character = db.query(Character).filter(Character.id == character_id).first()
-    if not character:
+    if not character or character.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Character not found")
 
     # Get hit die info

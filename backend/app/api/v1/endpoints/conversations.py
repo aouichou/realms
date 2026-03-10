@@ -24,6 +24,7 @@ from app.services.conversation_service import ConversationService
 from app.services.dm_engine import DMEngine
 from app.services.image_detection_service import get_image_detection_service
 from app.services.memory_capture import MemoryCaptureService
+from app.services.ownership import verify_character_ownership, verify_session_ownership
 from app.services.redis_service import session_service
 from app.services.roll_executor import RollExecutor
 from app.services.roll_parser import RollParser, detect_roll_request_from_narration
@@ -54,6 +55,9 @@ async def create_message(
     Returns:
         Created message
     """
+    # Verify session ownership
+    await verify_session_ownership(db, message_data.session_id, current_user.id)
+
     # Save to PostgreSQL
     message = await ConversationService.create_message(db, message_data)
 
@@ -88,6 +92,9 @@ async def start_conversation(
     session_id = UUID(request.get("session_id"))
     if not session_id:
         raise HTTPException(status_code=400, detail="session_id is required")
+
+    # Verify session ownership
+    await verify_session_ownership(db, session_id, current_user.id)
 
     # Check if there are existing messages - if yes, this isn't a new session
     existing_messages = await ConversationService.get_recent_messages(db, session_id, count=1)
@@ -175,6 +182,12 @@ async def send_player_action(
     logger.info(
         f"=== ACTION ENDPOINT START === session={request.session_id}, character={request.character_id}"
     )
+
+    # Verify ownership of session (if provided) and character
+    if request.session_id:
+        await verify_session_ownership(db, request.session_id, current_user.id)
+    await verify_character_ownership(db, request.character_id, current_user.id)
+
     # Set logging context for this request
     with log_context(
         session_id=(
@@ -1062,6 +1075,7 @@ async def get_conversation_history(
     limit: Optional[int] = Query(100, ge=1, le=1000, description="Max messages"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     source: str = Query("database", description="Source: 'database' or 'redis'"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get conversation history for a session.
@@ -1076,6 +1090,8 @@ async def get_conversation_history(
     Returns:
         Conversation history
     """
+    await verify_session_ownership(db, session_id, current_user.id)
+
     if source == "redis":
         # Get from Redis (active session cache)
         redis_messages = await session_service.get_conversation_history(session_id, limit=limit)
@@ -1119,6 +1135,7 @@ async def get_conversation_history(
 async def get_recent_messages(
     session_id: UUID,
     count: int = Query(20, ge=1, le=100, description="Number of recent messages"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get recent messages for context window.
@@ -1131,6 +1148,7 @@ async def get_recent_messages(
     Returns:
         List of recent messages
     """
+    await verify_session_ownership(db, session_id, current_user.id)
     messages = await ConversationService.get_recent_messages(db, session_id, count)
     return messages
 
@@ -1140,6 +1158,7 @@ async def get_recent_messages(
 async def delete_conversation_history(
     session_id: UUID,
     include_redis: bool = Query(True, description="Also clear Redis cache"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete conversation history for a session.
@@ -1149,6 +1168,8 @@ async def delete_conversation_history(
         include_redis: Whether to also clear Redis cache
         db: Database session
     """
+    await verify_session_ownership(db, session_id, current_user.id)
+
     # Delete from PostgreSQL
     await ConversationService.delete_session_messages(db, session_id)
 

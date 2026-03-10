@@ -2,7 +2,7 @@
 
 **A full-stack AI-powered D&D platform built on Mistral's APIs** — agents, tool calling, embeddings, and image generation — with a multi-provider fallback architecture, RAG memory, agentic DM supervision, distributed tracing, and 30,000+ D&D 5e content entries, all containerized with full observability.
 
-> Built in ~3 weeks as an internship application for [Mistral AI](https://mistral.ai)
+> Built in ~10 weeks as an internship application for [Mistral AI](https://mistral.ai)
 
 ---
 
@@ -131,12 +131,12 @@ sequenceDiagram
     API->>MEM: Retrieve relevant memories (RAG)
     MEM->>DB: pgvector cosine similarity search
     API->>DM: narrate(player_action, game_context, memories)
-    
+
     DM->>DM: Build messages (system + character + state + warmup + history)
     DM->>DM: Token counting + pruning (28K budget)
     DM->>PS: Select provider by priority
     PS->>AI: chat.complete(messages, tools=16)
-    
+
     loop Tool Calling Loop (max 10 iterations)
         AI-->>DM: tool_calls (e.g., request_player_roll, get_creature_stats)
         DM->>TE: Execute tool
@@ -144,23 +144,23 @@ sequenceDiagram
         TE-->>DM: Tool result
         DM->>AI: Re-call with tool results
     end
-    
+
     AI-->>DM: Final narration text
     DM->>SUP: Validate against D&D 5e rules
-    
+
     alt Validation fails
         SUP->>DM: Inject rule reminders
         DM->>AI: Silent regeneration
     end
-    
+
     DM-->>API: Narration + roll requests + quest updates
     API->>IMG: Scene detection (embedding similarity ≥ 0.5)
-    
+
     opt Significant scene change
         IMG->>AI: Mistral Agent API (image_generation tool)
         AI-->>IMG: Generated image URL
     end
-    
+
     API->>MEM: Store event with embedding
     API-->>P: DMResponse (narration, rolls, image, state)
 ```

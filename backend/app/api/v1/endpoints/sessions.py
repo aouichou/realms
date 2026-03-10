@@ -15,6 +15,7 @@ from app.schemas.session import (
     SessionUpdate,
     SessionWithState,
 )
+from app.services.ownership import verify_character_ownership, verify_session_ownership
 from app.services.redis_service import session_service
 from app.services.session_service import GameSessionService
 
@@ -40,6 +41,7 @@ async def get_active_session_for_character(
     Raises:
         HTTPException: 404 if no active session found
     """
+    await verify_character_ownership(db, character_id, current_user.id)
     session = await GameSessionService.get_active_session_for_character(db, character_id)
     if not session:
         raise HTTPException(status_code=404, detail="No active session for this character")
@@ -62,6 +64,9 @@ async def create_session(
     Returns:
         Created session
     """
+    # Verify the character belongs to this user
+    await verify_character_ownership(db, session_data.character_id, current_user.id)
+
     # Create session in PostgreSQL with authenticated user
     session = await GameSessionService.create_session(db, current_user.id, session_data)
 
@@ -96,9 +101,7 @@ async def get_session(
     Raises:
         HTTPException: 404 if session not found
     """
-    session = await GameSessionService.get_session(db, session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+    session = await verify_session_ownership(db, session_id, current_user.id)
 
     # Get Redis state if requested
     redis_state = None
@@ -193,6 +196,7 @@ async def update_session(
     Raises:
         HTTPException: 404 if session not found
     """
+    await verify_session_ownership(db, session_id, current_user.id)
     session = await GameSessionService.update_session(db, session_id, session_data)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -219,10 +223,8 @@ async def update_session_state(
     Raises:
         HTTPException: 404 if session not found
     """
-    # Verify session exists in DB
-    session = await GameSessionService.get_session(db, session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+    # Verify session exists and belongs to user
+    session = await verify_session_ownership(db, session_id, current_user.id)
 
     # Update Redis state
     updated_state = await session_service.update_session_state(
@@ -258,6 +260,7 @@ async def end_session(
     Raises:
         HTTPException: 404 if session not found
     """
+    await verify_session_ownership(db, session_id, current_user.id)
     session = await GameSessionService.end_session(db, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -279,6 +282,8 @@ async def delete_session(
     Raises:
         HTTPException: 404 if session not found
     """
+    await verify_session_ownership(db, session_id, current_user.id)
+
     # Delete from Redis first
     await session_service.delete_session_state(session_id)
 

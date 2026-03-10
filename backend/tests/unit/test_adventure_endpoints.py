@@ -76,10 +76,10 @@ async def test_list_adventures(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_start_preset_adventure(client, db_session, auth_headers):
-    user = make_user()
+async def test_start_preset_adventure(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
-    db_session.add_all([user, char])
+    db_session.add_all([char])
     await db_session.flush()
 
     mock_result = {
@@ -98,7 +98,7 @@ async def test_start_preset_adventure(client, db_session, auth_headers):
         resp = await client.post(
             "/api/v1/adventures/start-preset",
             json={"character_id": str(char.id), "adventure_id": "goblin_ambush"},
-            headers=auth_headers,
+            headers=headers,
         )
     assert resp.status_code == 200
     data = resp.json()
@@ -121,7 +121,12 @@ async def test_start_preset_adventure_not_found(client, db_session, auth_headers
 
 
 @pytest.mark.asyncio
-async def test_start_preset_adventure_server_error(client, db_session, auth_headers):
+async def test_start_preset_adventure_server_error(client, db_session, auth_user):
+    user, headers = auth_user
+    char = make_character(user=user)
+    db_session.add(char)
+    await db_session.flush()
+
     with patch(
         "app.services.adventure_service.AdventureService.start_preset_adventure",
         new_callable=AsyncMock,
@@ -129,8 +134,8 @@ async def test_start_preset_adventure_server_error(client, db_session, auth_head
     ):
         resp = await client.post(
             "/api/v1/adventures/start-preset",
-            json={"character_id": str(uuid.uuid4()), "adventure_id": "test"},
-            headers=auth_headers,
+            json={"character_id": str(char.id), "adventure_id": "test"},
+            headers=headers,
         )
     assert resp.status_code == 500
 
@@ -141,11 +146,11 @@ async def test_start_preset_adventure_server_error(client, db_session, auth_head
 
 
 @pytest.mark.asyncio
-async def test_start_custom_adventure(client, db_session, auth_headers):
-    user = make_user()
+async def test_start_custom_adventure(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
     adventure = make_adventure(character=char)
-    db_session.add_all([user, char, adventure])
+    db_session.add_all([char, adventure])
     await db_session.flush()
 
     mock_result = {
@@ -164,7 +169,7 @@ async def test_start_custom_adventure(client, db_session, auth_headers):
         resp = await client.post(
             "/api/v1/adventures/start-custom",
             json={"character_id": str(char.id), "adventure_id": str(adventure.id)},
-            headers=auth_headers,
+            headers=headers,
         )
     assert resp.status_code == 200
 
@@ -228,10 +233,10 @@ async def test_get_adventure_details_not_found(client, db_session, auth_headers)
 
 
 @pytest.mark.asyncio
-async def test_generate_custom_adventure(client, db_session, auth_headers):
-    user = make_user()
+async def test_generate_custom_adventure(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
-    db_session.add_all([user, char])
+    db_session.add_all([char])
     await db_session.flush()
 
     mock_adv = make_adventure(character=char)
@@ -248,7 +253,7 @@ async def test_generate_custom_adventure(client, db_session, auth_headers):
                 "goal": "rescue_mission",
                 "tone": "epic_heroic",
             },
-            headers=auth_headers,
+            headers=headers,
         )
     assert resp.status_code == 200
     data = resp.json()
@@ -281,22 +286,27 @@ async def test_generate_custom_adventure_char_not_found(client, db_session, auth
 
 
 @pytest.mark.asyncio
-async def test_list_character_adventures(client, db_session, auth_headers):
-    user = make_user()
+async def test_list_character_adventures(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
     adv = make_adventure(character=char)
-    db_session.add_all([user, char, adv])
+    db_session.add_all([char, adv])
     await db_session.flush()
 
-    resp = await client.get(f"/api/v1/adventures/custom/character/{char.id}", headers=auth_headers)
+    resp = await client.get(f"/api/v1/adventures/custom/character/{char.id}", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) >= 1
 
 
 @pytest.mark.asyncio
-async def test_list_character_adventures_empty(client, db_session, auth_headers):
-    resp = await client.get(f"/api/v1/adventures/custom/character/{uuid.uuid4()}", headers=auth_headers)
+async def test_list_character_adventures_empty(client, db_session, auth_user):
+    user, headers = auth_user
+    char = make_character(user=user)
+    db_session.add(char)
+    await db_session.flush()
+
+    resp = await client.get(f"/api/v1/adventures/custom/character/{char.id}", headers=headers)
     assert resp.status_code == 200
     assert resp.json() == []
 
@@ -307,11 +317,11 @@ async def test_list_character_adventures_empty(client, db_session, auth_headers)
 
 
 @pytest.mark.asyncio
-async def test_get_custom_adventure(client, db_session, auth_headers):
-    user = make_user()
+async def test_get_custom_adventure(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
     adv = make_adventure(character=char)
-    db_session.add_all([user, char, adv])
+    db_session.add_all([char, adv])
     await db_session.flush()
 
     with patch(
@@ -319,7 +329,7 @@ async def test_get_custom_adventure(client, db_session, auth_headers):
         new_callable=AsyncMock,
         return_value=adv,
     ):
-        resp = await client.get(f"/api/v1/adventures/custom/{adv.id}", headers=auth_headers)
+        resp = await client.get(f"/api/v1/adventures/custom/{adv.id}", headers=headers)
     assert resp.status_code == 200
     assert resp.json()["title"] == adv.title
 

@@ -88,25 +88,23 @@ def _mock_session_service(monkeypatch):
 BASE = "/api/v1/conversations"
 
 
-async def _create_session_in_db(db_session):
+async def _create_session_in_db(db_session, user):
     """Helper: create a user + character + game session and return the session."""
-    user = make_user()
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
     return session
 
 
-async def _create_full_context(db_session, *, with_quest=False, with_companion=False):
+async def _create_full_context(db_session, user, *, with_quest=False, with_companion=False):
     """Create user, character, session and optionally quest/companion.
 
     Returns (session, character, user) tuple.
     """
-    user = make_user()
     char = make_character(user=user, spell_slots={"1": 2, "2": 1})
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
     if with_quest:
@@ -150,49 +148,54 @@ async def _create_full_context(db_session, *, with_quest=False, with_companion=F
 
 
 class TestCreateMessage:
-    async def test_happy_path(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
+    async def test_happy_path(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
         body = {
             "session_id": str(session.id),
             "role": "user",
             "content": "I open the door carefully.",
             "tokens_used": 15,
         }
-        resp = await client.post(f"{BASE}/messages", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/messages", json=body, headers=headers)
         assert resp.status_code == 201
         data = resp.json()
         assert data["role"] == "user"
         assert data["content"] == "I open the door carefully."
         assert data["tokens_used"] == 15
 
-    async def test_without_redis(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
+    async def test_without_redis(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
         body = {
             "session_id": str(session.id),
             "role": "assistant",
             "content": "The door creaks open.",
         }
         resp = await client.post(
-            f"{BASE}/messages", json=body, params={"save_to_redis": False}, headers=auth_headers
+            f"{BASE}/messages", json=body, params={"save_to_redis": False}, headers=headers
         )
         assert resp.status_code == 201
         assert resp.json()["role"] == "assistant"
 
-    async def test_empty_content_rejected(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
+    async def test_empty_content_rejected(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
         body = {"session_id": str(session.id), "role": "user", "content": ""}
-        resp = await client.post(f"{BASE}/messages", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/messages", json=body, headers=headers)
         assert resp.status_code == 422
 
-    async def test_minimal_fields(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
+    async def test_minimal_fields(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
         body = {"session_id": str(session.id), "role": "user", "content": "Look."}
-        resp = await client.post(f"{BASE}/messages", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/messages", json=body, headers=headers)
         assert resp.status_code == 201
         assert resp.json()["tokens_used"] is None
 
-    async def test_companion_message(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
+    async def test_companion_message(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
         companion_id = str(uuid.uuid4())
         body = {
             "session_id": str(session.id),
@@ -200,7 +203,7 @@ class TestCreateMessage:
             "content": "I'll guard the rear!",
             "companion_id": companion_id,
         }
-        resp = await client.post(f"{BASE}/messages", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/messages", json=body, headers=headers)
         assert resp.status_code == 201
         # companion_id is accepted but not stored by create_message service
         assert resp.json()["companion_id"] is None
@@ -212,12 +215,13 @@ class TestCreateMessage:
 
 
 class TestStartConversation:
-    async def test_happy_path_english(self, client, db_session, auth_headers):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_happy_path_english(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         with patch("app.i18n.get_language", return_value="en"):
             resp = await client.post(
-                f"{BASE}/start", json={"session_id": str(session.id)}, headers=auth_headers
+                f"{BASE}/start", json={"session_id": str(session.id)}, headers=headers
             )
 
         assert resp.status_code == 200
@@ -227,12 +231,13 @@ class TestStartConversation:
         assert data["tokens_used"] == 0
         assert data["roll_request"] is None
 
-    async def test_happy_path_french(self, client, db_session, auth_headers):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_happy_path_french(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         with patch("app.i18n.get_language", return_value="fr"):
             resp = await client.post(
-                f"{BASE}/start", json={"session_id": str(session.id)}, headers=auth_headers
+                f"{BASE}/start", json={"session_id": str(session.id)}, headers=headers
             )
 
         assert resp.status_code == 200
@@ -240,77 +245,81 @@ class TestStartConversation:
         assert "Bienvenue" in data["response"]
         assert char.name in data["response"]
 
-    async def test_session_already_has_messages(self, client, db_session, auth_headers):
-        session, _, _ = await _create_full_context(db_session)
+    async def test_session_already_has_messages(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session, _, _ = await _create_full_context(db_session, user)
         msg = make_message(session=session, content="Old message")
         db_session.add(msg)
         await db_session.flush()
 
         resp = await client.post(
-            f"{BASE}/start", json={"session_id": str(session.id)}, headers=auth_headers
+            f"{BASE}/start", json={"session_id": str(session.id)}, headers=headers
         )
         assert resp.status_code == 400
         assert "already has messages" in resp.json()["detail"]
 
-    async def test_session_not_found(self, client, db_session, auth_headers):
+    async def test_session_not_found(self, client, db_session, auth_user):
+        user, headers = auth_user
         fake_id = str(uuid.uuid4())
-        resp = await client.post(
-            f"{BASE}/start", json={"session_id": fake_id}, headers=auth_headers
-        )
+        resp = await client.post(f"{BASE}/start", json={"session_id": fake_id}, headers=headers)
         assert resp.status_code == 404
         assert "Session not found" in resp.json()["detail"]
 
-    async def test_character_not_found(self, client, db_session, auth_headers):
+    async def test_character_not_found(self, client, db_session, auth_user):
+        user, headers = auth_user
         """Session exists but its character_id points to nothing."""
-        user = make_user()
         # Create session with a nonexistent character_id
         fake_char_id = uuid.uuid4()
-        session = make_session(user=user, character=make_character(user=user))
+        char = make_character(user=user)
+        session = make_session(user=user, character=char)
         # Override character_id to a non-existent one after creation
         session.character_id = fake_char_id
-        db_session.add_all([user, session])
+        db_session.add_all([char, session])
         await db_session.flush()
 
         resp = await client.post(
-            f"{BASE}/start", json={"session_id": str(session.id)}, headers=auth_headers
+            f"{BASE}/start", json={"session_id": str(session.id)}, headers=headers
         )
         assert resp.status_code == 404
         assert "Character not found" in resp.json()["detail"]
 
-    async def test_uses_current_location(self, client, db_session, auth_headers):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_uses_current_location(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         session.current_location = "The Dragon's Lair"
         await db_session.flush()
 
         with patch("app.i18n.get_language", return_value="en"):
             resp = await client.post(
-                f"{BASE}/start", json={"session_id": str(session.id)}, headers=auth_headers
+                f"{BASE}/start", json={"session_id": str(session.id)}, headers=headers
             )
 
         assert resp.status_code == 200
         assert "The Dragon's Lair" in resp.json()["response"]
 
-    async def test_default_location_english(self, client, db_session, auth_headers):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_default_location_english(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         session.current_location = None
         await db_session.flush()
 
         with patch("app.i18n.get_language", return_value="en"):
             resp = await client.post(
-                f"{BASE}/start", json={"session_id": str(session.id)}, headers=auth_headers
+                f"{BASE}/start", json={"session_id": str(session.id)}, headers=headers
             )
 
         assert resp.status_code == 200
         assert "the beginning of your journey" in resp.json()["response"]
 
-    async def test_default_location_french(self, client, db_session, auth_headers):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_default_location_french(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         session.current_location = None
         await db_session.flush()
 
         with patch("app.i18n.get_language", return_value="fr"):
             resp = await client.post(
-                f"{BASE}/start", json={"session_id": str(session.id)}, headers=auth_headers
+                f"{BASE}/start", json={"session_id": str(session.id)}, headers=headers
             )
 
         assert resp.status_code == 200
@@ -450,39 +459,43 @@ class TestSendPlayerAction:
 
     # ── Basic happy-path tests ────────────────────────────────────────
 
-    async def test_action_happy_path(self, client, db_session, auth_headers):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_happy_path(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["response"] == "The room is dark and cold."
         assert data["tokens_used"] == 42
 
-    async def test_action_character_not_found(self, client, db_session, auth_headers):
-        session, _, _ = await _create_full_context(db_session)
+    async def test_action_character_not_found(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session, _, _ = await _create_full_context(db_session, user)
         body = _build_action_body(session.id, uuid.uuid4())
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 404
         assert "Character not found" in resp.json()["detail"]
 
-    async def test_action_without_session_id(self, client, db_session, auth_headers):
+    async def test_action_without_session_id(self, client, db_session, auth_user):
+        user, headers = auth_user
         """When session_id is None, conversation history is skipped."""
-        _, char, _ = await _create_full_context(db_session)
+        _, char, _ = await _create_full_context(db_session, user)
         body = {
             "character_id": str(char.id),
             "action": "I look around",
         }
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
     # ── Roll result in action ─────────────────────────────────────────
 
-    async def test_action_with_roll_result(self, client, db_session, auth_headers):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_with_roll_result(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         roll = {"type": "check", "total": 18, "roll": 15, "modifier": 3, "success": True}
         body = _build_action_body(session.id, char.id, action="I sneak past", roll_result=roll)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         # DMEngine.narrate should have been called with the augmented action text
         call_kwargs = self._dm_narrate.call_args
@@ -491,17 +504,19 @@ class TestSendPlayerAction:
         )
         assert "ROLL RESULT" in user_action_arg
 
-    async def test_action_with_roll_result_no_success(self, client, db_session, auth_headers):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_with_roll_result_no_success(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         roll = {"type": "attack", "total": 7, "roll": 5, "modifier": 2}
         body = _build_action_body(session.id, char.id, action="I swing", roll_result=roll)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
     # ── Summarization path ────────────────────────────────────────────
 
-    async def test_action_with_summarization(self, client, db_session, auth_headers, monkeypatch):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_with_summarization(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         # Add many messages to trigger summarization
         for i in range(12):
             db_session.add(make_message(session=session, content=f"Msg {i}"))
@@ -519,13 +534,14 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
     async def test_action_summarization_failure_fallback(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         for i in range(12):
             db_session.add(make_message(session=session, content=f"Msg {i}"))
         await db_session.flush()
@@ -540,15 +556,16 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         # Should still succeed using fallback
         assert resp.status_code == 200
 
     async def test_action_summary_memory_capture_failure(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
+        user, headers = auth_user
         """MemoryCaptureService.capture_summary failure is swallowed."""
-        session, char, _ = await _create_full_context(db_session)
+        session, char, _ = await _create_full_context(db_session, user)
         for i in range(12):
             db_session.add(make_message(session=session, content=f"Msg {i}"))
         await db_session.flush()
@@ -567,40 +584,43 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
     # ── Memory context ────────────────────────────────────────────────
 
-    async def test_action_with_memory_context(self, client, db_session, auth_headers, monkeypatch):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_with_memory_context(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         monkeypatch.setattr(
             "app.services.memory_service.MemoryService.get_context_for_ai",
             AsyncMock(return_value="You met a goblin earlier."),
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
-    async def test_action_memory_fetch_failure(self, client, db_session, auth_headers, monkeypatch):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_memory_fetch_failure(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         monkeypatch.setattr(
             "app.services.memory_service.MemoryService.get_context_for_ai",
             AsyncMock(side_effect=RuntimeError("Redis down")),
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         # Memory fetch failure is non-fatal
         assert resp.status_code == 200
 
     # ── Context window pruning ────────────────────────────────────────
 
     async def test_action_context_over_limit_prunes(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         mock_ctx = MagicMock()
         mock_ctx.get_context_stats.return_value = {
@@ -617,44 +637,47 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         mock_ctx.prune_messages.assert_called_once()
 
     # ── Empty narration safety check ──────────────────────────────────
 
     async def test_action_empty_narration_fallback(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
             _mock_dm_narrate(narration=""),
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         assert "magical energies" in resp.json()["response"]
 
     async def test_action_whitespace_narration_fallback(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
             _mock_dm_narrate(narration="   "),
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         assert "magical energies" in resp.json()["response"]
 
     # ── Spell detection ───────────────────────────────────────────────
 
-    async def test_action_spell_cast_detected(self, client, db_session, auth_headers, monkeypatch):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_spell_cast_detected(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         char.spell_slots = {"1": 2}
         await db_session.flush()
 
@@ -668,11 +691,12 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I cast magic missile!")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
-    async def test_action_spell_cast_cantrip(self, client, db_session, auth_headers, monkeypatch):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_spell_cast_cantrip(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.detect_spell_cast",
@@ -684,11 +708,12 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I cast fire bolt!")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
-    async def test_action_spell_slot_warning(self, client, db_session, auth_headers, monkeypatch):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_spell_slot_warning(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.detect_spell_cast",
@@ -700,14 +725,15 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I cast shield")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["warnings"] is not None
         assert len(data["warnings"]) > 0
 
-    async def test_action_spell_suggestion(self, client, db_session, auth_headers, monkeypatch):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_spell_suggestion(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.detect_spell_cast",
@@ -715,16 +741,15 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I cast magic missle")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["warnings"] is not None
         assert "Did you mean" in data["warnings"][0]
 
-    async def test_action_spell_detection_failure(
-        self, client, db_session, auth_headers, monkeypatch
-    ):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_spell_detection_failure(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.detect_spell_cast",
@@ -732,16 +757,17 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         # Spell detection failure is non-fatal
         assert resp.status_code == 200
 
     # ── Roll tag parsing ──────────────────────────────────────────────
 
     async def test_action_with_roll_tags_player_roll(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         narration = "[ROLL:check STR DC15] You try to lift the boulder."
         monkeypatch.setattr(
@@ -771,16 +797,15 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["roll_request"] is not None
         assert data["roll_request"]["type"] == "check"
 
-    async def test_action_with_roll_tags_npc_roll(
-        self, client, db_session, auth_headers, monkeypatch
-    ):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_with_roll_tags_npc_roll(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         narration = "[ROLL:NPC attack] The goblin attacks!"
         monkeypatch.setattr(
@@ -824,16 +849,17 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["rolls"] is not None
         assert data["rolls"][0]["total"] == 17
 
     async def test_action_npc_roll_execution_failure(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
@@ -864,16 +890,17 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         # NPC roll failure is non-fatal
         assert resp.status_code == 200
 
     # ── Natural language roll detection ───────────────────────────────
 
     async def test_action_natural_language_roll_detected(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.detect_roll_request_from_narration",
@@ -887,7 +914,7 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["roll_request"] is not None
@@ -895,10 +922,11 @@ class TestSendPlayerAction:
         assert data["roll_request"]["skill"] == "stealth"
 
     async def test_action_nl_roll_skipped_when_responding_to_roll(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
+        user, headers = auth_user
         """When player is submitting a roll result, NL detection is skipped."""
-        session, char, _ = await _create_full_context(db_session)
+        session, char, _ = await _create_full_context(db_session, user)
 
         # The detect function should NOT be called when roll_result is provided
         detect_mock = MagicMock(return_value={"roll_type": "check", "detected_text": "check"})
@@ -909,16 +937,17 @@ class TestSendPlayerAction:
 
         roll = {"type": "check", "total": 15, "roll": 12, "modifier": 3, "success": True}
         body = _build_action_body(session.id, char.id, action="I sneak past", roll_result=roll)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         # detect_roll_request_from_narration should NOT be called
         detect_mock.assert_not_called()
 
     async def test_action_nl_roll_skipped_for_i_rolled(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
+        user, headers = auth_user
         """NL detection skipped when action starts with 'I rolled'."""
-        session, char, _ = await _create_full_context(db_session)
+        session, char, _ = await _create_full_context(db_session, user)
 
         detect_mock = MagicMock(return_value=None)
         monkeypatch.setattr(
@@ -927,16 +956,17 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I rolled a 15")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         detect_mock.assert_not_called()
 
     # ── Tool-based roll request format ────────────────────────────────
 
     async def test_action_tool_roll_request_ability_check(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
@@ -954,7 +984,7 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["roll_request"] is not None
@@ -963,9 +993,10 @@ class TestSendPlayerAction:
         assert data["roll_request"]["dc"] == 12
 
     async def test_action_tool_roll_request_saving_throw(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
@@ -983,16 +1014,17 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["roll_request"]["type"] == "save"
         assert data["roll_request"]["ability"] == "DEX"
 
     async def test_action_tool_roll_request_attack(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
@@ -1010,7 +1042,7 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["roll_request"]["type"] == "attack"
@@ -1019,9 +1051,10 @@ class TestSendPlayerAction:
     # ── Image generation ──────────────────────────────────────────────
 
     async def test_action_significant_scene_generates_image(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         self._mock_img_service.is_significant_scene.return_value = (True, 0.85, "combat")
 
@@ -1037,26 +1070,26 @@ class TestSendPlayerAction:
             "sys.modules",
             {"app.services.image_service": MagicMock(image_service=mock_image_svc)},
         ):
-            resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+            resp = await client.post(f"{BASE}/action", json=body, headers=headers)
 
         assert resp.status_code == 200
 
-    async def test_action_image_detection_failure(
-        self, client, db_session, auth_headers, monkeypatch
-    ):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_image_detection_failure(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         self._mock_img_service.is_significant_scene.side_effect = RuntimeError("Model not loaded")
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         # Image detection failure is non-fatal
         assert resp.status_code == 200
 
     async def test_action_image_generation_failure(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         self._mock_img_service.is_significant_scene.return_value = (True, 0.9, "discovery")
 
@@ -1067,16 +1100,15 @@ class TestSendPlayerAction:
             "sys.modules", {"app.services.image_service": MagicMock(image_service=mock_image_svc)}
         ):
             body = _build_action_body(session.id, char.id)
-            resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+            resp = await client.post(f"{BASE}/action", json=body, headers=headers)
 
         assert resp.status_code == 200
 
     # ── Memory capture events ─────────────────────────────────────────
 
-    async def test_action_combat_memory_capture(
-        self, client, db_session, auth_headers, monkeypatch
-    ):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_combat_memory_capture(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
@@ -1084,13 +1116,12 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I attack the goblin")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
-    async def test_action_combat_memory_victory(
-        self, client, db_session, auth_headers, monkeypatch
-    ):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_combat_memory_victory(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
@@ -1098,11 +1129,12 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I attack the dragon")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
-    async def test_action_combat_memory_defeat(self, client, db_session, auth_headers, monkeypatch):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_combat_memory_defeat(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
@@ -1110,11 +1142,12 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I attack the orc")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
-    async def test_action_combat_memory_flee(self, client, db_session, auth_headers, monkeypatch):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_combat_memory_flee(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
@@ -1122,13 +1155,12 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I flee from the battle")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
-    async def test_action_dialogue_memory_capture(
-        self, client, db_session, auth_headers, monkeypatch
-    ):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_dialogue_memory_capture(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         # Narration with NPC dialogue (Name: dialogue format)
         monkeypatch.setattr(
@@ -1139,13 +1171,14 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I talk to the wizard")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
     async def test_action_discovery_memory_capture(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
@@ -1155,14 +1188,15 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I search the room carefully")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
     async def test_action_generic_interaction_memory(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
+        user, headers = auth_user
         """Substantial narration without combat/dialogue/discovery keywords => generic interaction."""
-        session, char, _ = await _create_full_context(db_session)
+        session, char, _ = await _create_full_context(db_session, user)
 
         # Long narration without combat/dialogue/discovery keywords
         long_narration = "The wind howls through the empty streets. " * 10
@@ -1172,14 +1206,13 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I walk forward")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
-    async def test_action_memory_capture_failure(
-        self, client, db_session, auth_headers, monkeypatch
-    ):
+    async def test_action_memory_capture_failure(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
         """Event memory capture failures are swallowed."""
-        session, char, _ = await _create_full_context(db_session)
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
@@ -1191,22 +1224,24 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id, action="I attack")
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
     # ── Active quest in context ───────────────────────────────────────
 
-    async def test_action_with_active_quest(self, client, db_session, auth_headers):
-        session, char, _ = await _create_full_context(db_session, with_quest=True)
+    async def test_action_with_active_quest(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user, with_quest=True)
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
     # ── Character with background/personality fields ──────────────────
 
-    async def test_action_character_with_full_context(self, client, db_session, auth_headers):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_character_with_full_context(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         char.background = "Noble"
         char.personality = "Brave and bold"
         char.background_name = "Noble"
@@ -1218,13 +1253,14 @@ class TestSendPlayerAction:
         await db_session.flush()
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
     # ── Combined summary + memory context ─────────────────────────────
 
-    async def test_action_combined_context(self, client, db_session, auth_headers, monkeypatch):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_combined_context(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         for i in range(12):
             db_session.add(make_message(session=session, content=f"Msg {i}"))
         await db_session.flush()
@@ -1243,13 +1279,14 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
 
     # ── Companion responses ───────────────────────────────────────────
 
-    async def test_action_companion_responds(self, client, db_session, auth_headers, monkeypatch):
-        session, char, _ = await _create_full_context(db_session, with_companion=True)
+    async def test_action_companion_responds(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user, with_companion=True)
 
         mock_provider = MagicMock()
         monkeypatch.setattr(
@@ -1266,7 +1303,7 @@ class TestSendPlayerAction:
             return_value=mock_companion_svc,
         ):
             body = _build_action_body(session.id, char.id)
-            resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+            resp = await client.post(f"{BASE}/action", json=body, headers=headers)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -1274,9 +1311,10 @@ class TestSendPlayerAction:
         assert data["companion_responses"] is not None
 
     async def test_action_companion_chooses_not_to_respond(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session, with_companion=True)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user, with_companion=True)
 
         mock_provider = MagicMock()
         monkeypatch.setattr(
@@ -1292,15 +1330,16 @@ class TestSendPlayerAction:
             return_value=mock_companion_svc,
         ):
             body = _build_action_body(session.id, char.id)
-            resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+            resp = await client.post(f"{BASE}/action", json=body, headers=headers)
 
         assert resp.status_code == 200
         assert resp.json()["companion_speech"] is None
 
     async def test_action_companion_error_non_fatal(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session, with_companion=True)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user, with_companion=True)
 
         mock_provider = MagicMock()
         monkeypatch.setattr(
@@ -1318,14 +1357,15 @@ class TestSendPlayerAction:
             return_value=mock_companion_svc,
         ):
             body = _build_action_body(session.id, char.id)
-            resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+            resp = await client.post(f"{BASE}/action", json=body, headers=headers)
 
         assert resp.status_code == 200
 
     async def test_action_no_ai_provider_skips_companions(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session, with_companion=True)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user, with_companion=True)
 
         # Provider returns None
         monkeypatch.setattr(
@@ -1334,14 +1374,15 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         assert resp.json()["companion_speech"] is None
 
     # ── quest_complete_id and tool_calls_made ─────────────────────────
 
-    async def test_action_quest_complete(self, client, db_session, auth_headers, monkeypatch):
-        session, char, _ = await _create_full_context(db_session)
+    async def test_action_quest_complete(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
         quest_id = str(uuid.uuid4())
 
         monkeypatch.setattr(
@@ -1350,14 +1391,15 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         assert resp.json()["quest_complete_id"] == quest_id
 
     async def test_action_tool_calls_and_character_updates(
-        self, client, db_session, auth_headers, monkeypatch
+        self, client, db_session, auth_user, monkeypatch
     ):
-        session, char, _ = await _create_full_context(db_session)
+        user, headers = auth_user
+        session, char, _ = await _create_full_context(db_session, user)
 
         monkeypatch.setattr(
             "app.api.v1.endpoints.conversations.DMEngine.narrate",
@@ -1368,7 +1410,7 @@ class TestSendPlayerAction:
         )
 
         body = _build_action_body(session.id, char.id)
-        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
+        resp = await client.post(f"{BASE}/action", json=body, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["tool_calls_made"] is not None
@@ -1381,10 +1423,11 @@ class TestSendPlayerAction:
 
 
 class TestGetConversationHistory:
-    async def test_from_database_empty(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
+    async def test_from_database_empty(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
         resp = await client.get(
-            f"{BASE}/{session.id}", params={"source": "database"}, headers=auth_headers
+            f"{BASE}/{session.id}", params={"source": "database"}, headers=headers
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -1392,35 +1435,36 @@ class TestGetConversationHistory:
         assert data["messages"] == []
         assert data["total_messages"] == 0
 
-    async def test_from_database_with_messages(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
+    async def test_from_database_with_messages(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
         db_session.add(make_message(session=session, role="user", content="Hello!"))
         db_session.add(make_message(session=session, role="assistant", content="Welcome!"))
         await db_session.flush()
 
         resp = await client.get(
-            f"{BASE}/{session.id}", params={"source": "database"}, headers=auth_headers
+            f"{BASE}/{session.id}", params={"source": "database"}, headers=headers
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["total_messages"] == 2
         assert len(data["messages"]) == 2
 
-    async def test_from_redis_empty(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
-        resp = await client.get(
-            f"{BASE}/{session.id}", params={"source": "redis"}, headers=auth_headers
-        )
+    async def test_from_redis_empty(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
+        resp = await client.get(f"{BASE}/{session.id}", params={"source": "redis"}, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["session_id"] == str(session.id)
         assert data["messages"] == []
         assert data["total_messages"] == 0
 
-    async def test_from_redis_with_messages(self, client, db_session, auth_headers, monkeypatch):
+    async def test_from_redis_with_messages(self, client, db_session, auth_user, monkeypatch):
+        user, headers = auth_user
         from app.services.redis_service import session_service
 
-        session = await _create_session_in_db(db_session)
+        session = await _create_session_in_db(db_session, user)
 
         redis_msgs = [
             {
@@ -1440,16 +1484,15 @@ class TestGetConversationHistory:
             session_service, "get_conversation_history", AsyncMock(return_value=redis_msgs)
         )
 
-        resp = await client.get(
-            f"{BASE}/{session.id}", params={"source": "redis"}, headers=auth_headers
-        )
+        resp = await client.get(f"{BASE}/{session.id}", params={"source": "redis"}, headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["total_messages"] == 2
         assert data["messages"][0]["content"] == "Hello from Redis"
 
-    async def test_pagination_params(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
+    async def test_pagination_params(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
         for i in range(5):
             db_session.add(make_message(session=session, content=f"Msg {i}"))
         await db_session.flush()
@@ -1457,15 +1500,16 @@ class TestGetConversationHistory:
         resp = await client.get(
             f"{BASE}/{session.id}",
             params={"source": "database", "limit": 2, "offset": 0},
-            headers=auth_headers,
+            headers=headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["messages"]) <= 2
 
-    async def test_default_source_is_database(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
-        resp = await client.get(f"{BASE}/{session.id}", headers=auth_headers)
+    async def test_default_source_is_database(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
+        resp = await client.get(f"{BASE}/{session.id}", headers=headers)
         assert resp.status_code == 200
 
 
@@ -1475,29 +1519,28 @@ class TestGetConversationHistory:
 
 
 class TestGetRecentMessages:
-    async def test_empty(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
-        resp = await client.get(
-            f"{BASE}/{session.id}/recent", params={"count": 5}, headers=auth_headers
-        )
+    async def test_empty(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
+        resp = await client.get(f"{BASE}/{session.id}/recent", params={"count": 5}, headers=headers)
         assert resp.status_code == 200
         assert resp.json() == []
 
-    async def test_with_data(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
+    async def test_with_data(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
         for i in range(5):
             db_session.add(make_message(session=session, content=f"Msg {i}"))
         await db_session.flush()
 
-        resp = await client.get(
-            f"{BASE}/{session.id}/recent", params={"count": 3}, headers=auth_headers
-        )
+        resp = await client.get(f"{BASE}/{session.id}/recent", params={"count": 3}, headers=headers)
         assert resp.status_code == 200
         assert len(resp.json()) <= 3
 
-    async def test_default_count(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
-        resp = await client.get(f"{BASE}/{session.id}/recent", headers=auth_headers)
+    async def test_default_count(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
+        resp = await client.get(f"{BASE}/{session.id}/recent", headers=headers)
         assert resp.status_code == 200
 
 
@@ -1507,29 +1550,33 @@ class TestGetRecentMessages:
 
 
 class TestDeleteConversationHistory:
-    async def test_with_messages(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
+    async def test_with_messages(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
         db_session.add(make_message(session=session))
         await db_session.flush()
 
-        resp = await client.delete(f"{BASE}/{session.id}", headers=auth_headers)
+        resp = await client.delete(f"{BASE}/{session.id}", headers=headers)
         assert resp.status_code == 204
 
-    async def test_empty_session(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
-        resp = await client.delete(f"{BASE}/{session.id}", headers=auth_headers)
+    async def test_empty_session(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
+        resp = await client.delete(f"{BASE}/{session.id}", headers=headers)
         assert resp.status_code == 204
 
-    async def test_without_redis(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
+    async def test_without_redis(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
         resp = await client.delete(
-            f"{BASE}/{session.id}", params={"include_redis": False}, headers=auth_headers
+            f"{BASE}/{session.id}", params={"include_redis": False}, headers=headers
         )
         assert resp.status_code == 204
 
-    async def test_with_redis(self, client, db_session, auth_headers):
-        session = await _create_session_in_db(db_session)
+    async def test_with_redis(self, client, db_session, auth_user):
+        user, headers = auth_user
+        session = await _create_session_in_db(db_session, user)
         resp = await client.delete(
-            f"{BASE}/{session.id}", params={"include_redis": True}, headers=auth_headers
+            f"{BASE}/{session.id}", params={"include_redis": True}, headers=headers
         )
         assert resp.status_code == 204

@@ -143,14 +143,14 @@ async def test_create_session_redis_state_creation(client, db_session, auth_user
 # ===========================================================================
 
 
-async def test_get_session_happy(client, db_session, auth_headers):
-    user = make_user()
+async def test_get_session_happy(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
-    resp = await client.get(f"{BASE}/{session.id}", headers=auth_headers)
+    resp = await client.get(f"{BASE}/{session.id}", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["id"] == str(session.id)
@@ -163,22 +163,23 @@ async def test_get_session_not_found(client, auth_headers):
     assert resp.status_code == 404
 
 
-async def test_get_session_without_state(client, db_session, auth_headers):
-    user = make_user()
+async def test_get_session_without_state(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
-    resp = await client.get(f"{BASE}/{session.id}", params={"include_state": False}, headers=auth_headers)
+    resp = await client.get(f"{BASE}/{session.id}", params={"include_state": False}, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["state"] is None
     assert data["conversation_history"] is None
 
 
-async def test_get_session_with_redis_state(client, db_session, auth_headers, monkeypatch):
+async def test_get_session_with_redis_state(client, db_session, auth_user, monkeypatch):
     """When Redis returns state data, it should be included in the response."""
+    user, headers = auth_user
     from app.services.redis_service import session_service
 
     redis_state = {"state": {"hp": 20, "location": "Cave"}}
@@ -188,13 +189,12 @@ async def test_get_session_with_redis_state(client, db_session, auth_headers, mo
         session_service, "get_conversation_history", AsyncMock(return_value=conversation)
     )
 
-    user = make_user()
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
-    resp = await client.get(f"{BASE}/{session.id}", headers=auth_headers)
+    resp = await client.get(f"{BASE}/{session.id}", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["state"] == {"hp": 20, "location": "Cave"}
@@ -322,15 +322,15 @@ async def test_get_active_session_with_redis_state(client, db_session, auth_user
 # ===========================================================================
 
 
-async def test_update_session(client, db_session, auth_headers):
-    user = make_user()
+async def test_update_session(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
     body = {"current_location": "Dungeon Entrance"}
-    resp = await client.patch(f"{BASE}/{session.id}", json=body, headers=auth_headers)
+    resp = await client.patch(f"{BASE}/{session.id}", json=body, headers=headers)
     assert resp.status_code == 200
     assert resp.json()["current_location"] == "Dungeon Entrance"
 
@@ -342,16 +342,16 @@ async def test_update_session_not_found(client, auth_headers):
     assert resp.status_code == 404
 
 
-async def test_update_session_is_active(client, db_session, auth_headers):
+async def test_update_session_is_active(client, db_session, auth_user):
     """Update is_active field via PATCH."""
-    user = make_user()
+    user, headers = auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char, is_active=True)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
     body = {"is_active": False}
-    resp = await client.patch(f"{BASE}/{session.id}", json=body, headers=auth_headers)
+    resp = await client.patch(f"{BASE}/{session.id}", json=body, headers=headers)
     assert resp.status_code == 200
     assert resp.json()["is_active"] is False
 
@@ -361,8 +361,9 @@ async def test_update_session_is_active(client, db_session, auth_headers):
 # ===========================================================================
 
 
-async def test_update_session_state_happy(client, db_session, auth_headers, monkeypatch):
+async def test_update_session_state_happy(client, db_session, auth_user, monkeypatch):
     """Update session state in Redis."""
+    user, headers = auth_user
     from app.services.redis_service import session_service
 
     updated_state = {"state": {"hp": 15, "location": "Dungeon"}}
@@ -372,14 +373,13 @@ async def test_update_session_state_happy(client, db_session, auth_headers, monk
     mock_refresh = AsyncMock()
     monkeypatch.setattr(session_service, "refresh_ttl", mock_refresh)
 
-    user = make_user()
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
     body = {"current_location": "Dungeon", "state_data": {"hp": 15}}
-    resp = await client.patch(f"{BASE}/{session.id}/state", json=body, headers=auth_headers)
+    resp = await client.patch(f"{BASE}/{session.id}/state", json=body, headers=headers)
     assert resp.status_code == 200
     mock_refresh.assert_awaited_once_with(session.id)
 
@@ -392,26 +392,27 @@ async def test_update_session_state_session_not_found(client, db_session, auth_h
     assert resp.status_code == 404
 
 
-async def test_update_session_state_redis_not_found(client, db_session, auth_headers, monkeypatch):
+async def test_update_session_state_redis_not_found(client, db_session, auth_user, monkeypatch):
     """Session exists in DB but not in Redis → 404."""
+    user, headers = auth_user
     from app.services.redis_service import session_service
 
     monkeypatch.setattr(session_service, "update_session_state", AsyncMock(return_value=None))
 
-    user = make_user()
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
     body = {"state_data": {"hp": 10}}
-    resp = await client.patch(f"{BASE}/{session.id}/state", json=body, headers=auth_headers)
+    resp = await client.patch(f"{BASE}/{session.id}/state", json=body, headers=headers)
     assert resp.status_code == 404
     assert "Redis" in resp.json()["detail"]
 
 
-async def test_update_session_state_location_only(client, db_session, auth_headers, monkeypatch):
+async def test_update_session_state_location_only(client, db_session, auth_user, monkeypatch):
     """Update only the location, no state_data."""
+    user, headers = auth_user
     from app.services.redis_service import session_service
 
     updated_state = {"state": {"location": "Forest"}}
@@ -420,14 +421,13 @@ async def test_update_session_state_location_only(client, db_session, auth_heade
     )
     monkeypatch.setattr(session_service, "refresh_ttl", AsyncMock())
 
-    user = make_user()
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
     body = {"current_location": "Forest"}
-    resp = await client.patch(f"{BASE}/{session.id}/state", json=body, headers=auth_headers)
+    resp = await client.patch(f"{BASE}/{session.id}/state", json=body, headers=headers)
     assert resp.status_code == 200
 
 
@@ -436,14 +436,14 @@ async def test_update_session_state_location_only(client, db_session, auth_heade
 # ===========================================================================
 
 
-async def test_end_session_happy(client, db_session, auth_headers):
-    user = make_user()
+async def test_end_session_happy(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char, is_active=True)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
-    resp = await client.post(f"{BASE}/{session.id}/end", headers=auth_headers)
+    resp = await client.post(f"{BASE}/{session.id}/end", headers=headers)
     assert resp.status_code == 200
     assert resp.json()["is_active"] is False
 
@@ -459,14 +459,14 @@ async def test_end_session_not_found(client, auth_headers):
 # ===========================================================================
 
 
-async def test_delete_session_happy(client, db_session, auth_headers):
-    user = make_user()
+async def test_delete_session_happy(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
-    resp = await client.delete(f"{BASE}/{session.id}", headers=auth_headers)
+    resp = await client.delete(f"{BASE}/{session.id}", headers=headers)
     assert resp.status_code == 204
 
 
@@ -476,20 +476,20 @@ async def test_delete_session_not_found(client, auth_headers):
     assert resp.status_code == 404
 
 
-async def test_delete_session_cleans_redis(client, db_session, auth_headers, monkeypatch):
+async def test_delete_session_cleans_redis(client, db_session, auth_user, monkeypatch):
     """Verify that Redis delete_session_state is called during deletion."""
+    user, headers = auth_user
     from app.services.redis_service import session_service
 
     mock_delete = AsyncMock()
     monkeypatch.setattr(session_service, "delete_session_state", mock_delete)
 
-    user = make_user()
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
-    resp = await client.delete(f"{BASE}/{session.id}", headers=auth_headers)
+    resp = await client.delete(f"{BASE}/{session.id}", headers=headers)
     assert resp.status_code == 204
     mock_delete.assert_awaited_once_with(session.id)
 

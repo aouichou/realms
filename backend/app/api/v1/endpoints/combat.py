@@ -24,6 +24,7 @@ from app.schemas.combat import (
 )
 from app.services.character_service import CharacterService
 from app.services.memory_capture import MemoryCaptureService
+from app.services.ownership import verify_combat_ownership, verify_session_ownership
 
 logger = get_logger(__name__)
 
@@ -52,10 +53,10 @@ async def start_combat(
     Raises:
         HTTPException: 404 if session not found, 400 if combat already active
     """
-    # Check session exists
+    # Check session exists and belongs to user
     result = await db.execute(select(GameSession).where(GameSession.id == request.session_id))
     session = result.scalar_one_or_none()
-    if not session:
+    if not session or session.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
 
     # Check if there's already an active combat
@@ -151,11 +152,7 @@ async def get_combat_status(
     Raises:
         HTTPException: 404 if combat not found
     """
-    result = await db.execute(select(CombatEncounter).where(CombatEncounter.id == combat_id))
-    combat = result.scalar_one_or_none()
-
-    if not combat:
-        raise HTTPException(status_code=404, detail="Combat encounter not found")
+    combat = await verify_combat_ownership(db, combat_id, current_user.id)
 
     return CombatStatusResponse(
         combat_id=combat.id,
@@ -193,11 +190,7 @@ async def perform_combat_action(
     Raises:
         HTTPException: 404 if combat not found, 400 if combat not active
     """
-    result = await db.execute(select(CombatEncounter).where(CombatEncounter.id == combat_id))
-    combat = result.scalar_one_or_none()
-
-    if not combat:
-        raise HTTPException(status_code=404, detail="Combat encounter not found")
+    combat = await verify_combat_ownership(db, combat_id, current_user.id)
 
     if not combat.is_active:
         raise HTTPException(status_code=400, detail="Combat is not active")
@@ -311,11 +304,7 @@ async def end_combat(
     Raises:
         HTTPException: 404 if combat not found
     """
-    result = await db.execute(select(CombatEncounter).where(CombatEncounter.id == combat_id))
-    combat = result.scalar_one_or_none()
-
-    if not combat:
-        raise HTTPException(status_code=404, detail="Combat encounter not found")
+    combat = await verify_combat_ownership(db, combat_id, current_user.id)
 
     # Mark as ended
     combat.is_active = False
@@ -393,11 +382,7 @@ async def update_participant_hp(
     Raises:
         HTTPException: 404 if combat not found, 400 if invalid index
     """
-    result = await db.execute(select(CombatEncounter).where(CombatEncounter.id == combat_id))
-    combat = result.scalar_one_or_none()
-
-    if not combat:
-        raise HTTPException(status_code=404, detail="Combat encounter not found")
+    combat = await verify_combat_ownership(db, combat_id, current_user.id)
 
     if participant_index < 0 or participant_index >= len(combat.participants):
         raise HTTPException(status_code=400, detail="Invalid participant index")

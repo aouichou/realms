@@ -12,6 +12,7 @@ from app.middleware.auth import get_current_active_user
 from app.observability.logger import get_logger
 from app.schemas.inventory import InventoryResponse, ItemCreate, ItemResponse, ItemUpdate
 from app.services.memory_capture import MemoryCaptureService
+from app.services.ownership import verify_character_ownership
 
 logger = get_logger(__name__)
 
@@ -30,15 +31,8 @@ async def add_item(
     db: AsyncSession = Depends(get_db),
 ):
     """Add an item to character's inventory"""
-    # Verify character exists
-    character_result = await db.execute(select(Character).where(Character.id == character_id))
-    character = character_result.scalar_one_or_none()
-
-    if not character:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Character with id {character_id} not found",
-        )
+    # Verify character exists and belongs to user
+    character = await verify_character_ownership(db, character_id, current_user.id)
 
     # Check weight capacity
     current_weight_result = await db.execute(
@@ -107,15 +101,8 @@ async def get_inventory(
     db: AsyncSession = Depends(get_db),
 ):
     """Get character's inventory with optional filters"""
-    # Verify character exists and get carrying capacity
-    character_result = await db.execute(select(Character).where(Character.id == character_id))
-    character = character_result.scalar_one_or_none()
-
-    if not character:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Character with id {character_id} not found",
-        )
+    # Verify character exists and belongs to user
+    character = await verify_character_ownership(db, character_id, current_user.id)
 
     # Build query
     query = select(Item).where(Item.character_id == character_id)
@@ -158,6 +145,7 @@ async def toggle_equip_item(
     db: AsyncSession = Depends(get_db),
 ):
     """Toggle item equipped status"""
+    await verify_character_ownership(db, character_id, current_user.id)
     # Get item
     item_result = await db.execute(
         select(Item).where(Item.id == item_id, Item.character_id == character_id)
@@ -188,6 +176,7 @@ async def update_item(
     db: AsyncSession = Depends(get_db),
 ):
     """Update item quantity or other properties"""
+    await verify_character_ownership(db, character_id, current_user.id)
     # Get item
     item_result = await db.execute(
         select(Item).where(Item.id == item_id, Item.character_id == character_id)
@@ -231,6 +220,7 @@ async def remove_item(
     db: AsyncSession = Depends(get_db),
 ):
     """Remove an item from inventory"""
+    await verify_character_ownership(db, character_id, current_user.id)
     # Get item
     item_result = await db.execute(
         select(Item).where(Item.id == item_id, Item.character_id == character_id)

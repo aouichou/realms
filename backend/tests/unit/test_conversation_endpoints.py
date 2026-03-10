@@ -67,9 +67,10 @@ def _mock_session_service(monkeypatch):
 BASE = "/api/v1/conversations"
 
 
-async def _create_session_in_db(db_session):
+async def _create_session_in_db(db_session, user=None):
     """Helper: create a user + character + game session and return the session."""
-    user = make_user()
+    if user is None:
+        user = make_user()
     char = make_character(user=user)
     session = make_session(user=user, character=char)
     db_session.add_all([user, char, session])
@@ -82,8 +83,9 @@ async def _create_session_in_db(db_session):
 # ===========================================================================
 
 
-async def test_create_message_happy(client, db_session, auth_headers):
-    session = await _create_session_in_db(db_session)
+async def test_create_message_happy(client, db_session, auth_user):
+    user, headers = auth_user
+    session = await _create_session_in_db(db_session, user=user)
 
     body = {
         "session_id": str(session.id),
@@ -91,7 +93,7 @@ async def test_create_message_happy(client, db_session, auth_headers):
         "content": "I open the door carefully.",
         "tokens_used": 15,
     }
-    resp = await client.post(f"{BASE}/messages", json=body, headers=auth_headers)
+    resp = await client.post(f"{BASE}/messages", json=body, headers=headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["role"] == "user"
@@ -100,43 +102,46 @@ async def test_create_message_happy(client, db_session, auth_headers):
     assert data["session_id"] == str(session.id)
 
 
-async def test_create_message_without_redis(client, db_session, auth_headers):
-    session = await _create_session_in_db(db_session)
+async def test_create_message_without_redis(client, db_session, auth_user):
+    user, headers = auth_user
+    session = await _create_session_in_db(db_session, user=user)
 
     body = {
         "session_id": str(session.id),
         "role": "assistant",
         "content": "The door creaks open revealing a dark corridor.",
     }
-    resp = await client.post(f"{BASE}/messages", json=body, params={"save_to_redis": False}, headers=auth_headers)
+    resp = await client.post(f"{BASE}/messages", json=body, params={"save_to_redis": False}, headers=headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["role"] == "assistant"
 
 
-async def test_create_message_minimal(client, db_session, auth_headers):
-    session = await _create_session_in_db(db_session)
+async def test_create_message_minimal(client, db_session, auth_user):
+    user, headers = auth_user
+    session = await _create_session_in_db(db_session, user=user)
 
     body = {
         "session_id": str(session.id),
         "role": "user",
         "content": "Look around.",
     }
-    resp = await client.post(f"{BASE}/messages", json=body, headers=auth_headers)
+    resp = await client.post(f"{BASE}/messages", json=body, headers=headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["tokens_used"] is None  # optional field
 
 
-async def test_create_message_empty_content(client, db_session, auth_headers):
-    session = await _create_session_in_db(db_session)
+async def test_create_message_empty_content(client, db_session, auth_user):
+    user, headers = auth_user
+    session = await _create_session_in_db(db_session, user=user)
 
     body = {
         "session_id": str(session.id),
         "role": "user",
         "content": "",  # min_length=1 should reject this
     }
-    resp = await client.post(f"{BASE}/messages", json=body, headers=auth_headers)
+    resp = await client.post(f"{BASE}/messages", json=body, headers=headers)
     assert resp.status_code == 422
 
 
@@ -145,10 +150,11 @@ async def test_create_message_empty_content(client, db_session, auth_headers):
 # ===========================================================================
 
 
-async def test_get_conversation_history_empty(client, db_session, auth_headers):
-    session = await _create_session_in_db(db_session)
+async def test_get_conversation_history_empty(client, db_session, auth_user):
+    user, headers = auth_user
+    session = await _create_session_in_db(db_session, user=user)
 
-    resp = await client.get(f"{BASE}/{session.id}", params={"source": "database"}, headers=auth_headers)
+    resp = await client.get(f"{BASE}/{session.id}", params={"source": "database"}, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["session_id"] == str(session.id)
@@ -156,15 +162,16 @@ async def test_get_conversation_history_empty(client, db_session, auth_headers):
     assert data["total_messages"] == 0
 
 
-async def test_get_conversation_history_with_messages(client, db_session, auth_headers):
-    session = await _create_session_in_db(db_session)
+async def test_get_conversation_history_with_messages(client, db_session, auth_user):
+    user, headers = auth_user
+    session = await _create_session_in_db(db_session, user=user)
 
     msg1 = make_message(session=session, role="user", content="Hello!")
     msg2 = make_message(session=session, role="assistant", content="Greetings, adventurer!")
     db_session.add_all([msg1, msg2])
     await db_session.flush()
 
-    resp = await client.get(f"{BASE}/{session.id}", params={"source": "database"}, headers=auth_headers)
+    resp = await client.get(f"{BASE}/{session.id}", params={"source": "database"}, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["total_messages"] == 2
@@ -176,24 +183,26 @@ async def test_get_conversation_history_with_messages(client, db_session, auth_h
 # ===========================================================================
 
 
-async def test_get_recent_messages_empty(client, db_session, auth_headers):
-    session = await _create_session_in_db(db_session)
+async def test_get_recent_messages_empty(client, db_session, auth_user):
+    user, headers = auth_user
+    session = await _create_session_in_db(db_session, user=user)
 
-    resp = await client.get(f"{BASE}/{session.id}/recent", params={"count": 5}, headers=auth_headers)
+    resp = await client.get(f"{BASE}/{session.id}/recent", params={"count": 5}, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data == []
 
 
-async def test_get_recent_messages_with_data(client, db_session, auth_headers):
-    session = await _create_session_in_db(db_session)
+async def test_get_recent_messages_with_data(client, db_session, auth_user):
+    user, headers = auth_user
+    session = await _create_session_in_db(db_session, user=user)
 
     for i in range(5):
         msg = make_message(session=session, content=f"Message {i}")
         db_session.add(msg)
     await db_session.flush()
 
-    resp = await client.get(f"{BASE}/{session.id}/recent", params={"count": 3}, headers=auth_headers)
+    resp = await client.get(f"{BASE}/{session.id}/recent", params={"count": 3}, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) <= 3
@@ -204,20 +213,22 @@ async def test_get_recent_messages_with_data(client, db_session, auth_headers):
 # ===========================================================================
 
 
-async def test_delete_conversation_history(client, db_session, auth_headers):
-    session = await _create_session_in_db(db_session)
+async def test_delete_conversation_history(client, db_session, auth_user):
+    user, headers = auth_user
+    session = await _create_session_in_db(db_session, user=user)
 
     msg = make_message(session=session)
     db_session.add(msg)
     await db_session.flush()
 
-    resp = await client.delete(f"{BASE}/{session.id}", headers=auth_headers)
+    resp = await client.delete(f"{BASE}/{session.id}", headers=headers)
     assert resp.status_code == 204
 
 
-async def test_delete_conversation_history_empty(client, db_session, auth_headers):
+async def test_delete_conversation_history_empty(client, db_session, auth_user):
+    user, headers = auth_user
     """Deleting an empty conversation should still succeed (204)."""
-    session = await _create_session_in_db(db_session)
+    session = await _create_session_in_db(db_session, user=user)
 
-    resp = await client.delete(f"{BASE}/{session.id}", headers=auth_headers)
+    resp = await client.delete(f"{BASE}/{session.id}", headers=headers)
     assert resp.status_code == 204

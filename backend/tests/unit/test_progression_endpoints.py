@@ -83,27 +83,33 @@ def _strip_middleware():
     app.middleware_stack = app.build_middleware_stack()
 
 
-@pytest_asyncio.fixture
-async def sync_client(sync_db):
+@pytest.fixture
+def sync_auth_user(sync_db):
+    """The User that sync_client authenticates as."""
     from app.db.models import User
-    from app.main import app
-    from app.middleware.auth import get_current_active_user
 
-    def _get_sync_db():
-        yield sync_db
-
-    auth_user = User(
+    user = User(
         id=uuid.uuid4(),
         username=f"syncuser_{uuid.uuid4().hex[:8]}",
         password_hash="hashed",
         is_guest=False,
         is_active=True,
     )
-    sync_db.add(auth_user)
+    sync_db.add(user)
     sync_db.flush()
+    return user
+
+
+@pytest_asyncio.fixture
+async def sync_client(sync_db, sync_auth_user):
+    from app.main import app
+    from app.middleware.auth import get_current_active_user
+
+    def _get_sync_db():
+        yield sync_db
 
     async def _mock_auth():
-        return auth_user
+        return sync_auth_user
 
     app.dependency_overrides[get_db] = _get_sync_db
     app.dependency_overrides[get_current_active_user] = _mock_auth
@@ -205,7 +211,7 @@ async def test_add_xp(sync_db):
     sync_db.flush()
 
     result = await add_experience(
-        character_id=char.id, request=AddXPRequest(amount=500), db=sync_db
+        character_id=char.id, request=AddXPRequest(amount=500), current_user=user, db=sync_db
     )
 
     assert result["experience_points"] == 500
@@ -215,11 +221,17 @@ async def test_add_xp(sync_db):
 
 
 async def test_add_xp_character_not_found(sync_db):
+    user = make_user()
+    sync_db.add(user)
+    sync_db.flush()
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
         await add_experience(
-            character_id=uuid.uuid4(), request=AddXPRequest(amount=100), db=sync_db
+            character_id=uuid.uuid4(),
+            request=AddXPRequest(amount=100),
+            current_user=user,
+            db=sync_db,
         )
     assert exc_info.value.status_code == 404
 
@@ -235,7 +247,7 @@ async def test_xp_progress(sync_db):
     sync_db.add_all([user, char])
     sync_db.flush()
 
-    result = await get_xp_progress(character_id=char.id, db=sync_db)
+    result = await get_xp_progress(character_id=char.id, current_user=user, db=sync_db)
 
     assert result["level"] == 2
     assert result["experience_points"] == 600
@@ -252,7 +264,7 @@ async def test_xp_progress_at_max_level(sync_db):
     sync_db.add_all([user, char])
     sync_db.flush()
 
-    result = await get_xp_progress(character_id=char.id, db=sync_db)
+    result = await get_xp_progress(character_id=char.id, current_user=user, db=sync_db)
 
     assert result["progress_percent"] == 100.0
     assert result["next_level_xp"] is None
@@ -260,10 +272,13 @@ async def test_xp_progress_at_max_level(sync_db):
 
 
 async def test_xp_progress_character_not_found(sync_db):
+    user = make_user()
+    sync_db.add(user)
+    sync_db.flush()
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
-        await get_xp_progress(character_id=uuid.uuid4(), db=sync_db)
+        await get_xp_progress(character_id=uuid.uuid4(), current_user=user, db=sync_db)
     assert exc_info.value.status_code == 404
 
 
@@ -287,7 +302,9 @@ async def test_level_up_basic(sync_db):
     sync_db.flush()
 
     req = LevelUpRequest(hp_roll=7)
-    result = await level_up_character(character_id=char.id, request=req, db=sync_db)
+    result = await level_up_character(
+        character_id=char.id, request=req, current_user=user, db=sync_db
+    )
 
     assert result["success"] is True
     assert result["new_level"] == 2
@@ -319,7 +336,9 @@ async def test_level_up_average_hp(sync_db):
         return_value={1: 3},
     ):
         req = LevelUpRequest(hp_roll=0)  # 0 = take average
-        result = await level_up_character(character_id=char.id, request=req, db=sync_db)
+        result = await level_up_character(
+            character_id=char.id, request=req, current_user=user, db=sync_db
+        )
 
     # Wizard d6: average = (6//2)+1 = 4, con_mod=0 → 4
     assert result["hp_gained"] == 4
@@ -345,7 +364,9 @@ async def test_level_up_with_ability_increase(sync_db):
         hp_roll=8,
         ability_increases={"strength": 1, "constitution": 1},
     )
-    result = await level_up_character(character_id=char.id, request=req, db=sync_db)
+    result = await level_up_character(
+        character_id=char.id, request=req, current_user=user, db=sync_db
+    )
 
     assert result["new_level"] == 4
     assert result["ability_increases"] == {"strength": 1, "constitution": 1}
@@ -368,7 +389,7 @@ async def test_level_up_asi_wrong_total(sync_db):
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
-        await level_up_character(character_id=char.id, request=req, db=sync_db)
+        await level_up_character(character_id=char.id, request=req, current_user=user, db=sync_db)
     assert exc_info.value.status_code == 400
     assert "exactly 2 points" in exc_info.value.detail
 
@@ -389,7 +410,7 @@ async def test_level_up_asi_invalid_ability(sync_db):
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
-        await level_up_character(character_id=char.id, request=req, db=sync_db)
+        await level_up_character(character_id=char.id, request=req, current_user=user, db=sync_db)
     assert exc_info.value.status_code == 400
 
 
@@ -403,7 +424,7 @@ async def test_level_up_not_enough_xp(sync_db):
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
-        await level_up_character(character_id=char.id, request=req, db=sync_db)
+        await level_up_character(character_id=char.id, request=req, current_user=user, db=sync_db)
     assert exc_info.value.status_code == 400
 
 
@@ -417,15 +438,20 @@ async def test_level_up_max_level(sync_db):
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
-        await level_up_character(character_id=char.id, request=req, db=sync_db)
+        await level_up_character(character_id=char.id, request=req, current_user=user, db=sync_db)
     assert exc_info.value.status_code == 400
 
 
 async def test_level_up_character_not_found(sync_db):
+    user = make_user()
+    sync_db.add(user)
+    sync_db.flush()
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
-        await level_up_character(character_id=uuid.uuid4(), request=LevelUpRequest(), db=sync_db)
+        await level_up_character(
+            character_id=uuid.uuid4(), request=LevelUpRequest(), current_user=user, db=sync_db
+        )
     assert exc_info.value.status_code == 404
 
 
@@ -451,7 +477,9 @@ async def test_level_up_spellcaster_gets_spell_slots(sync_db):
         return_value={1: 3},
     ):
         req = LevelUpRequest(hp_roll=0)
-        result = await level_up_character(character_id=char.id, request=req, db=sync_db)
+        result = await level_up_character(
+            character_id=char.id, request=req, current_user=user, db=sync_db
+        )
 
     assert result["new_spell_slots"] is not None
     assert result["new_level"] == 2
@@ -464,7 +492,7 @@ async def test_level_up_spellcaster_gets_spell_slots(sync_db):
 
 async def test_progression_via_http_returns_404_for_unknown_int(sync_client):
     resp = await sync_client.post(
-        f"{BASE}/characters/99999/add-xp",
+        f"{BASE}/characters/{uuid.uuid4()}/add-xp",
         json={"amount": 100},
     )
     assert resp.status_code == 404

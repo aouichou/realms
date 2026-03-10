@@ -13,6 +13,7 @@ from app.db.models import User
 from app.middleware.auth import get_current_active_user
 from app.observability.tracing import trace_async
 from app.services.adventure_service import AdventureService
+from app.services.ownership import verify_character_ownership
 
 router = APIRouter(prefix="/adventures", tags=["adventures"])
 
@@ -81,6 +82,8 @@ async def start_preset_adventure(
     """
     service = AdventureService(db)
 
+    await verify_character_ownership(db, request.character_id, current_user.id)
+
     try:
         result = await service.start_preset_adventure(
             character_id=request.character_id,
@@ -105,6 +108,8 @@ async def start_custom_adventure(
     Creates a game session and returns opening narration based on the adventure's first scene.
     """
     service = AdventureService(db)
+
+    await verify_character_ownership(db, request.character_id, current_user.id)
 
     try:
         result = await service.start_custom_adventure(
@@ -185,6 +190,8 @@ async def generate_custom_adventure(
     """
     service = AdventureService(db)
 
+    await verify_character_ownership(db, request.character_id, current_user.id)
+
     try:
         adventure = await service.generate_custom_adventure(
             character_id=request.character_id,
@@ -218,6 +225,8 @@ async def list_character_adventures(
     db: AsyncSession = Depends(get_db),
 ):
     """Get all custom adventures for a character"""
+    await verify_character_ownership(db, character_id, current_user.id)
+
     from sqlalchemy import select
 
     from app.db.models import Adventure

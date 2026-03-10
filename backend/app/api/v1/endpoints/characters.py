@@ -20,6 +20,7 @@ from app.schemas.character import (
 )
 from app.schemas.character_stats import CharacterStatsResponse
 from app.services.character_service import CharacterService
+from app.services.ownership import verify_character_ownership
 
 router = APIRouter(prefix="/characters", tags=["characters"])
 
@@ -69,9 +70,7 @@ async def get_character(
     Raises:
         HTTPException: 404 if character not found
     """
-    character = await CharacterService.get_character(db, character_id)
-    if not character:
-        raise HTTPException(status_code=404, detail="Character not found")
+    character = await verify_character_ownership(db, character_id, current_user.id)
     return character
 
 
@@ -130,6 +129,7 @@ async def update_character(
     Raises:
         HTTPException: 404 if character not found
     """
+    await verify_character_ownership(db, character_id, current_user.id)
     character = await CharacterService.update_character(db, character_id, character_data)
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -387,6 +387,7 @@ async def get_character_stats(
     Raises:
         HTTPException: 404 if character not found
     """
+    await verify_character_ownership(db, character_id, current_user.id)
     stats = await CharacterService.calculate_character_stats(db, character_id)
     if not stats:
         raise HTTPException(status_code=404, detail="Character not found")

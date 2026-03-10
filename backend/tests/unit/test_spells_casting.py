@@ -74,9 +74,10 @@ BASE = "/api/v1/spells"
 # ── helpers ────────────────────────────────────────────────────────────────
 
 
-async def _setup_caster(db_session, cls=CharacterClass.WIZARD, level=5, slots=None):
+async def _setup_caster(db_session, cls=CharacterClass.WIZARD, level=5, slots=None, user=None):
     """Create a user, wizard character, spell, and character_spell."""
-    user = make_user()
+    if user is None:
+        user = make_user()
     if slots is None:
         slots = {"1": {"total": 4, "used": 0}, "2": {"total": 3, "used": 0}}
     char = make_character(
@@ -352,9 +353,10 @@ class TestGetSpellSlotsForClass:
 # ===========================================================================
 
 
-async def test_cast_spell_basic(client, db_session, auth_headers):
+async def test_cast_spell_basic(client, db_session, auth_user):
     """Cast a level 1 spell using a level 1 slot."""
-    _u, char, spell, _cs = await _setup_caster(db_session)
+    user, headers = auth_user
+    _u, char, spell, _cs = await _setup_caster(db_session, user=user)
 
     with (
         patch(
@@ -372,7 +374,7 @@ async def test_cast_spell_basic(client, db_session, auth_headers):
                 "spell_id": str(spell.id),
                 "spell_level": 1,
             },
-            headers=auth_headers,
+            headers=headers,
         )
     assert resp.status_code == 200
     data = resp.json()
@@ -380,9 +382,10 @@ async def test_cast_spell_basic(client, db_session, auth_headers):
     assert data["slot_level_used"] == 1
 
 
-async def test_cast_spell_upcast(client, db_session, auth_headers):
+async def test_cast_spell_upcast(client, db_session, auth_user):
     """Cast a level 1 spell at level 2 slot (upcasting)."""
-    _u, char, spell, _cs = await _setup_caster(db_session)
+    user, headers = auth_user
+    _u, char, spell, _cs = await _setup_caster(db_session, user=user)
 
     with (
         patch(
@@ -401,16 +404,16 @@ async def test_cast_spell_upcast(client, db_session, auth_headers):
                 "spell_level": 1,
                 "slot_level": 2,
             },
-            headers=auth_headers,
+            headers=headers,
         )
     assert resp.status_code == 200
     data = resp.json()
     assert data["slot_level_used"] == 2
 
 
-async def test_cast_spell_cantrip(client, db_session, auth_headers):
+async def test_cast_spell_cantrip(client, db_session, auth_user):
     """Casting a cantrip (level 0) doesn't consume a slot."""
-    user = make_user()
+    user, headers = auth_user
     char = make_character(
         user=user,
         character_class=CharacterClass.WIZARD,
@@ -419,7 +422,7 @@ async def test_cast_spell_cantrip(client, db_session, auth_headers):
     )
     cantrip = make_spell(name="Fire Bolt", level=0, damage_dice="1d10")
     cs = make_character_spell(character=char, spell=cantrip, is_known=True, is_prepared=True)
-    db_session.add_all([user, char, cantrip, cs])
+    db_session.add_all([char, cantrip, cs])
     await db_session.flush()
 
     resp = await client.post(
@@ -428,16 +431,16 @@ async def test_cast_spell_cantrip(client, db_session, auth_headers):
             "spell_id": str(cantrip.id),
             "spell_level": 0,
         },
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 200
     data = resp.json()
     assert data["slot_level_used"] == 0
 
 
-async def test_cast_spell_ritual(client, db_session, auth_headers):
+async def test_cast_spell_ritual(client, db_session, auth_user):
     """Ritual casting doesn't consume a slot."""
-    user = make_user()
+    user, headers = auth_user
     char = make_character(
         user=user,
         character_class=CharacterClass.WIZARD,
@@ -446,7 +449,7 @@ async def test_cast_spell_ritual(client, db_session, auth_headers):
     )
     spell = make_spell(name="Detect Magic", level=1, is_ritual=True, damage_dice=None)
     cs = make_character_spell(character=char, spell=spell, is_known=True, is_prepared=True)
-    db_session.add_all([user, char, spell, cs])
+    db_session.add_all([char, spell, cs])
     await db_session.flush()
 
     with (
@@ -466,7 +469,7 @@ async def test_cast_spell_ritual(client, db_session, auth_headers):
                 "spell_level": 1,
                 "is_ritual_cast": True,
             },
-            headers=auth_headers,
+            headers=headers,
         )
     assert resp.status_code == 200
     data = resp.json()
@@ -483,24 +486,25 @@ async def test_cast_spell_character_not_found(client, db_session, auth_headers):
     assert resp.status_code == 404
 
 
-async def test_cast_spell_unknown_spell(client, db_session, auth_headers):
+async def test_cast_spell_unknown_spell(client, db_session, auth_user):
     """Casting a spell the character doesn't know returns 404."""
-    user = make_user()
+    user, headers = auth_user
     char = make_character(user=user, character_class=CharacterClass.WIZARD, level=1)
-    db_session.add_all([user, char])
+    db_session.add_all([char])
     await db_session.flush()
 
     resp = await client.post(
         f"{BASE}/character/{char.id}/cast",
         json={"spell_id": str(uuid.uuid4()), "spell_level": 1},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 404
 
 
-async def test_cast_spell_not_ritual_fails(client, db_session, auth_headers):
+async def test_cast_spell_not_ritual_fails(client, db_session, auth_user):
     """Attempting ritual cast on non-ritual spell returns 400."""
-    _u, char, spell, _cs = await _setup_caster(db_session)
+    user, headers = auth_user
+    _u, char, spell, _cs = await _setup_caster(db_session, user=user)
 
     resp = await client.post(
         f"{BASE}/character/{char.id}/cast",
@@ -509,14 +513,14 @@ async def test_cast_spell_not_ritual_fails(client, db_session, auth_headers):
             "spell_level": 1,
             "is_ritual_cast": True,
         },
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 400
 
 
-async def test_cast_spell_no_slots_remaining(client, db_session, auth_headers):
+async def test_cast_spell_no_slots_remaining(client, db_session, auth_user):
     """Casting when all slots used returns 400."""
-    user = make_user()
+    user, headers = auth_user
     char = make_character(
         user=user,
         character_class=CharacterClass.WIZARD,
@@ -525,13 +529,13 @@ async def test_cast_spell_no_slots_remaining(client, db_session, auth_headers):
     )
     spell = make_spell(name="Shield", level=1)
     cs = make_character_spell(character=char, spell=spell, is_known=True, is_prepared=True)
-    db_session.add_all([user, char, spell, cs])
+    db_session.add_all([char, spell, cs])
     await db_session.flush()
 
     resp = await client.post(
         f"{BASE}/character/{char.id}/cast",
         json={"spell_id": str(spell.id), "spell_level": 1},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 400
 
@@ -541,9 +545,9 @@ async def test_cast_spell_no_slots_remaining(client, db_session, auth_headers):
 # ===========================================================================
 
 
-async def test_long_rest_restores_slots(client, db_session, auth_headers):
+async def test_long_rest_restores_slots(client, db_session, auth_user):
     """Long rest resets all used spell slots and HP."""
-    user = make_user()
+    user, headers = auth_user
     char = make_character(
         user=user,
         character_class=CharacterClass.WIZARD,
@@ -552,10 +556,10 @@ async def test_long_rest_restores_slots(client, db_session, auth_headers):
         hp_max=20,
         spell_slots={"1": {"total": 4, "used": 3}, "2": {"total": 2, "used": 1}},
     )
-    db_session.add_all([user, char])
+    db_session.add_all([char])
     await db_session.flush()
 
-    resp = await client.post(f"{BASE}/character/{char.id}/rest", headers=auth_headers)
+    resp = await client.post(f"{BASE}/character/{char.id}/rest", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["spell_slots"]["1"]["used"] == 0
@@ -572,37 +576,43 @@ async def test_long_rest_character_not_found(client, db_session, auth_headers):
 # ===========================================================================
 
 
-async def test_concentration_check_not_concentrating(client, db_session, auth_headers):
+async def test_concentration_check_not_concentrating(client, db_session, auth_user):
     """Character not concentrating → success."""
-    user = make_user()
+    user, headers = auth_user
     char = make_character(user=user, active_concentration_spell=None)
-    db_session.add_all([user, char])
+    db_session.add_all([char])
     await db_session.flush()
 
-    resp = await client.post(f"{BASE}/character/{char.id}/concentration-check?damage_taken=10", headers=auth_headers)
+    resp = await client.post(
+        f"{BASE}/character/{char.id}/concentration-check?damage_taken=10", headers=headers
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["success"] is True
 
 
 async def test_concentration_check_character_not_found(client, db_session, auth_headers):
-    resp = await client.post(f"{BASE}/character/{uuid.uuid4()}/concentration-check?damage_taken=5", headers=auth_headers)
+    resp = await client.post(
+        f"{BASE}/character/{uuid.uuid4()}/concentration-check?damage_taken=5", headers=auth_headers
+    )
     assert resp.status_code == 404
 
 
-async def test_concentration_check_with_active_spell(client, db_session, auth_headers):
+async def test_concentration_check_with_active_spell(client, db_session, auth_user):
     """Character concentrating on a spell — roll outcome."""
-    user = make_user()
+    user, headers = auth_user
     spell_id = uuid.uuid4()
     char = make_character(
         user=user,
         active_concentration_spell=spell_id,
         constitution=10,
     )
-    db_session.add_all([user, char])
+    db_session.add_all([char])
     await db_session.flush()
 
-    resp = await client.post(f"{BASE}/character/{char.id}/concentration-check?damage_taken=5", headers=auth_headers)
+    resp = await client.post(
+        f"{BASE}/character/{char.id}/concentration-check?damage_taken=5", headers=headers
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "roll" in data
@@ -615,36 +625,36 @@ async def test_concentration_check_with_active_spell(client, db_session, auth_he
 # ===========================================================================
 
 
-async def test_get_spell_slots(client, db_session, auth_headers):
-    user = make_user()
+async def test_get_spell_slots(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(
         user=user,
         character_class=CharacterClass.WIZARD,
         level=1,
         spell_slots={"1": {"total": 2, "used": 0}},
     )
-    db_session.add_all([user, char])
+    db_session.add_all([char])
     await db_session.flush()
 
-    resp = await client.get(f"{BASE}/character/{char.id}/slots", headers=auth_headers)
+    resp = await client.get(f"{BASE}/character/{char.id}/slots", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["character_id"] == str(char.id)
 
 
-async def test_get_spell_slots_initializes_empty(client, db_session, auth_headers):
+async def test_get_spell_slots_initializes_empty(client, db_session, auth_user):
     """If spell_slots is empty, endpoint initializes them."""
-    user = make_user()
+    user, headers = auth_user
     char = make_character(
         user=user,
         character_class=CharacterClass.WIZARD,
         level=1,
         spell_slots={},
     )
-    db_session.add_all([user, char])
+    db_session.add_all([char])
     await db_session.flush()
 
-    resp = await client.get(f"{BASE}/character/{char.id}/slots", headers=auth_headers)
+    resp = await client.get(f"{BASE}/character/{char.id}/slots", headers=headers)
     assert resp.status_code == 200
 
 
@@ -658,13 +668,14 @@ async def test_get_spell_slots_not_found(client, db_session, auth_headers):
 # ===========================================================================
 
 
-async def test_prepare_spells(client, db_session, auth_headers):
-    _u, char, spell, cs = await _setup_caster(db_session)
+async def test_prepare_spells(client, db_session, auth_user):
+    user, headers = auth_user
+    _u, char, spell, cs = await _setup_caster(db_session, user=user)
 
     resp = await client.post(
         f"{BASE}/character/{char.id}/prepare",
         json={"spell_ids": [str(spell.id)]},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -685,14 +696,15 @@ async def test_prepare_spells_character_not_found(client, db_session, auth_heade
 # ===========================================================================
 
 
-async def test_add_spell_duplicate(client, db_session, auth_headers):
+async def test_add_spell_duplicate(client, db_session, auth_user):
     """Adding the same spell twice returns 400."""
-    _u, char, spell, _cs = await _setup_caster(db_session)
+    user, headers = auth_user
+    _u, char, spell, _cs = await _setup_caster(db_session, user=user)
 
     resp = await client.post(
         f"{BASE}/character/{char.id}/spells",
         json={"spell_id": str(spell.id)},
-        headers=auth_headers,
+        headers=headers,
     )
     assert resp.status_code == 400
 
@@ -702,17 +714,21 @@ async def test_add_spell_duplicate(client, db_session, auth_headers):
 # ===========================================================================
 
 
-async def test_get_character_spells_known_only(client, db_session, auth_headers):
-    _u, char, spell, _cs = await _setup_caster(db_session)
+async def test_get_character_spells_known_only(client, db_session, auth_user):
+    user, headers = auth_user
+    _u, char, spell, _cs = await _setup_caster(db_session, user=user)
 
-    resp = await client.get(f"{BASE}/character/{char.id}/spells?known_only=true", headers=auth_headers)
+    resp = await client.get(f"{BASE}/character/{char.id}/spells?known_only=true", headers=headers)
     assert resp.status_code == 200
 
 
-async def test_get_character_spells_prepared_only(client, db_session, auth_headers):
-    _u, char, spell, _cs = await _setup_caster(db_session)
+async def test_get_character_spells_prepared_only(client, db_session, auth_user):
+    user, headers = auth_user
+    _u, char, spell, _cs = await _setup_caster(db_session, user=user)
 
-    resp = await client.get(f"{BASE}/character/{char.id}/spells?prepared_only=true", headers=auth_headers)
+    resp = await client.get(
+        f"{BASE}/character/{char.id}/spells?prepared_only=true", headers=headers
+    )
     assert resp.status_code == 200
 
 

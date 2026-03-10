@@ -317,7 +317,7 @@ async def craft_item(
     """
     # Get character
     character = db.query(Character).filter(Character.id == request.character_id).first()
-    if not character:
+    if not character or character.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Character not found")
 
     # Find recipe

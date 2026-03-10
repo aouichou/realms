@@ -30,6 +30,7 @@ from app.schemas.spell import (
 from app.services.character_service import CharacterService
 from app.services.effects_service import EffectsService
 from app.services.memory_capture import MemoryCaptureService
+from app.services.ownership import verify_character_ownership
 
 logger = get_logger(__name__)
 
@@ -248,6 +249,7 @@ async def get_character_spells(
     character = await CharacterService.get_character(db, character_id)
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
+    await verify_character_ownership(db, character_id, current_user.id)
 
     query = select(CharacterSpell).where(CharacterSpell.character_id == character_id)
 
@@ -291,6 +293,7 @@ async def add_spell_to_character(
     character = await CharacterService.get_character(db, character_id)
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
+    await verify_character_ownership(db, character_id, current_user.id)
 
     # Check spell exists
     result = await db.execute(select(Spell).where(Spell.id == spell_data.spell_id))
@@ -351,6 +354,7 @@ async def prepare_spells(
     character = await CharacterService.get_character(db, character_id)
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
+    await verify_character_ownership(db, character_id, current_user.id)
 
     # Unprepare all spells first
     await db.execute(
@@ -409,6 +413,7 @@ async def get_spell_slots(
     character = await CharacterService.get_character(db, character_id)
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
+    await verify_character_ownership(db, character_id, current_user.id)
 
     # Initialize spell slots if not set
     if not character.spell_slots:
@@ -572,6 +577,7 @@ async def cast_spell(
     character = await CharacterService.get_character(db, character_id)
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
+    await verify_character_ownership(db, character_id, current_user.id)
 
     # Get spell
     result = await db.execute(
@@ -744,7 +750,11 @@ def _roll_dice(dice_notation: str) -> int:
 
 @router.post("/character/{character_id}/rest", response_model=SpellSlotsResponse)
 @trace_async("spells.long_rest")
-async def long_rest(character_id: UUID, db: AsyncSession = Depends(get_db)):
+async def long_rest(
+    character_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Perform a long rest, restoring all spell slots
 
     Args:
@@ -760,6 +770,7 @@ async def long_rest(character_id: UUID, db: AsyncSession = Depends(get_db)):
     character = await CharacterService.get_character(db, character_id)
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
+    await verify_character_ownership(db, character_id, current_user.id)
 
     # Reset all spell slots
     if character.spell_slots:
@@ -786,6 +797,7 @@ async def long_rest(character_id: UUID, db: AsyncSession = Depends(get_db)):
 async def concentration_check(
     character_id: UUID,
     damage_taken: int = Query(..., ge=1, description="Damage taken that triggers the save"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Perform a concentration check after taking damage
@@ -807,6 +819,7 @@ async def concentration_check(
     character = await CharacterService.get_character(db, character_id)
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
+    await verify_character_ownership(db, character_id, current_user.id)
 
     if not character.active_concentration_spell:
         return {"success": True, "message": "Character is not concentrating on any spell"}

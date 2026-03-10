@@ -49,11 +49,11 @@ async def _patch_commit(db_session):
 
 
 @pytest.mark.asyncio
-async def test_create_memory(client, db_session, auth_headers):
-    user = make_user()
+async def test_create_memory(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
     mock_memory = make_memory(session=session)
@@ -70,7 +70,7 @@ async def test_create_memory(client, db_session, auth_headers):
                 "content": "The party defeated the goblins.",
                 "importance": 7,
             },
-            headers=auth_headers,
+            headers=headers,
         )
     assert resp.status_code == 201
     data = resp.json()
@@ -106,11 +106,11 @@ async def test_create_memory_error(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_search_memories(client, db_session, auth_headers):
-    user = make_user()
+async def test_search_memories(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
     mock_memory = make_memory(session=session)
@@ -126,7 +126,7 @@ async def test_search_memories(client, db_session, auth_headers):
                 "query": "goblin combat",
                 "limit": 10,
             },
-            headers=auth_headers,
+            headers=headers,
         )
     assert resp.status_code == 200
     data = resp.json()
@@ -135,7 +135,13 @@ async def test_search_memories(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_search_memories_empty(client, db_session, auth_headers):
+async def test_search_memories_empty(client, db_session, auth_user):
+    user, headers = auth_user
+    char = make_character(user=user)
+    session = make_session(user=user, character=char)
+    db_session.add_all([char, session])
+    await db_session.flush()
+
     with patch(
         "app.services.memory_service.MemoryService.search_memories",
         new_callable=AsyncMock,
@@ -144,10 +150,10 @@ async def test_search_memories_empty(client, db_session, auth_headers):
         resp = await client.post(
             "/api/v1/memories/search",
             json={
-                "session_id": str(uuid.uuid4()),
+                "session_id": str(session.id),
                 "query": "nothing here",
             },
-            headers=auth_headers,
+            headers=headers,
         )
     assert resp.status_code == 200
     assert resp.json()["total"] == 0
@@ -159,11 +165,11 @@ async def test_search_memories_empty(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_get_recent_memories(client, db_session, auth_headers):
-    user = make_user()
+async def test_get_recent_memories(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
     mock_memory = make_memory(session=session)
@@ -175,7 +181,7 @@ async def test_get_recent_memories(client, db_session, auth_headers):
         resp = await client.get(
             f"/api/v1/memories/session/{session.id}/recent",
             params={"limit": 5, "min_importance": 5},
-            headers=auth_headers,
+            headers=headers,
         )
     assert resp.status_code == 200
     data = resp.json()
@@ -188,8 +194,12 @@ async def test_get_recent_memories(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_get_ai_context(client, db_session, auth_headers):
-    session_id = uuid.uuid4()
+async def test_get_ai_context(client, db_session, auth_user):
+    user, headers = auth_user
+    char = make_character(user=user)
+    session = make_session(user=user, character=char)
+    db_session.add_all([char, session])
+    await db_session.flush()
 
     with (
         patch(
@@ -204,9 +214,9 @@ async def test_get_ai_context(client, db_session, auth_headers):
         ),
     ):
         resp = await client.get(
-            f"/api/v1/memories/session/{session_id}/context",
+            f"/api/v1/memories/session/{session.id}/context",
             params={"situation": "entering a dungeon"},
-            headers=auth_headers,
+            headers=headers,
         )
     assert resp.status_code == 200
     data = resp.json()
@@ -220,18 +230,18 @@ async def test_get_ai_context(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_delete_session_memories(client, db_session, auth_headers):
-    user = make_user()
+async def test_delete_session_memories(client, db_session, auth_user):
+    user, headers = auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
 
     mem = make_memory(session=session)
     db_session.add(mem)
     await db_session.flush()
 
-    resp = await client.delete(f"/api/v1/memories/session/{session.id}", headers=auth_headers)
+    resp = await client.delete(f"/api/v1/memories/session/{session.id}", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["deleted_count"] >= 1
@@ -239,7 +249,13 @@ async def test_delete_session_memories(client, db_session, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_delete_session_memories_none(client, db_session, auth_headers):
-    resp = await client.delete(f"/api/v1/memories/session/{uuid.uuid4()}", headers=auth_headers)
+async def test_delete_session_memories_none(client, db_session, auth_user):
+    user, headers = auth_user
+    char = make_character(user=user)
+    session = make_session(user=user, character=char)
+    db_session.add_all([char, session])
+    await db_session.flush()
+
+    resp = await client.delete(f"/api/v1/memories/session/{session.id}", headers=headers)
     assert resp.status_code == 200
     assert resp.json()["deleted_count"] == 0

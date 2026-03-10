@@ -12,7 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import User
 from app.middleware.auth import get_current_active_user
+from app.schemas.effects import ActiveEffect
 from app.services.effects_service import EffectsService
+from app.services.ownership import verify_character_ownership
 
 router = APIRouter(prefix="/effects", tags=["effects"])
 
@@ -34,6 +36,7 @@ async def get_character_effects(
     Returns:
         List of active effects
     """
+    await verify_character_ownership(db, character_id, current_user.id)
     effects = await EffectsService.get_active_effects(db, character_id, session_id)
 
     return {
@@ -59,6 +62,15 @@ async def remove_effect(
     Returns:
         Success message
     """
+    # Verify ownership: look up effect's character, then verify ownership
+    from sqlalchemy import select
+
+    result = await db.execute(select(ActiveEffect).where(ActiveEffect.id == effect_id))
+    effect = result.scalar_one_or_none()
+    if not effect:
+        raise HTTPException(status_code=404, detail="Effect not found")
+    await verify_character_ownership(db, effect.character_id, current_user.id)
+
     success = await EffectsService.remove_effect(db, effect_id)
 
     if not success:
@@ -87,6 +99,7 @@ async def break_concentration(
     Returns:
         Number of effects broken
     """
+    await verify_character_ownership(db, character_id, current_user.id)
     count = await EffectsService.break_concentration(db, character_id)
 
     return {
@@ -117,6 +130,7 @@ async def process_round_end(
     Returns:
         List of expired effect names
     """
+    await verify_character_ownership(db, character_id, current_user.id)
     expired = await EffectsService.process_round_end(db, character_id)
 
     return {
@@ -145,6 +159,7 @@ async def process_rest(
     Returns:
         List of effect names removed
     """
+    await verify_character_ownership(db, character_id, current_user.id)
     is_long_rest = rest_type == "long"
     removed_effects = await EffectsService.process_rest(db, character_id, is_long_rest)
 

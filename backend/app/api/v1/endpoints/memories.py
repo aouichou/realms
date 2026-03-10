@@ -17,6 +17,7 @@ from app.schemas.memory import (
     MemorySearchResponse,
 )
 from app.services.memory_service import MemoryService
+from app.services.ownership import verify_session_ownership
 
 router = APIRouter(prefix="/memories", tags=["memories"])
 
@@ -40,6 +41,7 @@ async def create_memory(
         HTTPException: If memory creation fails
     """
     try:
+        await verify_session_ownership(db, memory_data.session_id, current_user.id)
         memory = await MemoryService.store_memory(
             db=db,
             session_id=memory_data.session_id,
@@ -73,6 +75,7 @@ async def search_memories(
     Returns:
         Matching memories sorted by relevance
     """
+    await verify_session_ownership(db, search_request.session_id, current_user.id)
     memories = await MemoryService.search_memories(
         db=db,
         session_id=search_request.session_id,
@@ -109,6 +112,7 @@ async def get_recent_memories(
     Returns:
         Recent memories
     """
+    await verify_session_ownership(db, session_id, current_user.id)
     memories = await MemoryService.get_recent_memories(
         db=db, session_id=session_id, limit=limit, min_importance=min_importance
     )
@@ -135,6 +139,7 @@ async def get_ai_context(
     Returns:
         Formatted memory context
     """
+    await verify_session_ownership(db, session_id, current_user.id)
     context = await MemoryService.get_context_for_ai(
         db=db, session_id=session_id, current_situation=situation, max_memories=max_memories
     )
@@ -170,6 +175,8 @@ async def delete_session_memories(
     Returns:
         Success message
     """
+    await verify_session_ownership(db, session_id, current_user.id)
+
     from sqlalchemy import delete, select
 
     from app.db.models import AdventureMemory

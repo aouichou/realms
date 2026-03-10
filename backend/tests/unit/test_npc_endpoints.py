@@ -69,27 +69,33 @@ def _strip_middleware():
     app.middleware_stack = app.build_middleware_stack()
 
 
-@pytest_asyncio.fixture
-async def sync_client(sync_db):
+@pytest.fixture
+def sync_auth_user(sync_db):
+    """The User that sync_client authenticates as."""
     from app.db.models import User
-    from app.main import app
-    from app.middleware.auth import get_current_active_user
 
-    def _get_sync_db():
-        yield sync_db
-
-    auth_user = User(
+    user = User(
         id=uuid.uuid4(),
         username=f"syncuser_{uuid.uuid4().hex[:8]}",
         password_hash="hashed",
         is_guest=False,
         is_active=True,
     )
-    sync_db.add(auth_user)
+    sync_db.add(user)
     sync_db.flush()
+    return user
+
+
+@pytest_asyncio.fixture
+async def sync_client(sync_db, sync_auth_user):
+    from app.main import app
+    from app.middleware.auth import get_current_active_user
+
+    def _get_sync_db():
+        yield sync_db
 
     async def _mock_auth():
-        return auth_user
+        return sync_auth_user
 
     app.dependency_overrides[get_db] = _get_sync_db
     app.dependency_overrides[get_current_active_user] = _mock_auth
@@ -200,12 +206,12 @@ async def test_get_npc_not_found(sync_client, sync_db):
 # ===========================================================================
 
 
-async def test_add_companion(sync_client, sync_db):
-    user = make_user()
+async def test_add_companion(sync_client, sync_db, sync_auth_user):
+    user = sync_auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char)
     npc = make_character(character_type=CharacterType.NPC, name="Elara", user_id=None)
-    sync_db.add_all([user, char, session, npc])
+    sync_db.add_all([char, session, npc])
     sync_db.flush()
 
     resp = await sync_client.post(
@@ -229,11 +235,11 @@ async def test_add_companion_session_not_found(sync_client, sync_db):
     assert resp.status_code == 404
 
 
-async def test_add_companion_npc_not_found(sync_client, sync_db):
-    user = make_user()
+async def test_add_companion_npc_not_found(sync_client, sync_db, sync_auth_user):
+    user = sync_auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    sync_db.add_all([user, char, session])
+    sync_db.add_all([char, session])
     sync_db.flush()
 
     resp = await sync_client.post(
@@ -248,11 +254,11 @@ async def test_add_companion_npc_not_found(sync_client, sync_db):
 # ===========================================================================
 
 
-async def test_get_session_companions_empty(sync_client, sync_db):
-    user = make_user()
+async def test_get_session_companions_empty(sync_client, sync_db, sync_auth_user):
+    user = sync_auth_user
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    sync_db.add_all([user, char, session])
+    sync_db.add_all([char, session])
     sync_db.flush()
 
     resp = await sync_client.get(f"{BASE}/sessions/{session.id}/companions")
@@ -262,11 +268,11 @@ async def test_get_session_companions_empty(sync_client, sync_db):
     assert data["count"] == 0
 
 
-async def test_get_session_companions_with_companion(sync_client, sync_db):
-    user = make_user()
+async def test_get_session_companions_with_companion(sync_client, sync_db, sync_auth_user):
+    user = sync_auth_user
     char = make_character(user=user)
     npc = make_character(character_type=CharacterType.NPC, name="Companion", user_id=None)
-    sync_db.add_all([user, char, npc])
+    sync_db.add_all([char, npc])
     sync_db.flush()
 
     session = make_session(user=user, character=char, companion_id=npc.id)
@@ -290,11 +296,11 @@ async def test_get_session_companions_session_not_found(sync_client, sync_db):
 # ===========================================================================
 
 
-async def test_remove_companion(sync_client, sync_db):
-    user = make_user()
+async def test_remove_companion(sync_client, sync_db, sync_auth_user):
+    user = sync_auth_user
     char = make_character(user=user)
     npc = make_character(character_type=CharacterType.NPC, name="Leaving", user_id=None)
-    sync_db.add_all([user, char, npc])
+    sync_db.add_all([char, npc])
     sync_db.flush()
 
     session = make_session(user=user, character=char, companion_id=npc.id)
@@ -307,11 +313,11 @@ async def test_remove_companion(sync_client, sync_db):
     assert "left the party" in data["message"]
 
 
-async def test_remove_companion_wrong_npc(sync_client, sync_db):
-    user = make_user()
+async def test_remove_companion_wrong_npc(sync_client, sync_db, sync_auth_user):
+    user = sync_auth_user
     char = make_character(user=user)
     npc = make_character(character_type=CharacterType.NPC, user_id=None)
-    sync_db.add_all([user, char, npc])
+    sync_db.add_all([char, npc])
     sync_db.flush()
 
     session = make_session(user=user, character=char, companion_id=npc.id)

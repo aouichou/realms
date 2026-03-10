@@ -44,12 +44,11 @@ async def _patch_commit(db_session):
 # -- helpers ---------------------------------------------------------------
 
 
-async def _setup_char_session(db_session):
+async def _setup_char_session(db_session, user):
     """Create user + character + session and return (user, char, session)."""
-    user = make_user()
     char = make_character(user=user)
     session = make_session(user=user, character=char)
-    db_session.add_all([user, char, session])
+    db_session.add_all([char, session])
     await db_session.flush()
     return user, char, session
 
@@ -59,10 +58,11 @@ async def _setup_char_session(db_session):
 # ===========================================================================
 
 
-async def test_get_effects_empty(client, db_session, auth_headers):
-    user, char, _ = await _setup_char_session(db_session)
+async def test_get_effects_empty(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, _ = await _setup_char_session(db_session, user)
 
-    resp = await client.get(f"/api/v1/effects/character/{char.id}", headers=auth_headers)
+    resp = await client.get(f"/api/v1/effects/character/{char.id}", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["character_id"] == str(char.id)
@@ -70,15 +70,16 @@ async def test_get_effects_empty(client, db_session, auth_headers):
     assert data["count"] == 0
 
 
-async def test_get_effects_with_data(client, db_session, auth_headers):
-    user, char, session = await _setup_char_session(db_session)
+async def test_get_effects_with_data(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _setup_char_session(db_session, user)
 
     e1 = make_active_effect(character=char, session_id=session.id, name="Bless")
     e2 = make_active_effect(character=char, session_id=session.id, name="Shield of Faith")
     db_session.add_all([e1, e2])
     await db_session.flush()
 
-    resp = await client.get(f"/api/v1/effects/character/{char.id}", headers=auth_headers)
+    resp = await client.get(f"/api/v1/effects/character/{char.id}", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["count"] == 2
@@ -87,15 +88,16 @@ async def test_get_effects_with_data(client, db_session, auth_headers):
     assert "Shield of Faith" in names
 
 
-async def test_get_effects_filter_by_session(client, db_session, auth_headers):
-    user, char, session = await _setup_char_session(db_session)
+async def test_get_effects_filter_by_session(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _setup_char_session(db_session, user)
 
     e1 = make_active_effect(character=char, session_id=session.id, name="Haste")
     e2 = make_active_effect(character=char, session_id=None, name="Permanent Buff")
     db_session.add_all([e1, e2])
     await db_session.flush()
 
-    resp = await client.get(f"/api/v1/effects/character/{char.id}?session_id={session.id}", headers=auth_headers)
+    resp = await client.get(f"/api/v1/effects/character/{char.id}?session_id={session.id}", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["session_id"] == str(session.id)
@@ -107,14 +109,15 @@ async def test_get_effects_filter_by_session(client, db_session, auth_headers):
 # ===========================================================================
 
 
-async def test_delete_effect_happy(client, db_session, auth_headers):
-    user, char, session = await _setup_char_session(db_session)
+async def test_delete_effect_happy(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _setup_char_session(db_session, user)
 
     effect = make_active_effect(character=char, session_id=session.id, name="Faerie Fire")
     db_session.add(effect)
     await db_session.flush()
 
-    resp = await client.delete(f"/api/v1/effects/{effect.id}", headers=auth_headers)
+    resp = await client.delete(f"/api/v1/effects/{effect.id}", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["success"] is True
@@ -130,18 +133,20 @@ async def test_delete_effect_not_found(client, db_session, auth_headers):
 # ===========================================================================
 
 
-async def test_break_concentration_no_effects(client, db_session, auth_headers):
-    user, char, _ = await _setup_char_session(db_session)
+async def test_break_concentration_no_effects(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, _ = await _setup_char_session(db_session, user)
 
-    resp = await client.post(f"/api/v1/effects/character/{char.id}/break-concentration", headers=auth_headers)
+    resp = await client.post(f"/api/v1/effects/character/{char.id}/break-concentration", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["effects_broken"] == 0
     assert data["character_id"] == str(char.id)
 
 
-async def test_break_concentration_with_effects(client, db_session, auth_headers):
-    user, char, session = await _setup_char_session(db_session)
+async def test_break_concentration_with_effects(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _setup_char_session(db_session, user)
 
     conc_effect = make_active_effect(
         character=char,
@@ -154,7 +159,7 @@ async def test_break_concentration_with_effects(client, db_session, auth_headers
     db_session.add(conc_effect)
     await db_session.flush()
 
-    resp = await client.post(f"/api/v1/effects/character/{char.id}/break-concentration", headers=auth_headers)
+    resp = await client.post(f"/api/v1/effects/character/{char.id}/break-concentration", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["effects_broken"] >= 1
@@ -165,18 +170,20 @@ async def test_break_concentration_with_effects(client, db_session, auth_headers
 # ===========================================================================
 
 
-async def test_round_end_no_effects(client, db_session, auth_headers):
-    user, char, _ = await _setup_char_session(db_session)
+async def test_round_end_no_effects(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, _ = await _setup_char_session(db_session, user)
 
-    resp = await client.post(f"/api/v1/effects/character/{char.id}/round-end", headers=auth_headers)
+    resp = await client.post(f"/api/v1/effects/character/{char.id}/round-end", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["expired_effects"] == []
     assert data["count"] == 0
 
 
-async def test_round_end_with_expiring_effect(client, db_session, auth_headers):
-    user, char, session = await _setup_char_session(db_session)
+async def test_round_end_with_expiring_effect(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _setup_char_session(db_session, user)
 
     effect = make_active_effect(
         character=char,
@@ -191,7 +198,7 @@ async def test_round_end_with_expiring_effect(client, db_session, auth_headers):
     db_session.add(effect)
     await db_session.flush()
 
-    resp = await client.post(f"/api/v1/effects/character/{char.id}/round-end", headers=auth_headers)
+    resp = await client.post(f"/api/v1/effects/character/{char.id}/round-end", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["count"] >= 1
@@ -203,8 +210,9 @@ async def test_round_end_with_expiring_effect(client, db_session, auth_headers):
 # ===========================================================================
 
 
-async def test_rest_short(client, db_session, auth_headers):
-    user, char, session = await _setup_char_session(db_session)
+async def test_rest_short(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _setup_char_session(db_session, user)
 
     effect = make_active_effect(
         character=char,
@@ -216,15 +224,16 @@ async def test_rest_short(client, db_session, auth_headers):
     db_session.add(effect)
     await db_session.flush()
 
-    resp = await client.post(f"/api/v1/effects/character/{char.id}/rest?rest_type=short", headers=auth_headers)
+    resp = await client.post(f"/api/v1/effects/character/{char.id}/rest?rest_type=short", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["rest_type"] == "short"
     assert "Short Rest Effect" in data["effects_removed"]
 
 
-async def test_rest_long(client, db_session, auth_headers):
-    user, char, session = await _setup_char_session(db_session)
+async def test_rest_long(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _setup_char_session(db_session, user)
 
     effect = make_active_effect(
         character=char,
@@ -236,17 +245,18 @@ async def test_rest_long(client, db_session, auth_headers):
     db_session.add(effect)
     await db_session.flush()
 
-    resp = await client.post(f"/api/v1/effects/character/{char.id}/rest?rest_type=long", headers=auth_headers)
+    resp = await client.post(f"/api/v1/effects/character/{char.id}/rest?rest_type=long", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["rest_type"] == "long"
     assert "Long Rest Effect" in data["effects_removed"]
 
 
-async def test_rest_invalid_type(client, db_session, auth_headers):
-    user, char, _ = await _setup_char_session(db_session)
+async def test_rest_invalid_type(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, _ = await _setup_char_session(db_session, user)
 
-    resp = await client.post(f"/api/v1/effects/character/{char.id}/rest?rest_type=mega", headers=auth_headers)
+    resp = await client.post(f"/api/v1/effects/character/{char.id}/rest?rest_type=mega", headers=headers)
     assert resp.status_code == 422
 
 
@@ -262,8 +272,9 @@ async def test_cleanup_no_expired(client, db_session, auth_headers):
     assert data["effects_cleaned"] >= 0
 
 
-async def test_cleanup_with_expired(client, db_session, auth_headers):
-    user, char, session = await _setup_char_session(db_session)
+async def test_cleanup_with_expired(client, db_session, auth_user):
+    user, headers = auth_user
+    user, char, session = await _setup_char_session(db_session, user)
 
     effect = make_active_effect(
         character=char,
@@ -277,7 +288,7 @@ async def test_cleanup_with_expired(client, db_session, auth_headers):
     db_session.add(effect)
     await db_session.flush()
 
-    resp = await client.post("/api/v1/effects/cleanup", headers=auth_headers)
+    resp = await client.post("/api/v1/effects/cleanup", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["effects_cleaned"] >= 0

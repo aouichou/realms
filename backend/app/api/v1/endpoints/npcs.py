@@ -194,7 +194,7 @@ async def add_companion(
     Updates the session's companion_id
     """
     session = db.query(GameSession).filter(GameSession.id == session_id).first()
-    if not session:
+    if not session or session.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
 
     npc = (
@@ -238,7 +238,7 @@ async def get_session_companions(
     Currently only supports one companion per session
     """
     session = db.query(GameSession).filter(GameSession.id == session_id).first()
-    if not session:
+    if not session or session.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
 
     companions = []
@@ -275,7 +275,7 @@ async def remove_companion(
     Remove a companion from a session
     """
     session = db.query(GameSession).filter(GameSession.id == session_id).first()
-    if not session:
+    if not session or session.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
 
     if str(session.companion_id) != npc_id:

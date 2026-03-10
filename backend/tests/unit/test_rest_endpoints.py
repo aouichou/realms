@@ -76,27 +76,33 @@ def _strip_middleware():
     app.middleware_stack = app.build_middleware_stack()
 
 
-@pytest_asyncio.fixture
-async def sync_client(sync_db):
+@pytest.fixture
+def sync_auth_user(sync_db):
+    """The User that sync_client authenticates as."""
     from app.db.models import User
-    from app.main import app
-    from app.middleware.auth import get_current_active_user
 
-    def _get_sync_db():
-        yield sync_db
-
-    auth_user = User(
+    user = User(
         id=uuid.uuid4(),
         username=f"syncuser_{uuid.uuid4().hex[:8]}",
         password_hash="hashed",
         is_guest=False,
         is_active=True,
     )
-    sync_db.add(auth_user)
+    sync_db.add(user)
     sync_db.flush()
+    return user
+
+
+@pytest_asyncio.fixture
+async def sync_client(sync_db, sync_auth_user):
+    from app.main import app
+    from app.middleware.auth import get_current_active_user
+
+    def _get_sync_db():
+        yield sync_db
 
     async def _mock_auth():
-        return auth_user
+        return sync_auth_user
 
     app.dependency_overrides[get_db] = _get_sync_db
     app.dependency_overrides[get_current_active_user] = _mock_auth
@@ -149,7 +155,7 @@ async def test_short_rest_with_hit_dice(sync_db):
     sync_db.flush()
 
     req = RestRequest(rest_type="short", hit_dice_spent=[6])
-    result = await take_rest(character_id=char.id, request=req, db=sync_db)
+    result = await take_rest(character_id=char.id, request=req, current_user=user, db=sync_db)
 
     assert result["rest_type"] == "short"
     assert result["hit_dice_spent"] == 1
@@ -166,7 +172,7 @@ async def test_short_rest_no_dice(sync_db):
     sync_db.flush()
 
     req = RestRequest(rest_type="short", hit_dice_spent=[])
-    result = await take_rest(character_id=char.id, request=req, db=sync_db)
+    result = await take_rest(character_id=char.id, request=req, current_user=user, db=sync_db)
 
     assert result["hp_recovered"] == 0
     assert result["current_hp"] == 5
@@ -186,7 +192,7 @@ async def test_short_rest_caps_at_max_hp(sync_db):
 
     # Roll max d10 = 10 → would bring to 28, capped at 20
     req = RestRequest(rest_type="short", hit_dice_spent=[10])
-    result = await take_rest(character_id=char.id, request=req, db=sync_db)
+    result = await take_rest(character_id=char.id, request=req, current_user=user, db=sync_db)
 
     assert result["current_hp"] == 20
     assert result["hp_recovered"] == 2
@@ -208,7 +214,7 @@ async def test_short_rest_invalid_roll(sync_db):
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
-        await take_rest(character_id=char.id, request=req, db=sync_db)
+        await take_rest(character_id=char.id, request=req, current_user=user, db=sync_db)
     assert exc_info.value.status_code == 400
     assert "Invalid hit die roll" in exc_info.value.detail
 
@@ -228,7 +234,7 @@ async def test_short_rest_minimum_1_hp_per_die(sync_db):
 
     # Roll 1 + con_mod(-2) = -1 → clamped to 1
     req = RestRequest(rest_type="short", hit_dice_spent=[1])
-    result = await take_rest(character_id=char.id, request=req, db=sync_db)
+    result = await take_rest(character_id=char.id, request=req, current_user=user, db=sync_db)
 
     assert result["hp_recovered"] == 1
     assert result["current_hp"] == 4
@@ -246,7 +252,7 @@ async def test_long_rest_restores_full_hp(sync_db):
     sync_db.flush()
 
     req = RestRequest(rest_type="long")
-    result = await take_rest(character_id=char.id, request=req, db=sync_db)
+    result = await take_rest(character_id=char.id, request=req, current_user=user, db=sync_db)
 
     assert result["rest_type"] == "long"
     assert result["hp_recovered"] == 17
@@ -269,7 +275,7 @@ async def test_long_rest_restores_spell_slots(sync_db):
     sync_db.flush()
 
     req = RestRequest(rest_type="long")
-    result = await take_rest(character_id=char.id, request=req, db=sync_db)
+    result = await take_rest(character_id=char.id, request=req, current_user=user, db=sync_db)
 
     assert result["spell_slots_restored"] is True
 
@@ -281,7 +287,7 @@ async def test_long_rest_no_spell_slots(sync_db):
     sync_db.flush()
 
     req = RestRequest(rest_type="long")
-    result = await take_rest(character_id=char.id, request=req, db=sync_db)
+    result = await take_rest(character_id=char.id, request=req, current_user=user, db=sync_db)
 
     assert result["spell_slots_restored"] is False
 
@@ -301,17 +307,20 @@ async def test_invalid_rest_type(sync_db):
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
-        await take_rest(character_id=char.id, request=req, db=sync_db)
+        await take_rest(character_id=char.id, request=req, current_user=user, db=sync_db)
     assert exc_info.value.status_code == 400
     assert "Invalid rest type" in exc_info.value.detail
 
 
 async def test_rest_character_not_found(sync_db):
+    user = make_user()
+    sync_db.add(user)
+    sync_db.flush()
     req = RestRequest(rest_type="short")
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
-        await take_rest(character_id=uuid.uuid4(), request=req, db=sync_db)
+        await take_rest(character_id=uuid.uuid4(), request=req, current_user=user, db=sync_db)
     assert exc_info.value.status_code == 404
 
 
@@ -326,7 +335,7 @@ async def test_rest_status(sync_db):
     sync_db.add_all([user, char])
     sync_db.flush()
 
-    result = await get_rest_status(character_id=char.id, db=sync_db)
+    result = await get_rest_status(character_id=char.id, current_user=user, db=sync_db)
 
     assert result["current_hp"] == 8
     assert result["max_hp"] == 20
@@ -342,7 +351,7 @@ async def test_rest_status_full_hp(sync_db):
     sync_db.add_all([user, char])
     sync_db.flush()
 
-    result = await get_rest_status(character_id=char.id, db=sync_db)
+    result = await get_rest_status(character_id=char.id, current_user=user, db=sync_db)
 
     assert result["needs_rest"] is False
 
@@ -358,7 +367,7 @@ async def test_rest_status_with_spell_slots(sync_db):
     sync_db.add_all([user, char])
     sync_db.flush()
 
-    result = await get_rest_status(character_id=char.id, db=sync_db)
+    result = await get_rest_status(character_id=char.id, current_user=user, db=sync_db)
 
     assert "1" in result["spell_slots"]
     assert result["spell_slots"]["1"]["remaining"] == 2
@@ -366,10 +375,13 @@ async def test_rest_status_with_spell_slots(sync_db):
 
 
 async def test_rest_status_character_not_found(sync_db):
+    user = make_user()
+    sync_db.add(user)
+    sync_db.flush()
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
-        await get_rest_status(character_id=uuid.uuid4(), db=sync_db)
+        await get_rest_status(character_id=uuid.uuid4(), current_user=user, db=sync_db)
     assert exc_info.value.status_code == 404
 
 
@@ -380,7 +392,7 @@ async def test_rest_status_character_not_found(sync_db):
 
 async def test_rest_via_http_returns_404_for_unknown_int(sync_client):
     resp = await sync_client.post(
-        f"{BASE}/characters/99999/rest",
+        f"{BASE}/characters/{uuid.uuid4()}/rest",
         json={"rest_type": "short", "hit_dice_spent": []},
     )
     assert resp.status_code == 404
