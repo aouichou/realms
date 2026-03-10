@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
+from app.db.models import User
+from app.middleware.auth import get_current_active_user
 from app.schemas.memory import (
     MemoryContextResponse,
     MemoryCreate,
@@ -20,7 +22,11 @@ router = APIRouter(prefix="/memories", tags=["memories"])
 
 
 @router.post("", response_model=MemoryResponse, status_code=201)
-async def create_memory(memory_data: MemoryCreate, db: AsyncSession = Depends(get_db)):
+async def create_memory(
+    memory_data: MemoryCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Store a new memory with embedding
 
     Args:
@@ -53,7 +59,11 @@ async def create_memory(memory_data: MemoryCreate, db: AsyncSession = Depends(ge
 
 
 @router.post("/search", response_model=MemorySearchResponse)
-async def search_memories(search_request: MemorySearchRequest, db: AsyncSession = Depends(get_db)):
+async def search_memories(
+    search_request: MemorySearchRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Search memories using semantic similarity
 
     Args:
@@ -85,6 +95,7 @@ async def get_recent_memories(
     session_id: UUID,
     limit: int = Query(10, ge=1, le=50, description="Max memories to return"),
     min_importance: int = Query(5, ge=1, le=10, description="Minimum importance"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get recent important memories for a session
@@ -110,6 +121,7 @@ async def get_ai_context(
     session_id: UUID,
     situation: str = Query(..., description="Current game situation"),
     max_memories: int = Query(5, ge=1, le=10, description="Max memories to include"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get formatted memory context for AI DM
@@ -144,7 +156,11 @@ async def get_ai_context(
 
 
 @router.delete("/session/{session_id}")
-async def delete_session_memories(session_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_session_memories(
+    session_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Delete all memories for a session
 
     Args:

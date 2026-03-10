@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
+from app.db.models import User
+from app.middleware.auth import get_current_active_user
 from app.observability.tracing import trace_async
 from app.services.adventure_service import AdventureService
 
@@ -56,7 +58,10 @@ class StartedAdventureResponse(BaseModel):
 
 @router.get("/list", response_model=List[AdventureInfo])
 @trace_async("adventures.list")
-async def list_adventures(db: AsyncSession = Depends(get_db)):
+async def list_adventures(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Get list of all available preset adventures"""
     service = AdventureService(db)
     adventures = await service.get_available_adventures()
@@ -67,6 +72,7 @@ async def list_adventures(db: AsyncSession = Depends(get_db)):
 @trace_async("adventures.start_preset")
 async def start_preset_adventure(
     request: StartPresetAdventureRequest,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -91,6 +97,7 @@ async def start_preset_adventure(
 @trace_async("adventures.start_custom")
 async def start_custom_adventure(
     request: StartCustomAdventureRequest,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -114,6 +121,7 @@ async def start_custom_adventure(
 @router.get("/{adventure_id}")
 async def get_adventure_details(
     adventure_id: str,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get detailed information about a specific adventure"""
@@ -168,6 +176,7 @@ class CustomAdventureResponse(BaseModel):
 @router.post("/generate", response_model=CustomAdventureResponse)
 async def generate_custom_adventure(
     request: CustomAdventureRequest,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -205,6 +214,7 @@ async def generate_custom_adventure(
 @router.get("/custom/character/{character_id}", response_model=List[CustomAdventureResponse])
 async def list_character_adventures(
     character_id: UUID,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get all custom adventures for a character"""
@@ -239,6 +249,7 @@ async def list_character_adventures(
 @router.get("/custom/{adventure_id}", response_model=CustomAdventureResponse)
 async def get_custom_adventure(
     adventure_id: UUID,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a generated custom adventure by ID"""

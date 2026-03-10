@@ -10,7 +10,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.base import get_db
-from app.db.models import Character, Item
+from app.db.models import Character, Item, User
+from app.middleware.auth import get_current_active_user
 
 router = APIRouter(prefix="/loot", tags=["loot"])
 
@@ -160,7 +161,11 @@ def roll_dice(dice: str) -> int:
 
 
 @router.post("/loot/generate")
-async def generate_loot(request: LootRequest, db: Session = Depends(get_db)):
+async def generate_loot(
+    request: LootRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Generate random loot based on CR and environment
     """
@@ -288,7 +293,9 @@ async def generate_loot(request: LootRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/crafting/recipes")
-async def get_recipes(skill: Optional[str] = None):
+async def get_recipes(
+    skill: Optional[str] = None, current_user: User = Depends(get_current_active_user)
+):
     """
     Get all crafting recipes, optionally filtered by required skill
     """
@@ -300,7 +307,11 @@ async def get_recipes(skill: Optional[str] = None):
 
 
 @router.post("/crafting/craft")
-async def craft_item(request: CraftRequest, db: Session = Depends(get_db)):
+async def craft_item(
+    request: CraftRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Attempt to craft an item using a recipe
     """

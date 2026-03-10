@@ -112,7 +112,10 @@ async def list_characters(
 @router.patch("/{character_id}", response_model=CharacterResponse)
 @trace_async("characters.update")
 async def update_character(
-    character_id: UUID, character_data: CharacterUpdate, db: AsyncSession = Depends(get_db)
+    character_id: UUID,
+    character_data: CharacterUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update a character.
 
@@ -358,7 +361,11 @@ async def update_motivation(
 
 @router.get("/{character_id}/stats", response_model=CharacterStatsResponse)
 @trace_async("characters.get_stats")
-async def get_character_stats(character_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_character_stats(
+    character_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Get full character statistics including equipment bonuses.
 
     This endpoint calculates:

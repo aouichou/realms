@@ -9,7 +9,8 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.db.base import get_db
-from app.db.models import Character, CharacterCondition, ConditionType
+from app.db.models import Character, CharacterCondition, ConditionType, User
+from app.middleware.auth import get_current_active_user
 
 router = APIRouter(prefix="/conditions", tags=["conditions"])
 
@@ -134,7 +135,10 @@ CONDITION_EFFECTS = {
 
 @router.post("/characters/{character_id}/conditions")
 async def add_condition(
-    character_id: int, request: AddConditionRequest, db: Session = Depends(get_db)
+    character_id: int,
+    request: AddConditionRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """
     Add a condition to a character
@@ -209,7 +213,12 @@ async def add_condition(
 
 
 @router.delete("/characters/{character_id}/conditions/{condition_id}")
-async def remove_condition(character_id: int, condition_id: str, db: Session = Depends(get_db)):
+async def remove_condition(
+    character_id: int,
+    condition_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Remove a condition from a character
     """
@@ -236,7 +245,11 @@ async def remove_condition(character_id: int, condition_id: str, db: Session = D
 
 
 @router.get("/characters/{character_id}/conditions")
-async def get_conditions(character_id: int, db: Session = Depends(get_db)):
+async def get_conditions(
+    character_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Get all active conditions for a character
     """
@@ -271,7 +284,7 @@ async def get_conditions(character_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/conditions/effects")
-async def get_condition_effects():
+async def get_condition_effects(current_user: User = Depends(get_current_active_user)):
     """
     Get all condition effects and descriptions
     """

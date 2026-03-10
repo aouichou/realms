@@ -105,13 +105,14 @@ async def _seed_combat(db_session, **overrides):
 # ===========================================================================
 
 
-async def test_combat_cast_spell_no_target(client, db_session):
+async def test_combat_cast_spell_no_target(client, db_session, auth_headers):
     """Cast spell without target — just log entry."""
     _u, _c, _s, combat = await _seed_combat(db_session)
 
     resp = await client.post(
         f"{BASE}/{combat.id}/action",
         json={"action_type": "cast_spell"},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -119,52 +120,56 @@ async def test_combat_cast_spell_no_target(client, db_session):
     assert "casts a spell" in data["log_entry"]
 
 
-async def test_combat_dash_action(client, db_session):
+async def test_combat_dash_action(client, db_session, auth_headers):
     _u, _c, _s, combat = await _seed_combat(db_session)
 
     resp = await client.post(
         f"{BASE}/{combat.id}/action",
         json={"action_type": "dash"},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     assert "Dash" in resp.json()["log_entry"]
 
 
-async def test_combat_help_action(client, db_session):
+async def test_combat_help_action(client, db_session, auth_headers):
     _u, _c, _s, combat = await _seed_combat(db_session)
 
     resp = await client.post(
         f"{BASE}/{combat.id}/action",
         json={"action_type": "help"},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     assert "Help" in resp.json()["log_entry"]
 
 
-async def test_combat_unknown_action_type(client, db_session):
+async def test_combat_unknown_action_type(client, db_session, auth_headers):
     """Unknown action type falls into else branch."""
     _u, _c, _s, combat = await _seed_combat(db_session)
 
     resp = await client.post(
         f"{BASE}/{combat.id}/action",
         json={"action_type": "wild_magic"},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     assert "wild_magic" in resp.json()["log_entry"]
 
 
-async def test_combat_action_with_notes(client, db_session):
+async def test_combat_action_with_notes(client, db_session, auth_headers):
     _u, _c, _s, combat = await _seed_combat(db_session)
 
     resp = await client.post(
         f"{BASE}/{combat.id}/action",
         json={"action_type": "dodge", "notes": "Bracing for impact"},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     assert "Bracing for impact" in resp.json()["log_entry"]
 
 
-async def test_combat_action_advances_turn(client, db_session):
+async def test_combat_action_advances_turn(client, db_session, auth_headers):
     """After action, turn advances; after last participant, round increments."""
     _u, _c, _s, combat = await _seed_combat(db_session)
 
@@ -172,25 +177,27 @@ async def test_combat_action_advances_turn(client, db_session):
     resp = await client.post(
         f"{BASE}/{combat.id}/action",
         json={"action_type": "end_turn"},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
 
     # Check status — should now be turn 1
-    resp2 = await client.get(f"{BASE}/{combat.id}/status")
+    resp2 = await client.get(f"{BASE}/{combat.id}/status", headers=auth_headers)
     assert resp2.status_code == 200
 
 
-async def test_combat_action_round_wraps(client, db_session):
+async def test_combat_action_round_wraps(client, db_session, auth_headers):
     """When last participant acts, round number increments."""
     _u, _c, _s, combat = await _seed_combat(db_session, current_turn=1)
 
     resp = await client.post(
         f"{BASE}/{combat.id}/action",
         json={"action_type": "end_turn"},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
 
-    status = await client.get(f"{BASE}/{combat.id}/status")
+    status = await client.get(f"{BASE}/{combat.id}/status", headers=auth_headers)
     data = status.json()
     assert data["round_number"] >= 2
 
@@ -200,7 +207,7 @@ async def test_combat_action_round_wraps(client, db_session):
 # ===========================================================================
 
 
-async def test_end_combat_victory(client, db_session):
+async def test_end_combat_victory(client, db_session, auth_headers):
     """End combat where player survived — captures memory."""
     _u, _c, _s, combat = await _seed_combat(db_session)
 
@@ -208,14 +215,14 @@ async def test_end_combat_victory(client, db_session):
         "app.api.v1.endpoints.combat.MemoryCaptureService.capture_combat_event",
         new_callable=AsyncMock,
     ) as mock_mem:
-        resp = await client.post(f"{BASE}/{combat.id}/end")
+        resp = await client.post(f"{BASE}/{combat.id}/end", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["total_rounds"] >= 1
     assert data["participants_survived"] >= 1
 
 
-async def test_end_combat_memory_error_graceful(client, db_session):
+async def test_end_combat_memory_error_graceful(client, db_session, auth_headers):
     """Memory capture failure doesn't crash end_combat."""
     _u, _c, _s, combat = await _seed_combat(db_session)
 
@@ -224,7 +231,7 @@ async def test_end_combat_memory_error_graceful(client, db_session):
         new_callable=AsyncMock,
         side_effect=RuntimeError("DB error"),
     ):
-        resp = await client.post(f"{BASE}/{combat.id}/end")
+        resp = await client.post(f"{BASE}/{combat.id}/end", headers=auth_headers)
     assert resp.status_code == 200
 
 
@@ -233,42 +240,42 @@ async def test_end_combat_memory_error_graceful(client, db_session):
 # ===========================================================================
 
 
-async def test_update_hp_damage_clamped_to_zero(client, db_session):
+async def test_update_hp_damage_clamped_to_zero(client, db_session, auth_headers):
     """HP doesn't go below zero."""
     _u, _c, _s, combat = await _seed_combat(db_session)
 
-    resp = await client.patch(f"{BASE}/{combat.id}/participants/1/hp?hp_change=-100")
+    resp = await client.patch(f"{BASE}/{combat.id}/participants/1/hp?hp_change=-100", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     goblin = data["participants"][1]
     assert goblin["hp_current"] == 0
 
 
-async def test_update_hp_healing_clamped_to_max(client, db_session):
+async def test_update_hp_healing_clamped_to_max(client, db_session, auth_headers):
     """HP doesn't exceed max."""
     _u, _c, _s, combat = await _seed_combat(db_session)
 
     # First damage
-    await client.patch(f"{BASE}/{combat.id}/participants/0/hp?hp_change=-10")
+    await client.patch(f"{BASE}/{combat.id}/participants/0/hp?hp_change=-10", headers=auth_headers)
     # Then overheal
-    resp = await client.patch(f"{BASE}/{combat.id}/participants/0/hp?hp_change=50")
+    resp = await client.patch(f"{BASE}/{combat.id}/participants/0/hp?hp_change=50", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     hero = data["participants"][0]
     assert hero["hp_current"] == hero["hp_max"]
 
 
-async def test_update_hp_invalid_index(client, db_session):
+async def test_update_hp_invalid_index(client, db_session, auth_headers):
     _u, _c, _s, combat = await _seed_combat(db_session)
 
-    resp = await client.patch(f"{BASE}/{combat.id}/participants/99/hp?hp_change=-5")
+    resp = await client.patch(f"{BASE}/{combat.id}/participants/99/hp?hp_change=-5", headers=auth_headers)
     assert resp.status_code == 400
 
 
-async def test_update_hp_negative_index(client, db_session):
+async def test_update_hp_negative_index(client, db_session, auth_headers):
     _u, _c, _s, combat = await _seed_combat(db_session)
 
-    resp = await client.patch(f"{BASE}/{combat.id}/participants/-1/hp?hp_change=-5")
+    resp = await client.patch(f"{BASE}/{combat.id}/participants/-1/hp?hp_change=-5", headers=auth_headers)
     assert resp.status_code == 400
 
 
@@ -277,7 +284,7 @@ async def test_update_hp_negative_index(client, db_session):
 # ===========================================================================
 
 
-async def test_start_combat_rolls_initiative(client, db_session):
+async def test_start_combat_rolls_initiative(client, db_session, auth_headers):
     """Start combat calculates initiative and sorts participants."""
     user = make_user()
     char = make_character(user=user)
@@ -309,6 +316,7 @@ async def test_start_combat_rolls_initiative(client, db_session):
                 },
             ],
         },
+        headers=auth_headers,
     )
     assert resp.status_code == 201
     data = resp.json()

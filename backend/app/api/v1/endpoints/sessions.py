@@ -80,6 +80,7 @@ async def create_session(
 async def get_session(
     session_id: UUID,
     include_state: bool = Query(True, description="Include Redis state"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a session by ID.
@@ -116,38 +117,39 @@ async def get_session(
 
 @router.get("", response_model=list[SessionResponse])
 async def list_sessions(
-    user_id: UUID = Query(..., description="User ID"),
     active_only: bool = Query(False, description="Filter for active sessions only"),
     skip: int = Query(0, ge=0, description="Pagination offset"),
     limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """List user's game sessions.
 
     Args:
-        user_id: User ID
         active_only: Filter for active sessions only
         skip: Pagination offset
         limit: Pagination limit
+        current_user: Authenticated user
         db: Database session
 
     Returns:
         List of sessions
     """
     sessions, _ = await GameSessionService.get_user_sessions(
-        db, user_id, active_only=active_only, skip=skip, limit=limit
+        db, current_user.id, active_only=active_only, skip=skip, limit=limit
     )
     return sessions
 
 
 @router.get("/active/current", response_model=SessionWithState)
 async def get_active_session(
-    user_id: UUID = Query(..., description="User ID"), db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get user's currently active session.
 
     Args:
-        user_id: User ID
+        current_user: Authenticated user
         db: Database session
 
     Returns:
@@ -156,7 +158,7 @@ async def get_active_session(
     Raises:
         HTTPException: 404 if no active session
     """
-    session = await GameSessionService.get_active_session(db, user_id)
+    session = await GameSessionService.get_active_session(db, current_user.id)
     if not session:
         raise HTTPException(status_code=404, detail="No active session found")
 
@@ -173,7 +175,10 @@ async def get_active_session(
 
 @router.patch("/{session_id}", response_model=SessionResponse)
 async def update_session(
-    session_id: UUID, session_data: SessionUpdate, db: AsyncSession = Depends(get_db)
+    session_id: UUID,
+    session_data: SessionUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update a session.
 
@@ -196,7 +201,10 @@ async def update_session(
 
 @router.patch("/{session_id}/state", response_model=dict)
 async def update_session_state(
-    session_id: UUID, state_data: SessionStateUpdate, db: AsyncSession = Depends(get_db)
+    session_id: UUID,
+    state_data: SessionStateUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update session state in Redis.
 
@@ -233,7 +241,11 @@ async def update_session_state(
 
 
 @router.post("/{session_id}/end", response_model=SessionResponse)
-async def end_session(session_id: UUID, db: AsyncSession = Depends(get_db)):
+async def end_session(
+    session_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """End a session (set is_active to False).
 
     Args:
@@ -253,7 +265,11 @@ async def end_session(session_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/{session_id}", status_code=204)
-async def delete_session(session_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_session(
+    session_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Delete a session and its Redis state.
 
     Args:

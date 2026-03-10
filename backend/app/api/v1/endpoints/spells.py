@@ -11,8 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.base import get_db
-from app.db.models import Character, CharacterClass, CharacterSpell, GameSession, Spell
+from app.db.models import Character, CharacterClass, CharacterSpell, GameSession, Spell, User
 from app.game_config.spell_effects import get_effect_config, spell_creates_effect
+from app.middleware.auth import get_current_active_user
 from app.observability.logger import get_logger
 from app.observability.tracing import trace_async
 from app.schemas.spell import (
@@ -94,6 +95,7 @@ async def list_spells(
     search: Optional[str] = Query(None, description="Search spell name or description"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """List all spells with optional filters
@@ -168,7 +170,11 @@ async def list_spells(
 
 @router.get("/{spell_id}", response_model=SpellResponse)
 @trace_async("spells.roll_dice")
-async def get_spell(spell_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_spell(
+    spell_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Get a spell by ID
 
     Args:
@@ -192,7 +198,11 @@ async def get_spell(spell_id: UUID, db: AsyncSession = Depends(get_db)):
 
 @router.post("", response_model=SpellResponse, status_code=201)
 @trace_async("spells.create")
-async def create_spell(spell_data: SpellCreate, db: AsyncSession = Depends(get_db)):
+async def create_spell(
+    spell_data: SpellCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Create a new spell
 
     Args:
@@ -217,6 +227,7 @@ async def get_character_spells(
     character_id: UUID,
     known_only: bool = Query(False, description="Show only known spells"),
     prepared_only: bool = Query(False, description="Show only prepared spells"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get all spells for a character
@@ -258,7 +269,10 @@ async def get_character_spells(
 )
 @trace_async("spells.add_character_spell")
 async def add_spell_to_character(
-    character_id: UUID, spell_data: CharacterSpellCreate, db: AsyncSession = Depends(get_db)
+    character_id: UUID,
+    spell_data: CharacterSpellCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Add a spell to a character's spell list
 
@@ -315,7 +329,10 @@ async def add_spell_to_character(
 @router.post("/character/{character_id}/prepare", response_model=List[CharacterSpellResponse])
 @trace_async("spells.prepare")
 async def prepare_spells(
-    character_id: UUID, request: PrepareSpellsRequest, db: AsyncSession = Depends(get_db)
+    character_id: UUID,
+    request: PrepareSpellsRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Prepare daily spells for a character
 
@@ -372,7 +389,11 @@ async def prepare_spells(
 
 @router.get("/character/{character_id}/slots", response_model=SpellSlotsResponse)
 @trace_async("spells.get_spell_slots")
-async def get_spell_slots(character_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_spell_slots(
+    character_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Get character's spell slots
 
     Args:
@@ -523,7 +544,10 @@ def _calculate_spell_damage(spell: Spell, slot_level: int) -> tuple[Optional[str
 @router.post("/character/{character_id}/cast", response_model=CastSpellResponse)
 @trace_async("spells.cast")
 async def cast_spell(
-    character_id: UUID, request: CastSpellRequest, db: AsyncSession = Depends(get_db)
+    character_id: UUID,
+    request: CastSpellRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Cast a spell, consuming a spell slot
 

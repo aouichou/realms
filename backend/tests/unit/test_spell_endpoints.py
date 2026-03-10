@@ -53,8 +53,8 @@ async def _patch_commit(db_session):
 
 
 @pytest.mark.asyncio
-async def test_list_spells_empty(client, db_session):
-    resp = await client.get("/api/v1/spells")
+async def test_list_spells_empty(client, db_session, auth_headers):
+    resp = await client.get("/api/v1/spells", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert "spells" in data
@@ -62,25 +62,25 @@ async def test_list_spells_empty(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_list_spells_with_data(client, db_session):
+async def test_list_spells_with_data(client, db_session, auth_headers):
     sp = make_spell(name="Fireball", level=3)
     db_session.add(sp)
     await db_session.flush()
 
-    resp = await client.get("/api/v1/spells")
+    resp = await client.get("/api/v1/spells", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] >= 1
 
 
 @pytest.mark.asyncio
-async def test_list_spells_filter_level(client, db_session):
+async def test_list_spells_filter_level(client, db_session, auth_headers):
     sp1 = make_spell(name="Magic Missile", level=1)
     sp2 = make_spell(name="Fireball", level=3)
     db_session.add_all([sp1, sp2])
     await db_session.flush()
 
-    resp = await client.get("/api/v1/spells", params={"level": 1})
+    resp = await client.get("/api/v1/spells", params={"level": 1}, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     names = [s["name"] for s in data["spells"]]
@@ -89,24 +89,24 @@ async def test_list_spells_filter_level(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_list_spells_filter_concentration(client, db_session):
+async def test_list_spells_filter_concentration(client, db_session, auth_headers):
     sp = make_spell(name="Haste", level=3, is_concentration=True)
     db_session.add(sp)
     await db_session.flush()
 
-    resp = await client.get("/api/v1/spells", params={"concentration": True})
+    resp = await client.get("/api/v1/spells", params={"concentration": True}, headers=auth_headers)
     assert resp.status_code == 200
     names = [s["name"] for s in resp.json()["spells"]]
     assert "Haste" in names
 
 
 @pytest.mark.asyncio
-async def test_list_spells_search(client, db_session):
+async def test_list_spells_search(client, db_session, auth_headers):
     sp = make_spell(name="Lightning Bolt", level=3, description="A bolt of lightning")
     db_session.add(sp)
     await db_session.flush()
 
-    resp = await client.get("/api/v1/spells", params={"search": "Lightning"})
+    resp = await client.get("/api/v1/spells", params={"search": "Lightning"}, headers=auth_headers)
     assert resp.status_code == 200
     assert resp.json()["total"] >= 1
 
@@ -117,19 +117,19 @@ async def test_list_spells_search(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_get_spell(client, db_session):
+async def test_get_spell(client, db_session, auth_headers):
     sp = make_spell(name="Shield")
     db_session.add(sp)
     await db_session.flush()
 
-    resp = await client.get(f"/api/v1/spells/{sp.id}")
+    resp = await client.get(f"/api/v1/spells/{sp.id}", headers=auth_headers)
     assert resp.status_code == 200
     assert resp.json()["name"] == "Shield"
 
 
 @pytest.mark.asyncio
-async def test_get_spell_not_found(client, db_session):
-    resp = await client.get(f"/api/v1/spells/{uuid.uuid4()}")
+async def test_get_spell_not_found(client, db_session, auth_headers):
+    resp = await client.get(f"/api/v1/spells/{uuid.uuid4()}", headers=auth_headers)
     assert resp.status_code == 404
 
 
@@ -139,7 +139,7 @@ async def test_get_spell_not_found(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_create_spell(client, db_session):
+async def test_create_spell(client, db_session, auth_headers):
     body = {
         "name": "Ice Storm",
         "level": 4,
@@ -151,7 +151,7 @@ async def test_create_spell(client, db_session):
         "verbal": True,
         "somatic": True,
     }
-    resp = await client.post("/api/v1/spells", json=body)
+    resp = await client.post("/api/v1/spells", json=body, headers=auth_headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["name"] == "Ice Storm"
@@ -164,7 +164,7 @@ async def test_create_spell(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_get_character_spells(client, db_session):
+async def test_get_character_spells(client, db_session, auth_headers):
     user = make_user()
     char = make_character(user=user)
     sp = make_spell(name="Cure Wounds")
@@ -175,15 +175,15 @@ async def test_get_character_spells(client, db_session):
     db_session.add(cs)
     await db_session.flush()
 
-    resp = await client.get(f"/api/v1/spells/character/{char.id}/spells")
+    resp = await client.get(f"/api/v1/spells/character/{char.id}/spells", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) >= 1
 
 
 @pytest.mark.asyncio
-async def test_get_character_spells_not_found(client, db_session):
-    resp = await client.get(f"/api/v1/spells/character/{uuid.uuid4()}/spells")
+async def test_get_character_spells_not_found(client, db_session, auth_headers):
+    resp = await client.get(f"/api/v1/spells/character/{uuid.uuid4()}/spells", headers=auth_headers)
     assert resp.status_code == 404
 
 
@@ -193,7 +193,7 @@ async def test_get_character_spells_not_found(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_add_spell_to_character(client, db_session):
+async def test_add_spell_to_character(client, db_session, auth_headers):
     user = make_user()
     char = make_character(user=user)
     sp = make_spell(name="Detect Magic")
@@ -201,32 +201,32 @@ async def test_add_spell_to_character(client, db_session):
     await db_session.flush()
 
     body = {"spell_id": str(sp.id), "is_known": True, "is_prepared": False}
-    resp = await client.post(f"/api/v1/spells/character/{char.id}/spells", json=body)
+    resp = await client.post(f"/api/v1/spells/character/{char.id}/spells", json=body, headers=auth_headers)
     assert resp.status_code == 201
     assert resp.json()["spell_id"] == str(sp.id)
 
 
 @pytest.mark.asyncio
-async def test_add_spell_to_character_char_not_found(client, db_session):
+async def test_add_spell_to_character_char_not_found(client, db_session, auth_headers):
     body = {"spell_id": str(uuid.uuid4()), "is_known": True}
-    resp = await client.post(f"/api/v1/spells/character/{uuid.uuid4()}/spells", json=body)
+    resp = await client.post(f"/api/v1/spells/character/{uuid.uuid4()}/spells", json=body, headers=auth_headers)
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_add_spell_to_character_spell_not_found(client, db_session):
+async def test_add_spell_to_character_spell_not_found(client, db_session, auth_headers):
     user = make_user()
     char = make_character(user=user)
     db_session.add_all([user, char])
     await db_session.flush()
 
     body = {"spell_id": str(uuid.uuid4()), "is_known": True}
-    resp = await client.post(f"/api/v1/spells/character/{char.id}/spells", json=body)
+    resp = await client.post(f"/api/v1/spells/character/{char.id}/spells", json=body, headers=auth_headers)
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_add_spell_duplicate(client, db_session):
+async def test_add_spell_duplicate(client, db_session, auth_headers):
     user = make_user()
     char = make_character(user=user)
     sp = make_spell(name="Bless")
@@ -238,7 +238,7 @@ async def test_add_spell_duplicate(client, db_session):
     await db_session.flush()
 
     body = {"spell_id": str(sp.id), "is_known": True}
-    resp = await client.post(f"/api/v1/spells/character/{char.id}/spells", json=body)
+    resp = await client.post(f"/api/v1/spells/character/{char.id}/spells", json=body, headers=auth_headers)
     assert resp.status_code == 400
     assert "already has" in resp.json()["detail"]
 
@@ -249,7 +249,7 @@ async def test_add_spell_duplicate(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_prepare_spells(client, db_session):
+async def test_prepare_spells(client, db_session, auth_headers):
     user = make_user()
     char = make_character(user=user)
     sp = make_spell(name="Healing Word")
@@ -261,14 +261,14 @@ async def test_prepare_spells(client, db_session):
     await db_session.flush()
 
     body = {"spell_ids": [str(sp.id)]}
-    resp = await client.post(f"/api/v1/spells/character/{char.id}/prepare", json=body)
+    resp = await client.post(f"/api/v1/spells/character/{char.id}/prepare", json=body, headers=auth_headers)
     assert resp.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_prepare_spells_char_not_found(client, db_session):
+async def test_prepare_spells_char_not_found(client, db_session, auth_headers):
     body = {"spell_ids": [str(uuid.uuid4())]}
-    resp = await client.post(f"/api/v1/spells/character/{uuid.uuid4()}/prepare", json=body)
+    resp = await client.post(f"/api/v1/spells/character/{uuid.uuid4()}/prepare", json=body, headers=auth_headers)
     assert resp.status_code == 404
 
 
@@ -278,13 +278,13 @@ async def test_prepare_spells_char_not_found(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_get_spell_slots(client, db_session):
+async def test_get_spell_slots(client, db_session, auth_headers):
     user = make_user()
     char = make_character(user=user, character_class="Wizard", level=3)
     db_session.add_all([user, char])
     await db_session.flush()
 
-    resp = await client.get(f"/api/v1/spells/character/{char.id}/slots")
+    resp = await client.get(f"/api/v1/spells/character/{char.id}/slots", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["character_id"] == str(char.id)
@@ -292,8 +292,8 @@ async def test_get_spell_slots(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_get_spell_slots_not_found(client, db_session):
-    resp = await client.get(f"/api/v1/spells/character/{uuid.uuid4()}/slots")
+async def test_get_spell_slots_not_found(client, db_session, auth_headers):
+    resp = await client.get(f"/api/v1/spells/character/{uuid.uuid4()}/slots", headers=auth_headers)
     assert resp.status_code == 404
 
 
@@ -303,7 +303,7 @@ async def test_get_spell_slots_not_found(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_cast_cantrip(client, db_session):
+async def test_cast_cantrip(client, db_session, auth_headers):
     user = make_user()
     char = make_character(user=user, character_class="Wizard", level=1)
     cantrip = make_spell(name="Fire Bolt", level=0, damage_dice="1d10", damage_type="fire")
@@ -315,7 +315,7 @@ async def test_cast_cantrip(client, db_session):
     await db_session.flush()
 
     body = {"spell_id": str(cantrip.id), "spell_level": 0}
-    resp = await client.post(f"/api/v1/spells/character/{char.id}/cast", json=body)
+    resp = await client.post(f"/api/v1/spells/character/{char.id}/cast", json=body, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["slot_level_used"] == 0
@@ -323,7 +323,7 @@ async def test_cast_cantrip(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_cast_spell_no_slots(client, db_session):
+async def test_cast_spell_no_slots(client, db_session, auth_headers):
     user = make_user()
     char = make_character(
         user=user,
@@ -340,32 +340,32 @@ async def test_cast_spell_no_slots(client, db_session):
     await db_session.flush()
 
     body = {"spell_id": str(sp.id), "spell_level": 1}
-    resp = await client.post(f"/api/v1/spells/character/{char.id}/cast", json=body)
+    resp = await client.post(f"/api/v1/spells/character/{char.id}/cast", json=body, headers=auth_headers)
     assert resp.status_code == 400
 
 
 @pytest.mark.asyncio
-async def test_cast_spell_char_not_found(client, db_session):
+async def test_cast_spell_char_not_found(client, db_session, auth_headers):
     body = {"spell_id": str(uuid.uuid4()), "spell_level": 1}
-    resp = await client.post(f"/api/v1/spells/character/{uuid.uuid4()}/cast", json=body)
+    resp = await client.post(f"/api/v1/spells/character/{uuid.uuid4()}/cast", json=body, headers=auth_headers)
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_cast_spell_not_known(client, db_session):
+async def test_cast_spell_not_known(client, db_session, auth_headers):
     user = make_user()
     char = make_character(user=user, character_class="Wizard", level=1)
     db_session.add_all([user, char])
     await db_session.flush()
 
     body = {"spell_id": str(uuid.uuid4()), "spell_level": 1}
-    resp = await client.post(f"/api/v1/spells/character/{char.id}/cast", json=body)
+    resp = await client.post(f"/api/v1/spells/character/{char.id}/cast", json=body, headers=auth_headers)
     assert resp.status_code == 404
     assert "doesn't know" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_cast_ritual_non_ritual_spell(client, db_session):
+async def test_cast_ritual_non_ritual_spell(client, db_session, auth_headers):
     user = make_user()
     char = make_character(user=user, character_class="Wizard", level=1)
     sp = make_spell(name="Magic Missile R", level=1, is_ritual=False)
@@ -377,13 +377,13 @@ async def test_cast_ritual_non_ritual_spell(client, db_session):
     await db_session.flush()
 
     body = {"spell_id": str(sp.id), "spell_level": 1, "is_ritual_cast": True}
-    resp = await client.post(f"/api/v1/spells/character/{char.id}/cast", json=body)
+    resp = await client.post(f"/api/v1/spells/character/{char.id}/cast", json=body, headers=auth_headers)
     assert resp.status_code == 400
     assert "ritual" in resp.json()["detail"].lower()
 
 
 @pytest.mark.asyncio
-async def test_cast_spell_slot_too_low(client, db_session):
+async def test_cast_spell_slot_too_low(client, db_session, auth_headers):
     user = make_user()
     char = make_character(
         user=user,
@@ -404,7 +404,7 @@ async def test_cast_spell_slot_too_low(client, db_session):
     await db_session.flush()
 
     body = {"spell_id": str(sp.id), "spell_level": 3, "slot_level": 1}
-    resp = await client.post(f"/api/v1/spells/character/{char.id}/cast", json=body)
+    resp = await client.post(f"/api/v1/spells/character/{char.id}/cast", json=body, headers=auth_headers)
     assert resp.status_code == 400
     assert "Cannot cast" in resp.json()["detail"]
 
@@ -415,7 +415,7 @@ async def test_cast_spell_slot_too_low(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_long_rest(client, db_session):
+async def test_long_rest(client, db_session, auth_headers):
     user = make_user()
     char = make_character(
         user=user,
@@ -428,7 +428,7 @@ async def test_long_rest(client, db_session):
     db_session.add_all([user, char])
     await db_session.flush()
 
-    resp = await client.post(f"/api/v1/spells/character/{char.id}/rest")
+    resp = await client.post(f"/api/v1/spells/character/{char.id}/rest", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     # All slots should be restored
@@ -437,8 +437,8 @@ async def test_long_rest(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_long_rest_not_found(client, db_session):
-    resp = await client.post(f"/api/v1/spells/character/{uuid.uuid4()}/rest")
+async def test_long_rest_not_found(client, db_session, auth_headers):
+    resp = await client.post(f"/api/v1/spells/character/{uuid.uuid4()}/rest", headers=auth_headers)
     assert resp.status_code == 404
 
 
@@ -448,7 +448,7 @@ async def test_long_rest_not_found(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_concentration_check_no_concentration(client, db_session):
+async def test_concentration_check_no_concentration(client, db_session, auth_headers):
     user = make_user()
     char = make_character(user=user, active_concentration_spell=None)
     db_session.add_all([user, char])
@@ -457,6 +457,7 @@ async def test_concentration_check_no_concentration(client, db_session):
     resp = await client.post(
         f"/api/v1/spells/character/{char.id}/concentration-check",
         params={"damage_taken": 10},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -465,7 +466,7 @@ async def test_concentration_check_no_concentration(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_concentration_check_with_concentration(client, db_session):
+async def test_concentration_check_with_concentration(client, db_session, auth_headers):
     user = make_user()
     sp = make_spell(name="Haste CC", level=3, is_concentration=True)
     char = make_character(user=user, constitution=16, active_concentration_spell=sp.id)
@@ -475,6 +476,7 @@ async def test_concentration_check_with_concentration(client, db_session):
     resp = await client.post(
         f"/api/v1/spells/character/{char.id}/concentration-check",
         params={"damage_taken": 10},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -483,9 +485,10 @@ async def test_concentration_check_with_concentration(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_concentration_check_not_found(client, db_session):
+async def test_concentration_check_not_found(client, db_session, auth_headers):
     resp = await client.post(
         f"/api/v1/spells/character/{uuid.uuid4()}/concentration-check",
         params={"damage_taken": 5},
+        headers=auth_headers,
     )
     assert resp.status_code == 404

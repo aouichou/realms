@@ -9,7 +9,8 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.db.base import get_db
-from app.db.models import Character, CharacterClass, CharacterRace, CharacterType, GameSession
+from app.db.models import Character, CharacterClass, CharacterRace, CharacterType, GameSession, User
+from app.middleware.auth import get_current_active_user
 
 router = APIRouter(prefix="/npcs", tags=["npcs"])
 
@@ -48,7 +49,11 @@ class NPCResponse(BaseModel):
 
 
 @router.post("/npcs")
-async def create_npc(npc: NPCCreate, db: Session = Depends(get_db)):
+async def create_npc(
+    npc: NPCCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Create a new NPC (companion, quest giver, or merchant)
     """
@@ -117,7 +122,11 @@ async def create_npc(npc: NPCCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/npcs")
-async def list_npcs(session_id: Optional[str] = None, db: Session = Depends(get_db)):
+async def list_npcs(
+    session_id: Optional[str] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     List all NPCs, optionally filtered by session
     For now, returns all NPCs since we don't have session-NPC relationships yet
@@ -143,7 +152,11 @@ async def list_npcs(session_id: Optional[str] = None, db: Session = Depends(get_
 
 
 @router.get("/npcs/{npc_id}")
-async def get_npc(npc_id: str, db: Session = Depends(get_db)):
+async def get_npc(
+    npc_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Get details of a specific NPC
     """
@@ -170,7 +183,12 @@ async def get_npc(npc_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/sessions/{session_id}/add-companion")
-async def add_companion(session_id: str, npc_id: str, db: Session = Depends(get_db)):
+async def add_companion(
+    session_id: str,
+    npc_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Add an NPC as a companion to a session
     Updates the session's companion_id
@@ -210,7 +228,11 @@ async def add_companion(session_id: str, npc_id: str, db: Session = Depends(get_
 
 
 @router.get("/sessions/{session_id}/companions")
-async def get_session_companions(session_id: str, db: Session = Depends(get_db)):
+async def get_session_companions(
+    session_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Get all companions for a session
     Currently only supports one companion per session
@@ -243,7 +265,12 @@ async def get_session_companions(session_id: str, db: Session = Depends(get_db))
 
 
 @router.delete("/sessions/{session_id}/companions/{npc_id}")
-async def remove_companion(session_id: str, npc_id: str, db: Session = Depends(get_db)):
+async def remove_companion(
+    session_id: str,
+    npc_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Remove a companion from a session
     """

@@ -10,6 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
+from app.db.models import User
+from app.middleware.auth import get_current_active_user
 from app.services.effects_service import EffectsService
 
 router = APIRouter(prefix="/effects", tags=["effects"])
@@ -19,6 +21,7 @@ router = APIRouter(prefix="/effects", tags=["effects"])
 async def get_character_effects(
     character_id: UUID,
     session_id: Optional[UUID] = Query(None, description="Filter by session ID"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -44,6 +47,7 @@ async def get_character_effects(
 @router.delete("/{effect_id}")
 async def remove_effect(
     effect_id: int,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -69,6 +73,7 @@ async def remove_effect(
 @router.post("/character/{character_id}/break-concentration")
 async def break_concentration(
     character_id: UUID,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -98,6 +103,7 @@ async def break_concentration(
 @router.post("/character/{character_id}/round-end")
 async def process_round_end(
     character_id: UUID,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -126,6 +132,7 @@ async def process_rest(
     rest_type: str = Query(
         ..., pattern="^(short|long)$", description="Type of rest: short or long"
     ),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -152,6 +159,7 @@ async def process_rest(
 
 @router.post("/cleanup")
 async def cleanup_expired_effects(
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """

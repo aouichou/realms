@@ -79,41 +79,47 @@ V1 = "/api/v1"
 class TestDiceRoll:
     """POST /api/v1/dice/roll"""
 
-    async def test_simple_roll(self, client, db_session):
-        resp = await client.post(f"{V1}/dice/roll", json={"dice": "1d20"})
+    async def test_simple_roll(self, client, db_session, auth_headers):
+        resp = await client.post(f"{V1}/dice/roll", json={"dice": "1d20"}, headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["notation"] == "1d20"
         assert 1 <= data["total"] <= 20
         assert data["breakdown"]
 
-    async def test_roll_with_modifier(self, client, db_session):
-        resp = await client.post(f"{V1}/dice/roll", json={"dice": "2d6+3"})
+    async def test_roll_with_modifier(self, client, db_session, auth_headers):
+        resp = await client.post(f"{V1}/dice/roll", json={"dice": "2d6+3"}, headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["modifier"] == 3
         assert data["total"] >= 5  # min: 2+3
 
-    async def test_roll_with_reason(self, client, db_session):
-        resp = await client.post(f"{V1}/dice/roll", json={"dice": "1d20", "reason": "attack roll"})
+    async def test_roll_with_reason(self, client, db_session, auth_headers):
+        resp = await client.post(
+            f"{V1}/dice/roll", json={"dice": "1d20", "reason": "attack roll"}, headers=auth_headers
+        )
         assert resp.status_code == 200
         assert resp.json()["reason"] == "attack roll"
 
-    async def test_roll_advantage(self, client, db_session):
-        resp = await client.post(f"{V1}/dice/roll", json={"dice": "1d20", "roll_type": "advantage"})
+    async def test_roll_advantage(self, client, db_session, auth_headers):
+        resp = await client.post(
+            f"{V1}/dice/roll", json={"dice": "1d20", "roll_type": "advantage"}, headers=auth_headers
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["roll_type"] == "advantage"
 
-    async def test_roll_disadvantage(self, client, db_session):
+    async def test_roll_disadvantage(self, client, db_session, auth_headers):
         resp = await client.post(
-            f"{V1}/dice/roll", json={"dice": "1d20", "roll_type": "disadvantage"}
+            f"{V1}/dice/roll",
+            json={"dice": "1d20", "roll_type": "disadvantage"},
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         assert resp.json()["roll_type"] == "disadvantage"
 
-    async def test_invalid_notation(self, client, db_session):
-        resp = await client.post(f"{V1}/dice/roll", json={"dice": "xyzzy"})
+    async def test_invalid_notation(self, client, db_session, auth_headers):
+        resp = await client.post(f"{V1}/dice/roll", json={"dice": "xyzzy"}, headers=auth_headers)
         assert resp.status_code == 400
 
 
@@ -127,50 +133,54 @@ class TestAbilityCheck:
         await db_session.flush()
         return char
 
-    async def test_basic_check(self, client, db_session):
+    async def test_basic_check(self, client, db_session, auth_headers):
         char = await self._make_char(db_session)
         resp = await client.post(
             f"{V1}/dice/check",
             json={"character_id": str(char.id), "ability": "strength"},
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["ability"] == "strength"
         assert data["character_name"] == char.name
 
-    async def test_check_with_dc(self, client, db_session):
+    async def test_check_with_dc(self, client, db_session, auth_headers):
         char = await self._make_char(db_session)
         resp = await client.post(
             f"{V1}/dice/check",
             json={"character_id": str(char.id), "ability": "dexterity", "dc": 15},
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert "success" in data
         assert isinstance(data["success"], bool)
 
-    async def test_check_with_advantage(self, client, db_session):
+    async def test_check_with_advantage(self, client, db_session, auth_headers):
         char = await self._make_char(db_session)
         resp = await client.post(
             f"{V1}/dice/check",
             json={"character_id": str(char.id), "ability": "wisdom", "advantage": True},
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["advantage"] is True
         assert len(data["rolls"]) == 2
 
-    async def test_check_with_disadvantage(self, client, db_session):
+    async def test_check_with_disadvantage(self, client, db_session, auth_headers):
         char = await self._make_char(db_session)
         resp = await client.post(
             f"{V1}/dice/check",
             json={"character_id": str(char.id), "ability": "charisma", "disadvantage": True},
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["disadvantage"] is True
 
-    async def test_advantage_and_disadvantage_error(self, client, db_session):
+    async def test_advantage_and_disadvantage_error(self, client, db_session, auth_headers):
         char = await self._make_char(db_session)
         resp = await client.post(
             f"{V1}/dice/check",
@@ -180,10 +190,11 @@ class TestAbilityCheck:
                 "advantage": True,
                 "disadvantage": True,
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 400
 
-    async def test_skill_ability_mismatch(self, client, db_session):
+    async def test_skill_ability_mismatch(self, client, db_session, auth_headers):
         char = await self._make_char(db_session)
         resp = await client.post(
             f"{V1}/dice/check",
@@ -192,17 +203,19 @@ class TestAbilityCheck:
                 "ability": "strength",
                 "skill": "stealth",  # stealth uses dexterity
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 400
 
-    async def test_character_not_found(self, client, db_session):
+    async def test_character_not_found(self, client, db_session, auth_headers):
         resp = await client.post(
             f"{V1}/dice/check",
             json={"character_id": str(uuid.uuid4()), "ability": "strength"},
+            headers=auth_headers,
         )
         assert resp.status_code == 404
 
-    async def test_check_with_reason(self, client, db_session):
+    async def test_check_with_reason(self, client, db_session, auth_headers):
         char = await self._make_char(db_session)
         resp = await client.post(
             f"{V1}/dice/check",
@@ -211,6 +224,7 @@ class TestAbilityCheck:
                 "ability": "intelligence",
                 "reason": "Arcana check",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         assert resp.json()["reason"] == "Arcana check"
@@ -231,87 +245,98 @@ class TestInventory:
         await db_session.flush()
         return user, char
 
-    async def test_add_item(self, client, db_session):
+    async def test_add_item(self, client, db_session, auth_headers):
         _, char = await self._seed(db_session)
         resp = await client.post(
             f"{V1}/characters/{char.id}/inventory/add",
             json={"name": "Shield", "item_type": "armor", "weight": 6, "value": 10, "quantity": 1},
+            headers=auth_headers,
         )
         assert resp.status_code == 201
         assert resp.json()["name"] == "Shield"
 
-    async def test_add_item_exceeds_capacity(self, client, db_session):
+    async def test_add_item_exceeds_capacity(self, client, db_session, auth_headers):
         _, char = await self._seed(db_session)
         resp = await client.post(
             f"{V1}/characters/{char.id}/inventory/add",
             json={"name": "Anvil", "item_type": "misc", "weight": 999, "value": 5, "quantity": 1},
+            headers=auth_headers,
         )
         assert resp.status_code == 400
         assert "capacity" in resp.json()["detail"].lower()
 
-    async def test_add_item_char_not_found(self, client, db_session):
+    async def test_add_item_char_not_found(self, client, db_session, auth_headers):
         resp = await client.post(
             f"{V1}/characters/{uuid.uuid4()}/inventory/add",
             json={"name": "Sword", "item_type": "weapon", "weight": 3, "value": 15, "quantity": 1},
+            headers=auth_headers,
         )
         assert resp.status_code == 404
 
-    async def test_get_inventory(self, client, db_session):
+    async def test_get_inventory(self, client, db_session, auth_headers):
         _, char = await self._seed(db_session)
         item = make_item(character=char, name="Rope", item_type=ItemType.MISC)
         db_session.add(item)
         await db_session.flush()
 
-        resp = await client.get(f"{V1}/characters/{char.id}/inventory")
+        resp = await client.get(f"{V1}/characters/{char.id}/inventory", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["items"]) >= 1
         assert "carrying_capacity" in data
 
-    async def test_get_inventory_filter_type(self, client, db_session):
+    async def test_get_inventory_filter_type(self, client, db_session, auth_headers):
         _, char = await self._seed(db_session)
         weapon = make_item(character=char, name="Dagger", item_type=ItemType.WEAPON)
         armor = make_item(character=char, name="Leather", item_type=ItemType.ARMOR)
         db_session.add_all([weapon, armor])
         await db_session.flush()
 
-        resp = await client.get(f"{V1}/characters/{char.id}/inventory?item_type=weapon")
+        resp = await client.get(
+            f"{V1}/characters/{char.id}/inventory?item_type=weapon", headers=auth_headers
+        )
         assert resp.status_code == 200
         items = resp.json()["items"]
         assert all(i["item_type"] == "weapon" for i in items)
 
-    async def test_get_inventory_filter_equipped(self, client, db_session):
+    async def test_get_inventory_filter_equipped(self, client, db_session, auth_headers):
         _, char = await self._seed(db_session)
         eq = make_item(character=char, equipped=True, name="Equipped Sword")
         uneq = make_item(character=char, equipped=False, name="Stowed Shield")
         db_session.add_all([eq, uneq])
         await db_session.flush()
 
-        resp = await client.get(f"{V1}/characters/{char.id}/inventory?equipped=true")
+        resp = await client.get(
+            f"{V1}/characters/{char.id}/inventory?equipped=true", headers=auth_headers
+        )
         assert resp.status_code == 200
         items = resp.json()["items"]
         assert all(i["equipped"] for i in items)
 
-    async def test_get_inventory_char_not_found(self, client, db_session):
-        resp = await client.get(f"{V1}/characters/{uuid.uuid4()}/inventory")
+    async def test_get_inventory_char_not_found(self, client, db_session, auth_headers):
+        resp = await client.get(f"{V1}/characters/{uuid.uuid4()}/inventory", headers=auth_headers)
         assert resp.status_code == 404
 
-    async def test_toggle_equip(self, client, db_session):
+    async def test_toggle_equip(self, client, db_session, auth_headers):
         _, char = await self._seed(db_session)
         item = make_item(character=char, equipped=False)
         db_session.add(item)
         await db_session.flush()
 
-        resp = await client.patch(f"{V1}/characters/{char.id}/inventory/{item.id}/equip")
+        resp = await client.patch(
+            f"{V1}/characters/{char.id}/inventory/{item.id}/equip", headers=auth_headers
+        )
         assert resp.status_code == 200
         assert resp.json()["equipped"] is True
 
-    async def test_toggle_equip_not_found(self, client, db_session):
+    async def test_toggle_equip_not_found(self, client, db_session, auth_headers):
         _, char = await self._seed(db_session)
-        resp = await client.patch(f"{V1}/characters/{char.id}/inventory/{uuid.uuid4()}/equip")
+        resp = await client.patch(
+            f"{V1}/characters/{char.id}/inventory/{uuid.uuid4()}/equip", headers=auth_headers
+        )
         assert resp.status_code == 404
 
-    async def test_update_item_quantity(self, client, db_session):
+    async def test_update_item_quantity(self, client, db_session, auth_headers):
         _, char = await self._seed(db_session)
         item = make_item(character=char, quantity=5)
         db_session.add(item)
@@ -320,11 +345,12 @@ class TestInventory:
         resp = await client.patch(
             f"{V1}/characters/{char.id}/inventory/{item.id}",
             json={"quantity": 3},
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         assert resp.json()["quantity"] == 3
 
-    async def test_update_item_quantity_zero_deletes(self, client, db_session):
+    async def test_update_item_quantity_zero_deletes(self, client, db_session, auth_headers):
         _, char = await self._seed(db_session)
         item = make_item(character=char, quantity=1)
         db_session.add(item)
@@ -333,29 +359,35 @@ class TestInventory:
         resp = await client.patch(
             f"{V1}/characters/{char.id}/inventory/{item.id}",
             json={"quantity": 0},
+            headers=auth_headers,
         )
         assert resp.status_code == 204
 
-    async def test_update_item_not_found(self, client, db_session):
+    async def test_update_item_not_found(self, client, db_session, auth_headers):
         _, char = await self._seed(db_session)
         resp = await client.patch(
             f"{V1}/characters/{char.id}/inventory/{uuid.uuid4()}",
             json={"quantity": 2},
+            headers=auth_headers,
         )
         assert resp.status_code == 404
 
-    async def test_remove_item(self, client, db_session):
+    async def test_remove_item(self, client, db_session, auth_headers):
         _, char = await self._seed(db_session)
         item = make_item(character=char)
         db_session.add(item)
         await db_session.flush()
 
-        resp = await client.delete(f"{V1}/characters/{char.id}/inventory/{item.id}")
+        resp = await client.delete(
+            f"{V1}/characters/{char.id}/inventory/{item.id}", headers=auth_headers
+        )
         assert resp.status_code == 204
 
-    async def test_remove_item_not_found(self, client, db_session):
+    async def test_remove_item_not_found(self, client, db_session, auth_headers):
         _, char = await self._seed(db_session)
-        resp = await client.delete(f"{V1}/characters/{char.id}/inventory/{uuid.uuid4()}")
+        resp = await client.delete(
+            f"{V1}/characters/{char.id}/inventory/{uuid.uuid4()}", headers=auth_headers
+        )
         assert resp.status_code == 404
 
 
@@ -376,7 +408,7 @@ class TestSessionEndpoints:
         headers = {"Authorization": f"Bearer {token}"}
         return user, char, headers
 
-    async def test_create_session(self, client, db_session):
+    async def test_create_session(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         resp = await client.post(
             f"{V1}/sessions",
@@ -388,43 +420,43 @@ class TestSessionEndpoints:
         assert data["character_id"] == str(char.id)
         assert data["is_active"] is True
 
-    async def test_get_session(self, client, db_session):
+    async def test_get_session(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         session = make_session(user=user, character=char)
         db_session.add(session)
         await db_session.flush()
 
-        resp = await client.get(f"{V1}/sessions/{session.id}")
+        resp = await client.get(f"{V1}/sessions/{session.id}", headers=auth_headers)
         assert resp.status_code == 200
 
-    async def test_get_session_not_found(self, client, db_session):
-        resp = await client.get(f"{V1}/sessions/{uuid.uuid4()}")
+    async def test_get_session_not_found(self, client, db_session, auth_headers):
+        resp = await client.get(f"{V1}/sessions/{uuid.uuid4()}", headers=auth_headers)
         assert resp.status_code == 404
 
-    async def test_list_sessions(self, client, db_session):
+    async def test_list_sessions(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         s1 = make_session(user=user, character=char)
         s2 = make_session(user=user, character=char, is_active=False)
         db_session.add_all([s1, s2])
         await db_session.flush()
 
-        resp = await client.get(f"{V1}/sessions?user_id={user.id}")
+        resp = await client.get(f"{V1}/sessions", headers=headers)
         assert resp.status_code == 200
         assert len(resp.json()) >= 2
 
-    async def test_list_sessions_active_only(self, client, db_session):
+    async def test_list_sessions_active_only(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         s1 = make_session(user=user, character=char, is_active=True)
         s2 = make_session(user=user, character=char, is_active=False)
         db_session.add_all([s1, s2])
         await db_session.flush()
 
-        resp = await client.get(f"{V1}/sessions?user_id={user.id}&active_only=true")
+        resp = await client.get(f"{V1}/sessions?active_only=true", headers=headers)
         assert resp.status_code == 200
         data = resp.json()
         assert all(s["is_active"] for s in data)
 
-    async def test_get_active_session_for_character(self, client, db_session):
+    async def test_get_active_session_for_character(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         session = make_session(user=user, character=char, is_active=True)
         db_session.add(session)
@@ -436,7 +468,9 @@ class TestSessionEndpoints:
         )
         assert resp.status_code == 200
 
-    async def test_get_active_session_for_character_not_found(self, client, db_session):
+    async def test_get_active_session_for_character_not_found(
+        self, client, db_session, auth_headers
+    ):
         _, _, headers = await self._seed(db_session)
         resp = await client.get(
             f"{V1}/sessions/active/character/{uuid.uuid4()}",
@@ -444,7 +478,7 @@ class TestSessionEndpoints:
         )
         assert resp.status_code == 404
 
-    async def test_update_session(self, client, db_session):
+    async def test_update_session(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         session = make_session(user=user, character=char)
         db_session.add(session)
@@ -453,45 +487,47 @@ class TestSessionEndpoints:
         resp = await client.patch(
             f"{V1}/sessions/{session.id}",
             json={"current_location": "Forest"},
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         assert resp.json()["current_location"] == "Forest"
 
-    async def test_update_session_not_found(self, client, db_session):
+    async def test_update_session_not_found(self, client, db_session, auth_headers):
         resp = await client.patch(
             f"{V1}/sessions/{uuid.uuid4()}",
             json={"current_location": "Nowhere"},
+            headers=auth_headers,
         )
         assert resp.status_code == 404
 
-    async def test_end_session(self, client, db_session):
+    async def test_end_session(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         session = make_session(user=user, character=char, is_active=True)
         db_session.add(session)
         await db_session.flush()
 
-        resp = await client.post(f"{V1}/sessions/{session.id}/end")
+        resp = await client.post(f"{V1}/sessions/{session.id}/end", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["is_active"] is False
 
-    async def test_end_session_not_found(self, client, db_session):
-        resp = await client.post(f"{V1}/sessions/{uuid.uuid4()}/end")
+    async def test_end_session_not_found(self, client, db_session, auth_headers):
+        resp = await client.post(f"{V1}/sessions/{uuid.uuid4()}/end", headers=auth_headers)
         assert resp.status_code == 404
 
-    async def test_delete_session(self, client, db_session):
+    async def test_delete_session(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         session = make_session(user=user, character=char)
         db_session.add(session)
         await db_session.flush()
 
-        resp = await client.delete(f"{V1}/sessions/{session.id}")
+        resp = await client.delete(f"{V1}/sessions/{session.id}", headers=auth_headers)
         assert resp.status_code == 204
 
-    async def test_delete_session_not_found(self, client, db_session):
-        resp = await client.delete(f"{V1}/sessions/{uuid.uuid4()}")
+    async def test_delete_session_not_found(self, client, db_session, auth_headers):
+        resp = await client.delete(f"{V1}/sessions/{uuid.uuid4()}", headers=auth_headers)
         assert resp.status_code == 404
 
-    async def test_update_session_state(self, client, db_session, monkeypatch):
+    async def test_update_session_state(self, client, db_session, auth_headers, monkeypatch):
         user, char, headers = await self._seed(db_session)
         session = make_session(user=user, character=char)
         db_session.add(session)
@@ -509,13 +545,15 @@ class TestSessionEndpoints:
         resp = await client.patch(
             f"{V1}/sessions/{session.id}/state",
             json={"current_location": "Dungeon", "state_data": {"hp": 10}},
+            headers=auth_headers,
         )
         assert resp.status_code == 200
 
-    async def test_update_session_state_not_found(self, client, db_session):
+    async def test_update_session_state_not_found(self, client, db_session, auth_headers):
         resp = await client.patch(
             f"{V1}/sessions/{uuid.uuid4()}/state",
             json={"current_location": "Cave"},
+            headers=auth_headers,
         )
         assert resp.status_code == 404
 
@@ -537,7 +575,7 @@ class TestCharacterExtras:
         headers = {"Authorization": f"Bearer {token}"}
         return user, char, headers
 
-    async def test_update_skill_proficiencies(self, client, db_session):
+    async def test_update_skill_proficiencies(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         resp = await client.post(
             f"{V1}/characters/{char.id}/skills",
@@ -546,7 +584,7 @@ class TestCharacterExtras:
         )
         assert resp.status_code == 200
 
-    async def test_update_skills_not_found(self, client, db_session):
+    async def test_update_skills_not_found(self, client, db_session, auth_headers):
         _, _, headers = await self._seed(db_session)
         resp = await client.post(
             f"{V1}/characters/{uuid.uuid4()}/skills",
@@ -555,7 +593,7 @@ class TestCharacterExtras:
         )
         assert resp.status_code == 404
 
-    async def test_update_background(self, client, db_session):
+    async def test_update_background(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         resp = await client.post(
             f"{V1}/characters/{char.id}/background",
@@ -568,7 +606,7 @@ class TestCharacterExtras:
         )
         assert resp.status_code == 200
 
-    async def test_update_background_not_found(self, client, db_session):
+    async def test_update_background_not_found(self, client, db_session, auth_headers):
         _, _, headers = await self._seed(db_session)
         resp = await client.post(
             f"{V1}/characters/{uuid.uuid4()}/background",
@@ -581,7 +619,7 @@ class TestCharacterExtras:
         )
         assert resp.status_code == 404
 
-    async def test_update_personality(self, client, db_session):
+    async def test_update_personality(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         resp = await client.post(
             f"{V1}/characters/{char.id}/personality",
@@ -595,7 +633,7 @@ class TestCharacterExtras:
         )
         assert resp.status_code == 200
 
-    async def test_update_personality_not_found(self, client, db_session):
+    async def test_update_personality_not_found(self, client, db_session, auth_headers):
         _, _, headers = await self._seed(db_session)
         resp = await client.post(
             f"{V1}/characters/{uuid.uuid4()}/personality",
@@ -609,7 +647,7 @@ class TestCharacterExtras:
         )
         assert resp.status_code == 404
 
-    async def test_update_motivation(self, client, db_session):
+    async def test_update_motivation(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         resp = await client.post(
             f"{V1}/characters/{char.id}/motivation",
@@ -618,7 +656,7 @@ class TestCharacterExtras:
         )
         assert resp.status_code == 200
 
-    async def test_update_motivation_not_found(self, client, db_session):
+    async def test_update_motivation_not_found(self, client, db_session, auth_headers):
         _, _, headers = await self._seed(db_session)
         resp = await client.post(
             f"{V1}/characters/{uuid.uuid4()}/motivation",
@@ -627,28 +665,28 @@ class TestCharacterExtras:
         )
         assert resp.status_code == 404
 
-    async def test_get_character_stats(self, client, db_session):
+    async def test_get_character_stats(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
-        resp = await client.get(f"{V1}/characters/{char.id}/stats")
+        resp = await client.get(f"{V1}/characters/{char.id}/stats", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "ability_modifiers" in data or "proficiency_bonus" in data or resp.status_code == 200
 
-    async def test_get_character_stats_not_found(self, client, db_session):
-        resp = await client.get(f"{V1}/characters/{uuid.uuid4()}/stats")
+    async def test_get_character_stats_not_found(self, client, db_session, auth_headers):
+        resp = await client.get(f"{V1}/characters/{uuid.uuid4()}/stats", headers=auth_headers)
         assert resp.status_code == 404
 
-    async def test_delete_character(self, client, db_session):
+    async def test_delete_character(self, client, db_session, auth_headers):
         user, char, headers = await self._seed(db_session)
         resp = await client.delete(f"{V1}/characters/{char.id}", headers=headers)
         assert resp.status_code == 204
 
-    async def test_delete_character_not_found(self, client, db_session):
+    async def test_delete_character_not_found(self, client, db_session, auth_headers):
         _, _, headers = await self._seed(db_session)
         resp = await client.delete(f"{V1}/characters/{uuid.uuid4()}", headers=headers)
         assert resp.status_code == 404
 
-    async def test_delete_character_not_owner(self, client, db_session):
+    async def test_delete_character_not_owner(self, client, db_session, auth_headers):
         """Cannot delete another user's character."""
         user1 = make_user()
         user2 = make_user()
@@ -661,7 +699,7 @@ class TestCharacterExtras:
         resp = await client.delete(f"{V1}/characters/{char.id}", headers=headers2)
         assert resp.status_code == 403
 
-    async def test_delete_character_deactivates_sessions(self, client, db_session):
+    async def test_delete_character_deactivates_sessions(self, client, db_session, auth_headers):
         """Deleting a character deactivates its active sessions."""
         user, char, headers = await self._seed(db_session)
         session = make_session(user=user, character=char, is_active=True)
@@ -695,7 +733,7 @@ class TestCompanionEndpoints:
         headers = {"Authorization": f"Bearer {token}"}
         return user, char, creature, companion, headers
 
-    async def test_get_character_companions(self, client, db_session):
+    async def test_get_character_companions(self, client, db_session, auth_headers):
         user, char, _, companion, headers = await self._seed(db_session)
         resp = await client.get(
             f"{V1}/companions/characters/{char.id}/companions",
@@ -705,7 +743,7 @@ class TestCompanionEndpoints:
         data = resp.json()
         assert isinstance(data, list)
 
-    async def test_get_character_companions_not_found(self, client, db_session):
+    async def test_get_character_companions_not_found(self, client, db_session, auth_headers):
         _, _, _, _, headers = await self._seed(db_session)
         resp = await client.get(
             f"{V1}/companions/characters/{uuid.uuid4()}/companions",
@@ -713,7 +751,7 @@ class TestCompanionEndpoints:
         )
         assert resp.status_code == 404
 
-    async def test_get_active_companions(self, client, db_session):
+    async def test_get_active_companions(self, client, db_session, auth_headers):
         user, char, _, companion, headers = await self._seed(db_session)
         resp = await client.get(
             f"{V1}/companions/characters/{char.id}/companions/active",
@@ -721,7 +759,7 @@ class TestCompanionEndpoints:
         )
         assert resp.status_code == 200
 
-    async def test_get_companion(self, client, db_session):
+    async def test_get_companion(self, client, db_session, auth_headers):
         user, char, _, companion, headers = await self._seed(db_session)
         resp = await client.get(
             f"{V1}/companions/companions/{companion.id}",
@@ -729,7 +767,7 @@ class TestCompanionEndpoints:
         )
         assert resp.status_code == 200
 
-    async def test_get_companion_not_found(self, client, db_session):
+    async def test_get_companion_not_found(self, client, db_session, auth_headers):
         _, _, _, _, headers = await self._seed(db_session)
         resp = await client.get(
             f"{V1}/companions/companions/{uuid.uuid4()}",
@@ -737,7 +775,7 @@ class TestCompanionEndpoints:
         )
         assert resp.status_code == 404
 
-    async def test_toggle_companion_active(self, client, db_session):
+    async def test_toggle_companion_active(self, client, db_session, auth_headers):
         user, char, _, companion, headers = await self._seed(db_session)
         resp = await client.patch(
             f"{V1}/companions/companions/{companion.id}/active?is_active=true",
@@ -745,7 +783,7 @@ class TestCompanionEndpoints:
         )
         assert resp.status_code == 200
 
-    async def test_toggle_companion_not_found(self, client, db_session):
+    async def test_toggle_companion_not_found(self, client, db_session, auth_headers):
         _, _, _, _, headers = await self._seed(db_session)
         resp = await client.patch(
             f"{V1}/companions/companions/{uuid.uuid4()}/active?is_active=true",
@@ -753,7 +791,7 @@ class TestCompanionEndpoints:
         )
         assert resp.status_code == 404
 
-    async def test_update_companion_loyalty(self, client, db_session):
+    async def test_update_companion_loyalty(self, client, db_session, auth_headers):
         user, char, _, companion, headers = await self._seed(db_session)
 
         mock_provider = MagicMock()
@@ -773,7 +811,7 @@ class TestCompanionEndpoints:
                 )
         assert resp.status_code == 200
 
-    async def test_update_loyalty_no_provider(self, client, db_session):
+    async def test_update_loyalty_no_provider(self, client, db_session, auth_headers):
         user, char, _, companion, headers = await self._seed(db_session)
 
         with patch("app.api.v1.endpoints.companions.provider_selector") as mock_ps:
@@ -785,7 +823,7 @@ class TestCompanionEndpoints:
             )
         assert resp.status_code == 503
 
-    async def test_update_loyalty_not_found(self, client, db_session):
+    async def test_update_loyalty_not_found(self, client, db_session, auth_headers):
         _, _, _, _, headers = await self._seed(db_session)
         with patch("app.api.v1.endpoints.companions.provider_selector") as mock_ps:
             mock_ps.get_current_provider.return_value = MagicMock()
@@ -795,7 +833,7 @@ class TestCompanionEndpoints:
             )
         assert resp.status_code == 404
 
-    async def test_chat_with_companion(self, client, db_session):
+    async def test_chat_with_companion(self, client, db_session, auth_headers):
         user, char, _, companion, headers = await self._seed(db_session)
 
         mock_provider = MagicMock()
@@ -821,7 +859,7 @@ class TestCompanionEndpoints:
         data = resp.json()
         assert data["companion_response"] == "Hello, adventurer!"
 
-    async def test_chat_with_companion_shared(self, client, db_session):
+    async def test_chat_with_companion_shared(self, client, db_session, auth_headers):
         user, char, _, companion, headers = await self._seed(db_session)
 
         mock_provider = MagicMock()
@@ -845,7 +883,7 @@ class TestCompanionEndpoints:
                 )
         assert resp.status_code == 200
 
-    async def test_chat_companion_not_found(self, client, db_session):
+    async def test_chat_companion_not_found(self, client, db_session, auth_headers):
         _, _, _, _, headers = await self._seed(db_session)
         resp = await client.post(
             f"{V1}/companions/companions/chat",
@@ -858,7 +896,7 @@ class TestCompanionEndpoints:
         )
         assert resp.status_code == 404
 
-    async def test_chat_no_provider(self, client, db_session):
+    async def test_chat_no_provider(self, client, db_session, auth_headers):
         user, char, _, companion, headers = await self._seed(db_session)
 
         with patch("app.api.v1.endpoints.companions.provider_selector") as mock_ps:
@@ -874,7 +912,7 @@ class TestCompanionEndpoints:
             )
         assert resp.status_code == 503
 
-    async def test_get_companion_conversations(self, client, db_session):
+    async def test_get_companion_conversations(self, client, db_session, auth_headers):
         user, char, _, companion, headers = await self._seed(db_session)
 
         conv = make_companion_conversation(
@@ -895,7 +933,7 @@ class TestCompanionEndpoints:
         data = resp.json()
         assert isinstance(data, list)
 
-    async def test_get_conversations_not_found(self, client, db_session):
+    async def test_get_conversations_not_found(self, client, db_session, auth_headers):
         _, _, _, _, headers = await self._seed(db_session)
         resp = await client.get(
             f"{V1}/companions/companions/{uuid.uuid4()}/conversations",

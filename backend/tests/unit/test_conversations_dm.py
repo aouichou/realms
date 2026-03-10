@@ -140,7 +140,7 @@ def _common_patches():
 # ===========================================================================
 
 
-async def test_action_basic_narration(client, db_session):
+async def test_action_basic_narration(client, db_session, auth_headers):
     """DM returns a simple narration without rolls/spells."""
     _u, char, sess = await _seed(db_session)
     patches = _common_patches()
@@ -154,6 +154,7 @@ async def test_action_basic_narration(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I look around the tavern.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -164,7 +165,7 @@ async def test_action_basic_narration(client, db_session):
             p.stop()
 
 
-async def test_action_with_roll_result(client, db_session):
+async def test_action_with_roll_result(client, db_session, auth_headers):
     """Player submits a roll result; it should be injected into action text."""
     _u, char, sess = await _seed(db_session)
     patches = _common_patches()
@@ -185,6 +186,7 @@ async def test_action_with_roll_result(client, db_session):
                     "success": True,
                 },
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
     finally:
@@ -192,7 +194,7 @@ async def test_action_with_roll_result(client, db_session):
             p.stop()
 
 
-async def test_action_character_not_found(client, db_session):
+async def test_action_character_not_found(client, db_session, auth_headers):
     """Action with non-existent character returns 404."""
     _u, _c, sess = await _seed(db_session)
     patches = _common_patches()
@@ -206,6 +208,7 @@ async def test_action_character_not_found(client, db_session):
                 "session_id": str(sess.id),
                 "action": "hello",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 404
     finally:
@@ -218,7 +221,7 @@ async def test_action_character_not_found(client, db_session):
 # ===========================================================================
 
 
-async def test_action_spell_detected_and_consumed(client, db_session):
+async def test_action_spell_detected_and_consumed(client, db_session, auth_headers):
     """When detect_spell_cast finds a spell, slot is consumed."""
     _u, char, sess = await _seed(
         db_session,
@@ -261,6 +264,7 @@ async def test_action_spell_detected_and_consumed(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I cast Magic Missile at the goblin.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
     finally:
@@ -268,7 +272,7 @@ async def test_action_spell_detected_and_consumed(client, db_session):
             p.stop()
 
 
-async def test_action_spell_detection_with_warning(client, db_session):
+async def test_action_spell_detection_with_warning(client, db_session, auth_headers):
     """Spell detection returns a warning (e.g., unknown spell)."""
     _u, char, sess = await _seed(db_session)
 
@@ -309,6 +313,7 @@ async def test_action_spell_detection_with_warning(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I cast Firblast.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -319,7 +324,7 @@ async def test_action_spell_detection_with_warning(client, db_session):
             p.stop()
 
 
-async def test_action_spell_slot_consumption_fails(client, db_session):
+async def test_action_spell_slot_consumption_fails(client, db_session, auth_headers):
     """consume_spell_slot returns (False, warning) — slot exhausted."""
     _u, char, sess = await _seed(
         db_session,
@@ -364,6 +369,7 @@ async def test_action_spell_slot_consumption_fails(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I cast Magic Missile.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -378,7 +384,7 @@ async def test_action_spell_slot_consumption_fails(client, db_session):
 # ===========================================================================
 
 
-async def test_action_with_roll_tags_in_narration(client, db_session):
+async def test_action_with_roll_tags_in_narration(client, db_session, auth_headers):
     """DM narration contains [ROLL:...] tags — parsed and NPC rolls executed."""
     _u, char, sess = await _seed(db_session)
     narration_with_tags = "A goblin attacks! [ROLL:NPC d20+3 attack vs AC 15]"
@@ -432,6 +438,7 @@ async def test_action_with_roll_tags_in_narration(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I attack the goblin.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
     finally:
@@ -444,7 +451,7 @@ async def test_action_with_roll_tags_in_narration(client, db_session):
 # ===========================================================================
 
 
-async def test_action_natural_language_roll_detection(client, db_session):
+async def test_action_natural_language_roll_detection(client, db_session, auth_headers):
     """No roll tags, but natural language suggests a roll is needed."""
     _u, char, sess = await _seed(db_session)
 
@@ -503,6 +510,7 @@ async def test_action_natural_language_roll_detection(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I try to sneak past the guards.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -518,7 +526,7 @@ async def test_action_natural_language_roll_detection(client, db_session):
 # ===========================================================================
 
 
-async def test_action_tool_based_roll_request(client, db_session):
+async def test_action_tool_based_roll_request(client, db_session, auth_headers):
     """DM engine returns tool-based roll request — converted to frontend format."""
     _u, char, sess = await _seed(db_session)
 
@@ -581,6 +589,7 @@ async def test_action_tool_based_roll_request(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I stand my ground.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -594,7 +603,7 @@ async def test_action_tool_based_roll_request(client, db_session):
             p.stop()
 
 
-async def test_action_tool_based_ability_check(client, db_session):
+async def test_action_tool_based_ability_check(client, db_session, auth_headers):
     """Tool roll request with type=ability_check maps to 'check' and sets skill."""
     _u, char, sess = await _seed(db_session)
 
@@ -654,6 +663,7 @@ async def test_action_tool_based_ability_check(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I search for traps.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -671,7 +681,7 @@ async def test_action_tool_based_ability_check(client, db_session):
 # ===========================================================================
 
 
-async def test_action_scene_image_generated(client, db_session):
+async def test_action_scene_image_generated(client, db_session, auth_headers):
     """Significant scene triggers image generation."""
     _u, char, sess = await _seed(db_session)
 
@@ -720,6 +730,7 @@ async def test_action_scene_image_generated(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I look up at the sky.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -729,7 +740,7 @@ async def test_action_scene_image_generated(client, db_session):
             p.stop()
 
 
-async def test_action_image_detection_error_graceful(client, db_session):
+async def test_action_image_detection_error_graceful(client, db_session, auth_headers):
     """Image detection failure doesn't crash the request."""
     _u, char, sess = await _seed(db_session)
 
@@ -772,6 +783,7 @@ async def test_action_image_detection_error_graceful(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I continue walking.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
     finally:
@@ -784,7 +796,7 @@ async def test_action_image_detection_error_graceful(client, db_session):
 # ===========================================================================
 
 
-async def test_action_empty_narration_gets_fallback(client, db_session):
+async def test_action_empty_narration_gets_fallback(client, db_session, auth_headers):
     """If DM returns empty narration, a fallback is used."""
     _u, char, sess = await _seed(db_session)
 
@@ -825,6 +837,7 @@ async def test_action_empty_narration_gets_fallback(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I wait.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -840,7 +853,7 @@ async def test_action_empty_narration_gets_fallback(client, db_session):
 # ===========================================================================
 
 
-async def test_action_spell_detection_exception_handled(client, db_session):
+async def test_action_spell_detection_exception_handled(client, db_session, auth_headers):
     """Exception in detect_spell_cast is caught gracefully."""
     _u, char, sess = await _seed(db_session)
 
@@ -877,6 +890,7 @@ async def test_action_spell_detection_exception_handled(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I mumble arcane words.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
     finally:
@@ -889,7 +903,7 @@ async def test_action_spell_detection_exception_handled(client, db_session):
 # ===========================================================================
 
 
-async def test_action_no_session_id(client, db_session):
+async def test_action_no_session_id(client, db_session, auth_headers):
     """Action with session_id=None — should be handled gracefully."""
     _u, char, sess = await _seed(db_session)
 
@@ -904,6 +918,7 @@ async def test_action_no_session_id(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I look around.",
             },
+            headers=auth_headers,
         )
         # session_id is required by the code even though schema says Optional
         assert resp.status_code == 200
@@ -917,7 +932,7 @@ async def test_action_no_session_id(client, db_session):
 # ===========================================================================
 
 
-async def test_action_cantrip_detection(client, db_session):
+async def test_action_cantrip_detection(client, db_session, auth_headers):
     """Cantrip detected — consume_spell_slot returns True, no slot used."""
     _u, char, sess = await _seed(db_session)
 
@@ -958,6 +973,7 @@ async def test_action_cantrip_detection(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I cast Fire Bolt.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
     finally:
@@ -970,7 +986,7 @@ async def test_action_cantrip_detection(client, db_session):
 # ===========================================================================
 
 
-async def test_action_roll_response_skips_nl_detection(client, db_session):
+async def test_action_roll_response_skips_nl_detection(client, db_session, auth_headers):
     """When player says 'I rolled 18', natural language detection is skipped."""
     _u, char, sess = await _seed(db_session)
 
@@ -1016,6 +1032,7 @@ async def test_action_roll_response_skips_nl_detection(client, db_session):
                 "session_id": str(sess.id),
                 "action": "I rolled a 18 for stealth.",
             },
+            headers=auth_headers,
         )
         assert resp.status_code == 200
         # NL detection should NOT have been called because action starts with "i rolled"

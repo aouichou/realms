@@ -10,7 +10,8 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
-from app.db.models import CombatEncounter, GameSession
+from app.db.models import CombatEncounter, GameSession, User
+from app.middleware.auth import get_current_active_user
 from app.observability.logger import get_logger
 from app.observability.tracing import trace_async
 from app.schemas.combat import (
@@ -31,7 +32,11 @@ router = APIRouter(prefix="/combat", tags=["combat"])
 
 @router.post("/start", response_model=CombatStatusResponse, status_code=201)
 @trace_async("combat.start")
-async def start_combat(request: StartCombatRequest, db: AsyncSession = Depends(get_db)):
+async def start_combat(
+    request: StartCombatRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Start a new combat encounter
 
     Rolls initiative for all participants and sorts turn order.
@@ -129,7 +134,11 @@ async def start_combat(request: StartCombatRequest, db: AsyncSession = Depends(g
 
 @router.get("/{combat_id}/status", response_model=CombatStatusResponse)
 @trace_async("combat.get_status")
-async def get_combat_status(combat_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_combat_status(
+    combat_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Get current combat status
 
     Args:
@@ -166,7 +175,10 @@ async def get_combat_status(combat_id: UUID, db: AsyncSession = Depends(get_db))
 @router.post("/{combat_id}/action", response_model=CombatActionResponse)
 @trace_async("combat.perform_action")
 async def perform_combat_action(
-    combat_id: UUID, action: CombatActionRequest, db: AsyncSession = Depends(get_db)
+    combat_id: UUID,
+    action: CombatActionRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Perform a combat action
 
@@ -282,7 +294,11 @@ async def perform_combat_action(
 
 @router.post("/{combat_id}/end", response_model=EndCombatResponse)
 @trace_async("combat.end")
-async def end_combat(combat_id: UUID, db: AsyncSession = Depends(get_db)):
+async def end_combat(
+    combat_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """End a combat encounter
 
     Args:
@@ -357,7 +373,11 @@ async def end_combat(combat_id: UUID, db: AsyncSession = Depends(get_db)):
 )
 @trace_async("combat.update_participant_hp")
 async def update_participant_hp(
-    combat_id: UUID, participant_index: int, hp_change: int, db: AsyncSession = Depends(get_db)
+    combat_id: UUID,
+    participant_index: int,
+    hp_change: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update a participant's HP (damage or healing)
 

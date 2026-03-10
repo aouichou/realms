@@ -83,18 +83,18 @@ async def _create_session_in_db(db_session, **session_kw):
 # ===========================================================================
 
 
-async def test_start_conversation_happy(client, db_session):
+async def test_start_conversation_happy(client, db_session, auth_headers):
     """Start a new conversation for a fresh session."""
     _user, char, session = await _create_session_in_db(db_session)
 
-    resp = await client.post(f"{BASE}/start", json={"session_id": str(session.id)})
+    resp = await client.post(f"{BASE}/start", json={"session_id": str(session.id)}, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert "response" in data
     assert char.name in data["response"]
 
 
-async def test_start_conversation_already_has_messages(client, db_session):
+async def test_start_conversation_already_has_messages(client, db_session, auth_headers):
     """Starting a conversation with existing messages should fail."""
     _user, _char, session = await _create_session_in_db(db_session)
 
@@ -102,24 +102,24 @@ async def test_start_conversation_already_has_messages(client, db_session):
     db_session.add(msg)
     await db_session.flush()
 
-    resp = await client.post(f"{BASE}/start", json={"session_id": str(session.id)})
+    resp = await client.post(f"{BASE}/start", json={"session_id": str(session.id)}, headers=auth_headers)
     assert resp.status_code == 400
     assert "already has messages" in resp.json()["detail"]
 
 
-async def test_start_conversation_session_not_found(client, db_session):
+async def test_start_conversation_session_not_found(client, db_session, auth_headers):
     """Non-existent session should return 404."""
     random_id = str(uuid.uuid4())
-    resp = await client.post(f"{BASE}/start", json={"session_id": random_id})
+    resp = await client.post(f"{BASE}/start", json={"session_id": random_id}, headers=auth_headers)
     assert resp.status_code == 404
 
 
-async def test_start_conversation_french(client, db_session):
+async def test_start_conversation_french(client, db_session, auth_headers):
     """French language opening narration."""
     _user, char, session = await _create_session_in_db(db_session)
 
     with patch("app.i18n.get_language", return_value="fr"):
-        resp = await client.post(f"{BASE}/start", json={"session_id": str(session.id)})
+        resp = await client.post(f"{BASE}/start", json={"session_id": str(session.id)}, headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "Bienvenue" in data["response"]
@@ -130,7 +130,7 @@ async def test_start_conversation_french(client, db_session):
 # ===========================================================================
 
 
-async def test_action_character_not_found(client, db_session):
+async def test_action_character_not_found(client, db_session, auth_headers):
     """Action with non-existent character should 404."""
     _user, _char, session = await _create_session_in_db(db_session)
 
@@ -139,12 +139,12 @@ async def test_action_character_not_found(client, db_session):
         "character_id": str(uuid.uuid4()),
         "action": "I look around.",
     }
-    resp = await client.post(f"{BASE}/action", json=body)
+    resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
     assert resp.status_code == 404
     assert resp.json()["detail"] == "Character not found"
 
 
-async def test_action_happy_path(client, db_session):
+async def test_action_happy_path(client, db_session, auth_headers):
     """Happy path for player action → DM response."""
     _user, char, session = await _create_session_in_db(db_session)
 
@@ -185,14 +185,14 @@ async def test_action_happy_path(client, db_session):
             "character_id": str(char.id),
             "action": "I open the door.",
         }
-        resp = await client.post(f"{BASE}/action", json=body)
+        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["response"] == "You see a dark corridor ahead."
         assert data["tokens_used"] == 42
 
 
-async def test_action_with_roll_result(client, db_session):
+async def test_action_with_roll_result(client, db_session, auth_headers):
     """When the player provides a roll result, it should be formatted into the action."""
     _user, char, session = await _create_session_in_db(db_session)
 
@@ -240,13 +240,13 @@ async def test_action_with_roll_result(client, db_session):
                 "success": True,
             },
         }
-        resp = await client.post(f"{BASE}/action", json=body)
+        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "response" in data
 
 
-async def test_action_empty_narration_fallback(client, db_session):
+async def test_action_empty_narration_fallback(client, db_session, auth_headers):
     """If DM engine returns empty narration, a fallback should be used."""
     _user, char, session = await _create_session_in_db(db_session)
 
@@ -287,7 +287,7 @@ async def test_action_empty_narration_fallback(client, db_session):
             "character_id": str(char.id),
             "action": "I wait.",
         }
-        resp = await client.post(f"{BASE}/action", json=body)
+        resp = await client.post(f"{BASE}/action", json=body, headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         # Fallback narration
@@ -299,7 +299,7 @@ async def test_action_empty_narration_fallback(client, db_session):
 # ===========================================================================
 
 
-async def test_get_history_redis_source(client, db_session, monkeypatch):
+async def test_get_history_redis_source(client, db_session, auth_headers, monkeypatch):
     """Reading from redis source should use session_service."""
     from app.services.redis_service import session_service
 
@@ -318,14 +318,14 @@ async def test_get_history_redis_source(client, db_session, monkeypatch):
         session_service, "get_conversation_history", AsyncMock(return_value=fake_messages)
     )
 
-    resp = await client.get(f"{BASE}/{session.id}", params={"source": "redis"})
+    resp = await client.get(f"{BASE}/{session.id}", params={"source": "redis"}, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["total_messages"] == 2
     assert data["messages"][0]["role"] == "user"
 
 
-async def test_get_history_with_pagination(client, db_session):
+async def test_get_history_with_pagination(client, db_session, auth_headers):
     """Pagination params on database source."""
     _user, _char, session = await _create_session_in_db(db_session)
 
@@ -334,7 +334,8 @@ async def test_get_history_with_pagination(client, db_session):
     await db_session.flush()
 
     resp = await client.get(
-        f"{BASE}/{session.id}", params={"limit": 2, "offset": 0, "source": "database"}
+        f"{BASE}/{session.id}", params={"limit": 2, "offset": 0, "source": "database"},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -347,13 +348,13 @@ async def test_get_history_with_pagination(client, db_session):
 # ===========================================================================
 
 
-async def test_get_recent_messages_large_count(client, db_session):
+async def test_get_recent_messages_large_count(client, db_session, auth_headers):
     """Requesting more messages than exist should just return all."""
     _user, _char, session = await _create_session_in_db(db_session)
     db_session.add(make_message(session=session, content="Only one"))
     await db_session.flush()
 
-    resp = await client.get(f"{BASE}/{session.id}/recent", params={"count": 100})
+    resp = await client.get(f"{BASE}/{session.id}/recent", params={"count": 100}, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) == 1
@@ -364,7 +365,7 @@ async def test_get_recent_messages_large_count(client, db_session):
 # ===========================================================================
 
 
-async def test_delete_conversation_with_redis(client, db_session, monkeypatch):
+async def test_delete_conversation_with_redis(client, db_session, auth_headers, monkeypatch):
     from app.services.redis_service import session_service
 
     _user, _char, session = await _create_session_in_db(db_session)
@@ -372,12 +373,12 @@ async def test_delete_conversation_with_redis(client, db_session, monkeypatch):
     mock_clear = AsyncMock()
     monkeypatch.setattr(session_service, "clear_conversation_history", mock_clear)
 
-    resp = await client.delete(f"{BASE}/{session.id}", params={"include_redis": True})
+    resp = await client.delete(f"{BASE}/{session.id}", params={"include_redis": True}, headers=auth_headers)
     assert resp.status_code == 204
     mock_clear.assert_awaited_once()
 
 
-async def test_delete_conversation_without_redis(client, db_session, monkeypatch):
+async def test_delete_conversation_without_redis(client, db_session, auth_headers, monkeypatch):
     from app.services.redis_service import session_service
 
     _user, _char, session = await _create_session_in_db(db_session)
@@ -385,7 +386,7 @@ async def test_delete_conversation_without_redis(client, db_session, monkeypatch
     mock_clear = AsyncMock()
     monkeypatch.setattr(session_service, "clear_conversation_history", mock_clear)
 
-    resp = await client.delete(f"{BASE}/{session.id}", params={"include_redis": False})
+    resp = await client.delete(f"{BASE}/{session.id}", params={"include_redis": False}, headers=auth_headers)
     assert resp.status_code == 204
     mock_clear.assert_not_awaited()
 
@@ -395,7 +396,7 @@ async def test_delete_conversation_without_redis(client, db_session, monkeypatch
 # ===========================================================================
 
 
-async def test_create_message_with_scene_image(client, db_session):
+async def test_create_message_with_scene_image(client, db_session, auth_headers):
     _user, _char, session = await _create_session_in_db(db_session)
 
     body = {
@@ -405,7 +406,7 @@ async def test_create_message_with_scene_image(client, db_session):
         "tokens_used": 25,
         "scene_image_url": "https://example.com/dragon.png",
     }
-    resp = await client.post(f"{BASE}/messages", json=body)
+    resp = await client.post(f"{BASE}/messages", json=body, headers=auth_headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["scene_image_url"] == "https://example.com/dragon.png"
@@ -416,7 +417,7 @@ async def test_create_message_with_scene_image(client, db_session):
 # ===========================================================================
 
 
-async def test_random_pool_status(client):
+async def test_random_pool_status(client, auth_headers):
     """Cover the remaining path for random_status.py."""
     mock_status = {
         "enabled": False,
@@ -428,7 +429,7 @@ async def test_random_pool_status(client):
     }
     with patch("app.api.v1.endpoints.random_status.random_pool") as mock_pool:
         mock_pool.get_pool_status = AsyncMock(return_value=mock_status)
-        resp = await client.get("/api/v1/random/status")
+        resp = await client.get("/api/v1/random/status", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["source"] == "pseudo-random"

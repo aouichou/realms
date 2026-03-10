@@ -9,7 +9,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.base import get_db
-from app.db.models import Character, CharacterClass
+from app.db.models import Character, CharacterClass, User
+from app.middleware.auth import get_current_active_user
 
 router = APIRouter(prefix="/rest", tags=["rest"])
 
@@ -37,7 +38,12 @@ CLASS_HIT_DICE = {
 
 
 @router.post("/characters/{character_id}/rest")
-async def take_rest(character_id: int, request: RestRequest, db: Session = Depends(get_db)):
+async def take_rest(
+    character_id: int,
+    request: RestRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Take a short or long rest
     Short rest: Spend hit dice to recover HP
@@ -117,7 +123,11 @@ async def take_rest(character_id: int, request: RestRequest, db: Session = Depen
 
 
 @router.get("/characters/{character_id}/rest-status")
-async def get_rest_status(character_id: int, db: Session = Depends(get_db)):
+async def get_rest_status(
+    character_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Get character's rest status
     Shows available hit dice and spell slot status

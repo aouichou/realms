@@ -81,12 +81,28 @@ def _strip_middleware():
 
 @pytest_asyncio.fixture
 async def sync_client(sync_db):
+    from app.db.models import User
     from app.main import app
+    from app.middleware.auth import get_current_active_user
 
     def _get_sync_db():
         yield sync_db
 
+    auth_user = User(
+        id=uuid.uuid4(),
+        username=f"syncuser_{uuid.uuid4().hex[:8]}",
+        password_hash="hashed",
+        is_guest=False,
+        is_active=True,
+    )
+    sync_db.add(auth_user)
+    sync_db.flush()
+
+    async def _mock_auth():
+        return auth_user
+
     app.dependency_overrides[get_db] = _get_sync_db
+    app.dependency_overrides[get_current_active_user] = _mock_auth
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

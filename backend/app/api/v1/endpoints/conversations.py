@@ -9,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.base import get_db
-from app.db.models import Character, CharacterQuest, Quest, QuestState
+from app.db.models import Character, CharacterQuest, Quest, QuestState, User
+from app.middleware.auth import get_current_active_user
 from app.observability.logger import get_logger, log_context
 from app.observability.tracing import get_tracer, trace_async
 from app.schemas.dm_response import DMResponse, PlayerActionRequest, RollRequest
@@ -40,6 +41,7 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
 async def create_message(
     message_data: MessageCreate,
     save_to_redis: bool = Query(True, description="Also save to Redis"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new conversation message.
@@ -71,6 +73,7 @@ async def create_message(
 @trace_async("conversations.start_conversation")
 async def start_conversation(
     request: dict,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a new conversation session with opening narration.
@@ -157,6 +160,7 @@ async def start_conversation(
 @trace_async("conversations.send_player_action")
 async def send_player_action(
     request: PlayerActionRequest,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Send player action and get DM response with optional roll request.

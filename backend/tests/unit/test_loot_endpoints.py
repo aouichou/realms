@@ -101,8 +101,8 @@ def test_roll_dice_d20():
 # ===========================================================================
 
 
-async def test_get_recipes_all(client):
-    resp = await client.get(f"{BASE}/crafting/recipes")
+async def test_get_recipes_all(client, auth_headers):
+    resp = await client.get(f"{BASE}/crafting/recipes", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert "recipes" in data
@@ -116,16 +116,16 @@ async def test_get_recipes_all(client):
         assert "dc" in recipe
 
 
-async def test_get_recipes_filter_by_skill(client):
-    resp = await client.get(f"{BASE}/crafting/recipes", params={"skill": "Medicine"})
+async def test_get_recipes_filter_by_skill(client, auth_headers):
+    resp = await client.get(f"{BASE}/crafting/recipes", params={"skill": "Medicine"}, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     for recipe in data["recipes"]:
         assert recipe["required_skill"].lower() == "medicine"
 
 
-async def test_get_recipes_filter_no_match(client):
-    resp = await client.get(f"{BASE}/crafting/recipes", params={"skill": "Nonexistent"})
+async def test_get_recipes_filter_no_match(client, auth_headers):
+    resp = await client.get(f"{BASE}/crafting/recipes", params={"skill": "Nonexistent"}, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["recipes"] == []
@@ -136,9 +136,9 @@ async def test_get_recipes_filter_no_match(client):
 # ===========================================================================
 
 
-async def test_generate_loot(client, db_session):
+async def test_generate_loot(client, db_session, auth_headers):
     """Just verify the endpoint returns a valid structure."""
-    resp = await client.post(f"{BASE}/loot/generate", json={"cr": 5, "environment": "dungeon"})
+    resp = await client.post(f"{BASE}/loot/generate", json={"cr": 5, "environment": "dungeon"}, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert "loot" in data
@@ -146,15 +146,15 @@ async def test_generate_loot(client, db_session):
     assert isinstance(data["loot"], list)
 
 
-async def test_generate_loot_low_cr(client, db_session):
-    resp = await client.post(f"{BASE}/loot/generate", json={"cr": 0, "environment": "forest"})
+async def test_generate_loot_low_cr(client, db_session, auth_headers):
+    resp = await client.post(f"{BASE}/loot/generate", json={"cr": 0, "environment": "forest"}, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data["total_value"], (int, float))
 
 
-async def test_generate_loot_high_cr(client, db_session):
-    resp = await client.post(f"{BASE}/loot/generate", json={"cr": 20, "environment": "underdark"})
+async def test_generate_loot_high_cr(client, db_session, auth_headers):
+    resp = await client.post(f"{BASE}/loot/generate", json={"cr": 20, "environment": "underdark"}, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data["loot"], list)

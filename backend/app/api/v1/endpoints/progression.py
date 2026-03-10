@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.endpoints.spells import get_spell_slots_for_class
 from app.db.base import get_db
-from app.db.models import Character, CharacterClass
+from app.db.models import Character, CharacterClass, User
+from app.middleware.auth import get_current_active_user
 
 router = APIRouter(prefix="/progression", tags=["progression"])
 
@@ -84,7 +85,12 @@ def can_level_up(xp: int, current_level: int) -> bool:
 
 
 @router.post("/characters/{character_id}/add-xp")
-async def add_experience(character_id: int, request: AddXPRequest, db: Session = Depends(get_db)):
+async def add_experience(
+    character_id: int,
+    request: AddXPRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Add experience points to a character
     Returns updated XP and whether character can level up
@@ -112,7 +118,11 @@ async def add_experience(character_id: int, request: AddXPRequest, db: Session =
 
 
 @router.get("/characters/{character_id}/xp-progress")
-async def get_xp_progress(character_id: int, db: Session = Depends(get_db)):
+async def get_xp_progress(
+    character_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
     Get character's XP progress and leveling information
     """
@@ -143,7 +153,10 @@ async def get_xp_progress(character_id: int, db: Session = Depends(get_db)):
 
 @router.post("/characters/{character_id}/level-up")
 async def level_up_character(
-    character_id: int, request: LevelUpRequest, db: Session = Depends(get_db)
+    character_id: int,
+    request: LevelUpRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """
     Level up a character

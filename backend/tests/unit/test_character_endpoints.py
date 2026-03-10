@@ -246,29 +246,29 @@ async def test_list_characters_no_auth(client, db_session):
 
 
 async def test_update_character_name(client, db_session, auth_user):
-    user, _ = auth_user
+    user, headers = auth_user
     char = make_character(user=user, name="OldName")
     db_session.add(char)
     await db_session.flush()
 
-    resp = await client.patch(f"/api/v1/characters/{char.id}", json={"name": "NewName"})
+    resp = await client.patch(f"/api/v1/characters/{char.id}", json={"name": "NewName"}, headers=headers)
     assert resp.status_code == 200
     assert resp.json()["name"] == "NewName"
 
 
 async def test_update_character_hp(client, db_session, auth_user):
-    user, _ = auth_user
+    user, headers = auth_user
     char = make_character(user=user, hp_current=12, hp_max=12)
     db_session.add(char)
     await db_session.flush()
 
-    resp = await client.patch(f"/api/v1/characters/{char.id}", json={"hp_current": 8})
+    resp = await client.patch(f"/api/v1/characters/{char.id}", json={"hp_current": 8}, headers=headers)
     assert resp.status_code == 200
     assert resp.json()["hp_current"] == 8
 
 
 async def test_update_character_personality_trait(client, db_session, auth_user):
-    user, _ = auth_user
+    user, headers = auth_user
     char = make_character(user=user)
     db_session.add(char)
     await db_session.flush()
@@ -276,13 +276,14 @@ async def test_update_character_personality_trait(client, db_session, auth_user)
     resp = await client.patch(
         f"/api/v1/characters/{char.id}",
         json={"personality_trait": "Always cheerful"},
+        headers=headers,
     )
     assert resp.status_code == 200
     assert resp.json()["personality_trait"] == "Always cheerful"
 
 
 async def test_update_character_multiple_fields(client, db_session, auth_user):
-    user, _ = auth_user
+    user, headers = auth_user
     char = make_character(user=user, name="Multi")
     db_session.add(char)
     await db_session.flush()
@@ -290,6 +291,7 @@ async def test_update_character_multiple_fields(client, db_session, auth_user):
     resp = await client.patch(
         f"/api/v1/characters/{char.id}",
         json={"name": "Updated", "hp_current": 5, "motivation": "revenge"},
+        headers=headers,
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -298,8 +300,8 @@ async def test_update_character_multiple_fields(client, db_session, auth_user):
     assert data["motivation"] == "revenge"
 
 
-async def test_update_character_not_found(client, db_session):
-    resp = await client.patch(f"/api/v1/characters/{uuid.uuid4()}", json={"name": "Ghost"})
+async def test_update_character_not_found(client, db_session, auth_headers):
+    resp = await client.patch(f"/api/v1/characters/{uuid.uuid4()}", json={"name": "Ghost"}, headers=auth_headers)
     assert resp.status_code == 404
 
 
@@ -396,12 +398,12 @@ async def test_update_skills_no_auth(client, db_session):
 
 
 async def test_get_stats_happy_path(client, db_session, auth_user):
-    user, _ = auth_user
+    user, headers = auth_user
     char = make_character(user=user, name="Statsy")
     db_session.add(char)
     await db_session.flush()
 
-    resp = await client.get(f"/api/v1/characters/{char.id}/stats")
+    resp = await client.get(f"/api/v1/characters/{char.id}/stats", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert "strength" in data
@@ -411,6 +413,6 @@ async def test_get_stats_happy_path(client, db_session, auth_user):
     assert "saving_throws" in data
 
 
-async def test_get_stats_not_found(client, db_session):
-    resp = await client.get(f"/api/v1/characters/{uuid.uuid4()}/stats")
+async def test_get_stats_not_found(client, db_session, auth_headers):
+    resp = await client.get(f"/api/v1/characters/{uuid.uuid4()}/stats", headers=auth_headers)
     assert resp.status_code == 404

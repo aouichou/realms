@@ -9,7 +9,16 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db.base import get_db
-from app.db.models import Character, CharacterQuest, ItemType, Quest, QuestObjective, QuestState
+from app.db.models import (
+    Character,
+    CharacterQuest,
+    ItemType,
+    Quest,
+    QuestObjective,
+    QuestState,
+    User,
+)
+from app.middleware.auth import get_current_active_user
 
 router = APIRouter(prefix="/quests", tags=["quests"])
 
@@ -72,7 +81,11 @@ class AcceptQuestRequest(BaseModel):
 
 
 @router.post("", response_model=QuestResponse)
-def create_quest(request: CreateQuestRequest, db: Session = Depends(get_db)):
+def create_quest(
+    request: CreateQuestRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """Create a new quest with objectives"""
     # Verify quest giver exists if provided
     if request.quest_giver_id:
@@ -146,7 +159,12 @@ def create_quest(request: CreateQuestRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/{quest_id}/accept", response_model=dict)
-def accept_quest(quest_id: UUID, request: AcceptQuestRequest, db: Session = Depends(get_db)):
+def accept_quest(
+    quest_id: UUID,
+    request: AcceptQuestRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """Accept a quest for a character"""
     # Verify quest exists
     quest = db.query(Quest).filter(Quest.id == quest_id).first()
@@ -185,7 +203,10 @@ def accept_quest(quest_id: UUID, request: AcceptQuestRequest, db: Session = Depe
 
 @router.get("/character/{character_id}", response_model=list[QuestResponse])
 def get_character_quests(
-    character_id: UUID, state: Optional[QuestState] = None, db: Session = Depends(get_db)
+    character_id: UUID,
+    state: Optional[QuestState] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get all quests for a character, optionally filtered by state"""
     # Verify character exists
@@ -251,7 +272,12 @@ def get_character_quests(
 
 
 @router.patch("/{quest_id}/objectives/{objective_id}/complete", response_model=dict)
-def complete_objective(quest_id: UUID, objective_id: UUID, db: Session = Depends(get_db)):
+def complete_objective(
+    quest_id: UUID,
+    objective_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """Mark a quest objective as complete"""
     # Verify quest exists
     quest = db.query(Quest).filter(Quest.id == quest_id).first()
@@ -289,7 +315,12 @@ def complete_objective(quest_id: UUID, objective_id: UUID, db: Session = Depends
 
 
 @router.post("/{quest_id}/complete", response_model=dict)
-def complete_quest(quest_id: UUID, character_id: UUID, db: Session = Depends(get_db)):
+def complete_quest(
+    quest_id: UUID,
+    character_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """Mark quest as complete and grant rewards"""
     # Verify quest exists
     quest = db.query(Quest).filter(Quest.id == quest_id).first()
@@ -356,7 +387,11 @@ def complete_quest(quest_id: UUID, character_id: UUID, db: Session = Depends(get
 
 
 @router.post("/{quest_id}/fail", response_model=dict)
-def fail_quest(quest_id: UUID, db: Session = Depends(get_db)):
+def fail_quest(
+    quest_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """Mark quest as failed"""
     quest = db.query(Quest).filter(Quest.id == quest_id).first()
     if not quest:

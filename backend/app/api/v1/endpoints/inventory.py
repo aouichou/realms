@@ -7,7 +7,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
-from app.db.models import Character, Item, ItemType
+from app.db.models import Character, Item, ItemType, User
+from app.middleware.auth import get_current_active_user
 from app.observability.logger import get_logger
 from app.schemas.inventory import InventoryResponse, ItemCreate, ItemResponse, ItemUpdate
 from app.services.memory_capture import MemoryCaptureService
@@ -22,7 +23,12 @@ router = APIRouter(prefix="/characters", tags=["inventory"])
     response_model=ItemResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_item(character_id: UUID, item_data: ItemCreate, db: AsyncSession = Depends(get_db)):
+async def add_item(
+    character_id: UUID,
+    item_data: ItemCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Add an item to character's inventory"""
     # Verify character exists
     character_result = await db.execute(select(Character).where(Character.id == character_id))
@@ -97,6 +103,7 @@ async def get_inventory(
     character_id: UUID,
     item_type: ItemType | None = None,
     equipped: bool | None = None,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get character's inventory with optional filters"""
@@ -144,7 +151,12 @@ async def get_inventory(
 
 
 @router.patch("/{character_id}/inventory/{item_id}/equip", response_model=ItemResponse)
-async def toggle_equip_item(character_id: UUID, item_id: UUID, db: AsyncSession = Depends(get_db)):
+async def toggle_equip_item(
+    character_id: UUID,
+    item_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Toggle item equipped status"""
     # Get item
     item_result = await db.execute(
@@ -169,7 +181,11 @@ async def toggle_equip_item(character_id: UUID, item_id: UUID, db: AsyncSession 
 
 @router.patch("/{character_id}/inventory/{item_id}", response_model=ItemResponse)
 async def update_item(
-    character_id: UUID, item_id: UUID, item_data: ItemUpdate, db: AsyncSession = Depends(get_db)
+    character_id: UUID,
+    item_id: UUID,
+    item_data: ItemUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update item quantity or other properties"""
     # Get item
@@ -208,7 +224,12 @@ async def update_item(
 
 
 @router.delete("/{character_id}/inventory/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_item(character_id: UUID, item_id: UUID, db: AsyncSession = Depends(get_db)):
+async def remove_item(
+    character_id: UUID,
+    item_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Remove an item from inventory"""
     # Get item
     item_result = await db.execute(
