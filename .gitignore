@@ -5,7 +5,10 @@
 .github/instructions/*
 
 # Ignore dev docs (keep private for development)
-docs/
+docs/*
+!docs/ARCHITECTURE.md
+!docs/CURRENT-STATE.md
+!docs/GAME-DESIGN-TECHNICAL.md
 *.code-workspace
 .github/*
 !.github/workflows/

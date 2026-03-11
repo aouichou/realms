@@ -393,6 +393,7 @@ realms/
 | [backend/README.md](backend/README.md) | Service architecture, DM engine, provider system, API patterns |
 | [frontend/README.md](frontend/README.md) | Component architecture, game state, user journey |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System diagrams, data flows, cross-cutting concerns |
+| [docs/GAME-DESIGN-TECHNICAL.md](docs/GAME-DESIGN-TECHNICAL.md) | Technical specs, prompts, schemas, AI integration details |
 | [docs/CURRENT-STATE.md](docs/CURRENT-STATE.md) | Current implementation status, design decisions, trade-offs |
 | [observability/README.md](observability/README.md) | Tracing, metrics, Jaeger UI, alert rules |
 
