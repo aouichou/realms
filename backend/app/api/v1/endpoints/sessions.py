@@ -224,7 +224,7 @@ async def update_session_state(
         HTTPException: 404 if session not found
     """
     # Verify session exists and belongs to user
-    session = await verify_session_ownership(db, session_id, current_user.id)
+    await verify_session_ownership(db, session_id, current_user.id)
 
     # Update Redis state
     updated_state = await session_service.update_session_state(

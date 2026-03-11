@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
-from app.db.models import Character, Item, ItemType, User
+from app.db.models import Item, ItemType, User
 from app.middleware.auth import get_current_active_user
 from app.observability.logger import get_logger
 from app.schemas.inventory import InventoryResponse, ItemCreate, ItemResponse, ItemUpdate

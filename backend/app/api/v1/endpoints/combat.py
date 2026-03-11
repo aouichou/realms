@@ -24,7 +24,7 @@ from app.schemas.combat import (
 )
 from app.services.character_service import CharacterService
 from app.services.memory_capture import MemoryCaptureService
-from app.services.ownership import verify_combat_ownership, verify_session_ownership
+from app.services.ownership import verify_combat_ownership
 
 logger = get_logger(__name__)
 

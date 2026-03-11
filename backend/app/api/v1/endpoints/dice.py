@@ -47,7 +47,7 @@ async def roll_dice(request: DiceRollRequest) -> DiceRollResponse:
             breakdown=breakdown,
         )
 
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid dice notation")
 
 

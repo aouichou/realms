@@ -59,7 +59,7 @@ async def create_memory(
 
         return MemoryResponse.model_validate(memory)
 
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to create memory")
         raise HTTPException(status_code=500, detail="Failed to create memory")
 

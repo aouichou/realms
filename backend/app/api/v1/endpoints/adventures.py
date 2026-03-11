@@ -93,9 +93,9 @@ async def start_preset_adventure(
             adventure_id=request.adventure_id,
         )
         return result
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=404, detail="Adventure or character not found")
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to start adventure")
         raise HTTPException(status_code=500, detail="Failed to start adventure")
 
@@ -121,9 +121,9 @@ async def start_custom_adventure(
             adventure_id=request.adventure_id,
         )
         return result
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=404, detail="Adventure or character not found")
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to start custom adventure")
         raise HTTPException(status_code=500, detail="Failed to start custom adventure")
 
@@ -217,9 +217,9 @@ async def generate_custom_adventure(
             is_completed=adventure.is_completed,
             created_at=adventure.created_at,
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=404, detail="Adventure not found")
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to generate adventure")
         raise HTTPException(status_code=500, detail="Failed to generate adventure")
 
