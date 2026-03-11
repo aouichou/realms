@@ -49,9 +49,12 @@ else
     exit 1
 fi
 
+GRAFANA_USER="${GF_ADMIN_USER:-admin}"
+GRAFANA_PASS="${GF_ADMIN_PASSWORD:?GF_ADMIN_PASSWORD must be set}"
+
 # Test Grafana datasources
 echo -n "Testing Grafana datasources..."
-DS_COUNT=$(curl -s -u admin:admin http://localhost:3001/api/datasources | jq 'length')
+DS_COUNT=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASS" http://localhost:3001/api/datasources | jq 'length')
 if [ "$DS_COUNT" -ge 2 ]; then
     echo -e " ${GREEN}✓ ($DS_COUNT datasources)${NC}"
 else
@@ -60,7 +63,7 @@ fi
 
 # Test Grafana dashboards
 echo -n "Testing Grafana dashboards..."
-DASH_COUNT=$(curl -s -u admin:admin http://localhost:3001/api/search?type=dash-db | jq 'length')
+DASH_COUNT=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASS" http://localhost:3001/api/search?type=dash-db | jq 'length')
 if [ "$DASH_COUNT" -ge 1 ]; then
     echo -e " ${GREEN}✓ ($DASH_COUNT dashboards)${NC}"
 else
@@ -89,7 +92,7 @@ echo "================================="
 echo -e "${GREEN}All observability tests passed!${NC}"
 echo ""
 echo "Access points:"
-echo "  - Grafana:    http://localhost:3001 (admin/admin)"
+echo "  - Grafana:    http://localhost:3001 (use GF_ADMIN_USER/GF_ADMIN_PASSWORD)"
 echo "  - Prometheus: http://localhost:9090"
 echo "  - Jaeger:     http://localhost:16686"
 echo "  - Metrics:    http://localhost:8000/metrics"

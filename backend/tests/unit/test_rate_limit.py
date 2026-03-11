@@ -48,10 +48,11 @@ class TestGetClientIdentifier:
         req = _fake_request(host="10.0.0.1")
         assert mw._get_client_identifier(req) == "10.0.0.1"
 
-    def test_uses_x_forwarded_for(self):
+    def test_ignores_x_forwarded_for(self):
+        """X-Forwarded-For is no longer trusted (H1 security fix)."""
         mw = _make_middleware()
         req = _fake_request(host="10.0.0.1", forwarded_for="203.0.113.50, 70.41.3.18")
-        assert mw._get_client_identifier(req) == "203.0.113.50"
+        assert mw._get_client_identifier(req) == "10.0.0.1"
 
     def test_prefers_user_id(self):
         mw = _make_middleware()

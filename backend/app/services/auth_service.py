@@ -28,7 +28,10 @@ async def _get_failed_attempts(email: str) -> int:
     """Get the number of failed login attempts in the last hour."""
     redis = session_service.redis
     if not redis:
-        return 0  # Can't track without Redis — fail open
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service temporarily unavailable",
+        )
 
     key = f"login:failed:{email}"
     now = time.time()
@@ -44,7 +47,10 @@ async def _record_failed_attempt(email: str) -> tuple[int, int]:
     """
     redis = session_service.redis
     if not redis:
-        return (99, 0)  # Can't track — fail open
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service temporarily unavailable",
+        )
 
     key = f"login:failed:{email}"
     now = time.time()
@@ -85,7 +91,10 @@ async def _check_lockout(email: str) -> tuple[bool, int]:
     """
     redis = session_service.redis
     if not redis:
-        return (False, 0)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service temporarily unavailable",
+        )
 
     lockout_key = f"login:locked:{email}"
     ttl = await redis.ttl(lockout_key)

@@ -55,11 +55,12 @@ def _make_mock_redis():
 
 
 async def test_get_failed_attempts_no_redis():
-    """Should return 0 when redis is None."""
+    """Should raise 503 when redis is None — fail closed."""
     with patch("app.services.auth_service.session_service") as mock_ss:
         mock_ss.redis = None
-        result = await _get_failed_attempts("test@example.com")
-    assert result == 0
+        with pytest.raises(HTTPException) as exc_info:
+            await _get_failed_attempts("test@example.com")
+        assert exc_info.value.status_code == 503
 
 
 async def test_get_failed_attempts_with_redis():
@@ -78,12 +79,12 @@ async def test_get_failed_attempts_with_redis():
 
 
 async def test_record_failed_attempt_no_redis():
-    """Should return (99, 0) when redis is None — fail open."""
+    """Should raise 503 when redis is None — fail closed."""
     with patch("app.services.auth_service.session_service") as mock_ss:
         mock_ss.redis = None
-        remaining, lockout = await _record_failed_attempt("x@y.com")
-    assert remaining == 99
-    assert lockout == 0
+        with pytest.raises(HTTPException) as exc_info:
+            await _record_failed_attempt("x@y.com")
+        assert exc_info.value.status_code == 503
 
 
 async def test_record_failed_attempt_below_threshold():
@@ -132,12 +133,12 @@ async def test_record_failed_attempt_15_triggers_60min():
 
 
 async def test_check_lockout_no_redis():
-    """Should return (False, 0) when redis is None."""
+    """Should raise 503 when redis is None — fail closed."""
     with patch("app.services.auth_service.session_service") as mock_ss:
         mock_ss.redis = None
-        locked, ttl = await _check_lockout("x@y.com")
-    assert locked is False
-    assert ttl == 0
+        with pytest.raises(HTTPException) as exc_info:
+            await _check_lockout("x@y.com")
+        assert exc_info.value.status_code == 503
 
 
 async def test_check_lockout_not_locked():
@@ -232,7 +233,7 @@ async def test_authenticate_user_success(db_session):
     user = await register_user(db_session, email, "authuser", password)
 
     with patch("app.services.auth_service.session_service") as mock_ss:
-        mock_ss.redis = None  # bypass lockout/recording
+        mock_ss.redis = _make_mock_redis()
         result = await authenticate_user(db_session, email, password)
 
     assert result.id == user.id
@@ -244,7 +245,7 @@ async def test_authenticate_user_wrong_password(db_session):
     await register_user(db_session, email, "wrongpw_user", "Correct123!")
 
     with patch("app.services.auth_service.session_service") as mock_ss:
-        mock_ss.redis = None
+        mock_ss.redis = _make_mock_redis()
         with pytest.raises(HTTPException) as exc:
             await authenticate_user(db_session, email, "Wrong123!")
     assert exc.value.status_code == 401
@@ -253,7 +254,7 @@ async def test_authenticate_user_wrong_password(db_session):
 async def test_authenticate_user_nonexistent_email(db_session):
     """Non-existent email should raise 401 (no enumeration)."""
     with patch("app.services.auth_service.session_service") as mock_ss:
-        mock_ss.redis = None
+        mock_ss.redis = _make_mock_redis()
         with pytest.raises(HTTPException) as exc:
             await authenticate_user(db_session, "nobody@example.com", "pass")
     assert exc.value.status_code == 401

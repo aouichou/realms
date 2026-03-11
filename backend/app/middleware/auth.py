@@ -10,6 +10,7 @@ from app.core.security import COOKIE_ACCESS_TOKEN_NAME, decode_token
 from app.db.base import get_db
 from app.db.models import User
 from app.services.auth_service import get_user_by_id
+from app.services.redis_service import session_service
 
 # Bearer token scheme (backward compatibility)
 security = HTTPBearer(auto_error=False)
@@ -60,6 +61,19 @@ async def get_current_user(
 
     # Decode token
     payload = decode_token(token)
+
+    # Check if token has been revoked (H7: token revocation)
+    jti = payload.get("jti")
+    if jti:
+        redis = session_service.redis
+        if redis:
+            revoked = await redis.get(f"revoked:access:{jti}")
+            if revoked:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has been revoked",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
 
     user_id = payload.get("sub")
     if user_id is None or not isinstance(user_id, str):

@@ -138,6 +138,18 @@ async def create_guest(response: Response, db: AsyncSession = Depends(get_db)):
     # Set httpOnly cookie for guest access token
     set_auth_cookies(response, access_token, None)
 
+    # Set guest_token as httpOnly cookie (for claim-guest flow)
+    from app.core.security import COOKIE_GUEST_TOKEN_NAME, IS_PRODUCTION
+
+    response.set_cookie(
+        key=COOKIE_GUEST_TOKEN_NAME,
+        value=user.guest_token,
+        max_age=30 * 24 * 60 * 60,  # 30 days
+        httponly=True,
+        secure=IS_PRODUCTION,
+        samesite="lax",
+    )
+
     # Generate and set CSRF token for CSRF protection
     csrf_token = generate_csrf_token()
     set_csrf_cookie(response, csrf_token)
@@ -148,7 +160,10 @@ async def create_guest(response: Response, db: AsyncSession = Depends(get_db)):
 
 @router.post("/claim-guest", response_model=TokenResponse)
 async def claim_guest(
-    claim_data: ClaimGuestAccount, response: Response, db: AsyncSession = Depends(get_db)
+    claim_data: ClaimGuestAccount,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
 ):
     """Claim a guest account with email and password
 
@@ -167,9 +182,17 @@ async def claim_guest(
         HTTPException: 404 if guest account not found
         HTTPException: 400 if email already registered
     """
+    # Read guest_token from httpOnly cookie (primary) or request body (fallback)
+    guest_token = request.cookies.get("guest_token") or claim_data.guest_token
+    if not guest_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Guest token is required",
+        )
+
     user = await claim_guest_account(
         db,
-        guest_token=claim_data.guest_token,
+        guest_token=guest_token,
         email=claim_data.email,
         username=claim_data.username,
         password=claim_data.password,

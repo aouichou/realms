@@ -285,7 +285,7 @@ class TestBuildMessages:
         # System prompt + user message at minimum
         assert msgs[0]["role"] == "system"
         assert msgs[-1]["role"] == "user"
-        assert msgs[-1]["content"] == "I look around"
+        assert msgs[-1]["content"] == "[PLAYER_INPUT]I look around[/PLAYER_INPUT]"
 
     async def test_with_character_context(self):
         engine = _engine()

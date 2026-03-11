@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { apiFetch } from "@/lib/api-client";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { AlertCircle, Clock, Sparkles, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -41,8 +42,8 @@ export function ActiveEffectsDisplay({ characterId, sessionId }: ActiveEffectsDi
 
 	const fetchEffects = async () => {
 		try {
-			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/effects/character/${characterId}?session_id=${sessionId}`
+			const response = await apiFetch(
+				`/api/v1/effects/character/${characterId}?session_id=${sessionId}`
 			);
 
 			if (response.ok) {

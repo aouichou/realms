@@ -3,7 +3,7 @@
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RollRequest(BaseModel):
@@ -26,7 +26,7 @@ class PlayerActionRequest(BaseModel):
 
     character_id: UUID
     session_id: Optional[str] = None
-    action: str
+    action: str = Field(..., min_length=1, max_length=2000)
     roll_result: Optional[dict] = None  # If responding to a roll request
 
 

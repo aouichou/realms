@@ -12,7 +12,7 @@ class MessageCreate(BaseModel):
 
     session_id: UUID
     role: str = Field(..., description="Message role: user, assistant, companion, or system")
-    content: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1, max_length=5000)
     tokens_used: Optional[int] = Field(None, ge=0)
     scene_image_url: Optional[str] = None
     companion_id: Optional[UUID] = None  # RL-131: Link to companion if role is 'companion'

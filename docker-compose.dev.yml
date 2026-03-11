@@ -4,7 +4,7 @@ services:
     image: pgvector/pgvector:pg16
     container_name: realms-postgres-dev
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       - POSTGRES_DB=mistral_realms
       - POSTGRES_USER=realms_user
@@ -24,7 +24,7 @@ services:
     image: redis:7-alpine
     container_name: realms-redis-dev
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
@@ -43,7 +43,7 @@ services:
       dockerfile: Dockerfile
     container_name: realms-backend-dev
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./backend/app:/app/app:rw
       - ./backend/tests:/app/tests:rw
@@ -103,7 +103,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: realms-frontend-dev
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       - ./frontend/app:/app/app
       - ./frontend/components:/app/components
@@ -126,9 +126,9 @@ services:
     image: jaegertracing/all-in-one:1.53
     container_name: realms-jaeger-dev
     ports:
-      - "16686:16686"  # Jaeger UI
-      - "4317:4317"    # OTLP gRPC receiver
-      - "4318:4318"    # OTLP HTTP receiver
+      - "127.0.0.1:16686:16686"  # Jaeger UI
+      - "127.0.0.1:4317:4317"    # OTLP gRPC receiver
+      - "127.0.0.1:4318:4318"    # OTLP HTTP receiver
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     restart: unless-stopped
@@ -140,7 +140,7 @@ services:
     image: prom/prometheus:v2.48.1
     container_name: realms-prometheus-dev
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml
@@ -160,10 +160,10 @@ services:
     image: grafana/grafana:10.2.3
     container_name: realms-grafana-dev
     ports:
-      - "3001:3000"  # Using 3001 to avoid conflict with frontend
+      - "127.0.0.1:3001:3000"  # Using 3001 to avoid conflict with frontend
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_USER=${GF_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana-data:/var/lib/grafana

@@ -156,8 +156,8 @@ class TestMessageSummarizer:
             {"role": "assistant", "content": "world"},
         ]
         formatted = ms._format_messages(msgs)
-        assert "Player: hello" in formatted
-        assert "DM: world" in formatted
+        assert "Player: [MSG]hello[/MSG]" in formatted
+        assert "DM: world" in formatted  # DM messages not wrapped
         assert "sys" not in formatted  # system skipped
 
     def test_fallback_summary(self):

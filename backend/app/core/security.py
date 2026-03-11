@@ -6,8 +6,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import bcrypt
+import jwt
 from fastapi import HTTPException, Response, status
-from jose import JWTError, jwt
+from jwt.exceptions import InvalidTokenError
 
 # Configuration from environment
 _jwt_secret = os.getenv("JWT_SECRET")
@@ -26,6 +27,8 @@ COOKIE_ACCESS_TOKEN_NAME = "access_token"
 COOKIE_REFRESH_TOKEN_NAME = "refresh_token"
 COOKIE_MAX_AGE = ACCESS_TOKEN_EXPIRE_MINUTES * 60  # Convert to seconds
 REFRESH_COOKIE_MAX_AGE = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+
+COOKIE_GUEST_TOKEN_NAME = "guest_token"
 
 # Check if running in production (HTTPS required for secure cookies)
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
@@ -71,7 +74,7 @@ def decode_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
-    except JWTError:
+    except InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -123,6 +126,7 @@ def clear_auth_cookies(response: Response):
     """
     response.delete_cookie(key=COOKIE_ACCESS_TOKEN_NAME, httponly=True, samesite="lax")
     response.delete_cookie(key=COOKIE_REFRESH_TOKEN_NAME, httponly=True, samesite="lax")
+    response.delete_cookie(key=COOKIE_GUEST_TOKEN_NAME, httponly=True, samesite="lax")
 
 
 async def check_token_revoked(payload: dict) -> bool:

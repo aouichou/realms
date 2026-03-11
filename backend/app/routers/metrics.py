@@ -2,15 +2,17 @@
 Metrics endpoint for Prometheus scraping
 """
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends, Response
 
+from app.db.models import User
+from app.middleware.auth import get_current_active_user
 from app.observability.metrics import metrics
 
 router = APIRouter(tags=["monitoring"])
 
 
 @router.get("/metrics")
-async def get_metrics():
+async def get_metrics(current_user: User = Depends(get_current_active_user)):
     """
     Prometheus metrics endpoint
 

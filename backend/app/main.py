@@ -265,7 +265,6 @@ async def generic_exception_handler(request: Request, exc: Exception):
         content={
             "error": "InternalServerError",
             "message": "An unexpected error occurred",
-            "detail": str(exc) if settings.debug else None,
         },
     )
 

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { apiFetch } from "@/lib/api-client";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -48,7 +49,6 @@ interface SpellBrowserProps {
 
 export function SpellBrowser({ onSpellSelect, selectedSpells, filterByClass }: SpellBrowserProps) {
 	const { t } = useTranslation();
-	const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 	const [spells, setSpells] = useState<Spell[]>([]);
 	const [totalSpells, setTotalSpells] = useState(0);
 	const [page, setPage] = useState(1);
@@ -81,7 +81,7 @@ export function SpellBrowser({ onSpellSelect, selectedSpells, filterByClass }: S
 			if (filters.concentration !== null) params.append("concentration", filters.concentration.toString());
 			if (filters.ritual !== null) params.append("ritual", filters.ritual.toString());
 
-			const response = await fetch(`${API_URL}/api/v1/spells?${params.toString()}`);
+			const response = await apiFetch(`/api/v1/spells?${params.toString()}`);
 			const data = await response.json();
 
 			setSpells(data.spells);

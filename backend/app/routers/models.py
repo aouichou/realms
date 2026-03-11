@@ -5,9 +5,11 @@ API endpoints for managing AI provider models and configurations
 
 from typing import Dict, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.db.models import User
+from app.middleware.auth import get_current_active_user
 from app.observability.logger import get_logger
 from app.services.model_discovery_service import get_model_discovery_service
 from app.services.provider_init import get_provider_status
@@ -62,7 +64,7 @@ class ProviderStatusResponse(BaseModel):
 
 
 @router.get("/", response_model=AllModelsResponse, summary="List all provider models")
-async def list_all_models():
+async def list_all_models(current_user: User = Depends(get_current_active_user)):
     """
     Get available models for all configured providers.
 
@@ -79,13 +81,15 @@ async def list_all_models():
 
     except Exception as e:
         logger.error(f"Error listing all models: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list models: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to list models")
 
 
 @router.get(
     "/{provider_name}", response_model=ProviderModelsResponse, summary="List provider models"
 )
-async def list_provider_models(provider_name: str):
+async def list_provider_models(
+    provider_name: str, current_user: User = Depends(get_current_active_user)
+):
     """
     Get available models for a specific provider.
 
@@ -124,13 +128,13 @@ async def list_provider_models(provider_name: str):
 
     except Exception as e:
         logger.error(f"Error listing models for {provider_name}: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to list models for {provider_name}: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail="Failed to list models for provider")
 
 
 @router.post("/switch", summary="Switch provider model")
-async def switch_provider_model(request: ModelSwitchRequest):
+async def switch_provider_model(
+    request: ModelSwitchRequest, current_user: User = Depends(get_current_active_user)
+):
     """
     Switch the active model for a specific provider.
 
@@ -196,13 +200,13 @@ async def switch_provider_model(request: ModelSwitchRequest):
         raise
     except Exception as e:
         logger.error(f"Error switching model for {request.provider}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to switch model: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to switch model")
 
 
 @router.get(
     "/providers/status", response_model=List[ProviderStatusResponse], summary="Get provider status"
 )
-async def get_providers_status():
+async def get_providers_status(current_user: User = Depends(get_current_active_user)):
     """
     Get comprehensive status for all configured providers.
 
@@ -253,11 +257,13 @@ async def get_providers_status():
 
     except Exception as e:
         logger.error(f"Error getting provider status: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get provider status: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get provider status")
 
 
 @router.post("/discovery/refresh", summary="Refresh model discovery cache")
-async def refresh_model_discovery(provider_name: str | None = None):
+async def refresh_model_discovery(
+    provider_name: str | None = None, current_user: User = Depends(get_current_active_user)
+):
     """
     Clear the model discovery cache to force re-fetching from APIs.
 
@@ -286,4 +292,4 @@ async def refresh_model_discovery(provider_name: str | None = None):
 
     except Exception as e:
         logger.error(f"Error refreshing discovery cache: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to refresh discovery cache: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to refresh discovery cache")

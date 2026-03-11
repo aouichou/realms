@@ -160,7 +160,7 @@ Provide a brief narrative summary:"""
 
             # Format as dialogue
             if role == "user":
-                formatted.append(f"Player: {content}")
+                formatted.append(f"Player: [MSG]{content}[/MSG]")
             elif role == "assistant":
                 formatted.append(f"DM: {content}")
 

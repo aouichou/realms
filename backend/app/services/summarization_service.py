@@ -60,9 +60,9 @@ Format: Clear, chronological bullet points."""
                 # Too short to summarize effectively
                 return SummarizationService._format_messages_as_summary(messages)
 
-            # Build conversation text
+            # Build conversation text with delimiters to prevent injection
             conversation_text = "\n\n".join(
-                [f"{msg['role'].upper()}: {msg['content']}" for msg in messages]
+                [f"{msg['role'].upper()}: [MSG]{msg['content']}[/MSG]" for msg in messages]
             )
 
             # Add character context if available

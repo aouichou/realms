@@ -36,13 +36,13 @@ BASE = "/api/models"
 # ===========================================================================
 
 
-async def test_list_all_models(client):
+async def test_list_all_models(client, auth_headers):
     mock_discovery = MagicMock()
     mock_discovery.get_all_models = AsyncMock(
         return_value={"qwen": ["qwen-turbo", "qwen-plus"], "groq": ["llama3-8b"]}
     )
     with patch("app.routers.models.get_model_discovery_service", return_value=mock_discovery):
-        resp = await client.get(f"{BASE}/")
+        resp = await client.get(f"{BASE}/", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "providers" in data
@@ -50,11 +50,11 @@ async def test_list_all_models(client):
         assert "groq" in data["providers"]
 
 
-async def test_list_all_models_error(client):
+async def test_list_all_models_error(client, auth_headers):
     mock_discovery = MagicMock()
     mock_discovery.get_all_models = AsyncMock(side_effect=RuntimeError("boom"))
     with patch("app.routers.models.get_model_discovery_service", return_value=mock_discovery):
-        resp = await client.get(f"{BASE}/")
+        resp = await client.get(f"{BASE}/", headers=auth_headers)
         assert resp.status_code == 500
 
 
@@ -63,7 +63,7 @@ async def test_list_all_models_error(client):
 # ===========================================================================
 
 
-async def test_list_provider_models(client):
+async def test_list_provider_models(client, auth_headers):
     mock_discovery = MagicMock()
     mock_discovery.discover_models = AsyncMock(return_value=["qwen-turbo", "qwen-plus"])
 
@@ -76,7 +76,7 @@ async def test_list_provider_models(client):
         patch("app.routers.models.provider_selector") as mock_selector,
     ):
         mock_selector.providers = [mock_provider]
-        resp = await client.get(f"{BASE}/qwen")
+        resp = await client.get(f"{BASE}/qwen", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["provider"] == "qwen"
@@ -84,7 +84,7 @@ async def test_list_provider_models(client):
         assert data["current_model"] == "qwen-turbo"
 
 
-async def test_list_provider_models_unknown(client):
+async def test_list_provider_models_unknown(client, auth_headers):
     mock_discovery = MagicMock()
     mock_discovery.discover_models = AsyncMock(return_value=[])
     with (
@@ -92,7 +92,7 @@ async def test_list_provider_models_unknown(client):
         patch("app.routers.models.provider_selector") as mock_selector,
     ):
         mock_selector.providers = []
-        resp = await client.get(f"{BASE}/unknown_provider")
+        resp = await client.get(f"{BASE}/unknown_provider", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["models"] == []
@@ -104,7 +104,7 @@ async def test_list_provider_models_unknown(client):
 # ===========================================================================
 
 
-async def test_switch_model_success(client):
+async def test_switch_model_success(client, auth_headers):
     mock_provider = MagicMock()
     mock_provider.name = "qwen"
     mock_provider.set_model = MagicMock()
@@ -112,31 +112,37 @@ async def test_switch_model_success(client):
 
     with patch("app.routers.models.provider_selector") as mock_selector:
         mock_selector.providers = [mock_provider]
-        resp = await client.post(f"{BASE}/switch", json={"provider": "qwen", "model": "qwen-plus"})
+        resp = await client.post(
+            f"{BASE}/switch", json={"provider": "qwen", "model": "qwen-plus"}, headers=auth_headers
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["success"] is True
         mock_provider.set_model.assert_called_once_with("qwen-plus")
 
 
-async def test_switch_model_provider_not_found(client):
+async def test_switch_model_provider_not_found(client, auth_headers):
     with patch("app.routers.models.provider_selector") as mock_selector:
         mock_selector.providers = []
-        resp = await client.post(f"{BASE}/switch", json={"provider": "nonexistent", "model": "m1"})
+        resp = await client.post(
+            f"{BASE}/switch", json={"provider": "nonexistent", "model": "m1"}, headers=auth_headers
+        )
         assert resp.status_code == 404
 
 
-async def test_switch_model_not_switchable(client):
+async def test_switch_model_not_switchable(client, auth_headers):
     mock_provider = MagicMock(spec=[])  # no set_model
     mock_provider.name = "groq"
 
     with patch("app.routers.models.provider_selector") as mock_selector:
         mock_selector.providers = [mock_provider]
-        resp = await client.post(f"{BASE}/switch", json={"provider": "groq", "model": "m1"})
+        resp = await client.post(
+            f"{BASE}/switch", json={"provider": "groq", "model": "m1"}, headers=auth_headers
+        )
         assert resp.status_code == 400
 
 
-async def test_switch_model_invalid_model(client):
+async def test_switch_model_invalid_model(client, auth_headers):
     mock_provider = MagicMock()
     mock_provider.name = "qwen"
     mock_provider.get_available_models = AsyncMock(return_value=["qwen-turbo"])
@@ -144,7 +150,9 @@ async def test_switch_model_invalid_model(client):
     with patch("app.routers.models.provider_selector") as mock_selector:
         mock_selector.providers = [mock_provider]
         resp = await client.post(
-            f"{BASE}/switch", json={"provider": "qwen", "model": "nonexistent-model"}
+            f"{BASE}/switch",
+            json={"provider": "qwen", "model": "nonexistent-model"},
+            headers=auth_headers,
         )
         assert resp.status_code == 400
 
@@ -154,7 +162,7 @@ async def test_switch_model_invalid_model(client):
 # ===========================================================================
 
 
-async def test_providers_status(client):
+async def test_providers_status(client, auth_headers):
     mock_discovery = MagicMock()
     mock_discovery.discover_models = AsyncMock(return_value=["model-a"])
 
@@ -184,7 +192,7 @@ async def test_providers_status(client):
         patch("app.routers.models.provider_selector") as mock_selector,
     ):
         mock_selector.providers = [mock_provider]
-        resp = await client.get(f"{BASE}/providers/status")
+        resp = await client.get(f"{BASE}/providers/status", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1
@@ -197,23 +205,25 @@ async def test_providers_status(client):
 # ===========================================================================
 
 
-async def test_refresh_discovery_all(client):
+async def test_refresh_discovery_all(client, auth_headers):
     mock_discovery = MagicMock()
     mock_discovery.clear_cache = MagicMock()
 
     with patch("app.routers.models.get_model_discovery_service", return_value=mock_discovery):
-        resp = await client.post(f"{BASE}/discovery/refresh")
+        resp = await client.post(f"{BASE}/discovery/refresh", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["success"] is True
         mock_discovery.clear_cache.assert_called_once_with(None)
 
 
-async def test_refresh_discovery_specific_provider(client):
+async def test_refresh_discovery_specific_provider(client, auth_headers):
     mock_discovery = MagicMock()
     mock_discovery.clear_cache = MagicMock()
 
     with patch("app.routers.models.get_model_discovery_service", return_value=mock_discovery):
-        resp = await client.post(f"{BASE}/discovery/refresh", params={"provider_name": "groq"})
+        resp = await client.post(
+            f"{BASE}/discovery/refresh", params={"provider_name": "groq"}, headers=auth_headers
+        )
         assert resp.status_code == 200
         mock_discovery.clear_cache.assert_called_once_with("groq")

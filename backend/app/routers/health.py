@@ -25,8 +25,8 @@ async def check_database() -> tuple[bool, str]:
             return True, "ok"
         # If generator yields no sessions
         return False, "no database session available"
-    except Exception as e:
-        return False, str(e)
+    except Exception:
+        return False, "database connection failed"
 
 
 async def check_redis() -> tuple[bool, str]:
@@ -40,8 +40,8 @@ async def check_redis() -> tuple[bool, str]:
         if result == "ok":
             return True, "ok"
         return False, "unexpected response"
-    except Exception as e:
-        return False, str(e)
+    except Exception:
+        return False, "redis connection failed"
 
 
 async def check_mistral_api() -> tuple[bool, str]:
@@ -55,8 +55,8 @@ async def check_mistral_api() -> tuple[bool, str]:
             # Mistral AI doesn't have a public health endpoint, so we skip actual check
             # In production, you might want to make a minimal API call
             return True, "ok"
-    except Exception as e:
-        return False, str(e)
+    except Exception:
+        return False, "api check failed"
 
 
 @router.get("", response_model=HealthCheckResponse)

@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
 			},
 			{
 				protocol: 'https',
-				hostname: '*.r2.dev',
+				hostname: 'pub-realms-images.r2.dev',
 				pathname: '/**',
 			},
 			{

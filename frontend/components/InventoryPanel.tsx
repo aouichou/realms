@@ -19,6 +19,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { apiFetch } from "@/lib/api-client";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { Beaker, Box, Grid3x3, List, Package, ScrollText, Shield, Sword } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -63,7 +64,6 @@ const ITEM_COLORS = {
 
 export function InventoryPanel({ characterId }: InventoryPanelProps) {
 	const { t } = useTranslation();
-	const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 	const [inventory, setInventory] = useState<InventoryData | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [selectedItem, setSelectedItem] = useState<Item | null>(null);
@@ -82,8 +82,8 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 				params.append("item_type", filterType);
 			}
 
-			const response = await fetch(
-				`${API_URL}/api/v1/characters/${characterId}/inventory?${params}`
+			const response = await apiFetch(
+				`/api/v1/characters/${characterId}/inventory?${params}`
 			);
 			const data = await response.json();
 			setInventory(data);
@@ -96,8 +96,8 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 
 	const toggleEquip = async (itemId: string) => {
 		try {
-			await fetch(
-				`${API_URL}/api/v1/characters/${characterId}/inventory/${itemId}/equip`,
+			await apiFetch(
+				`/api/v1/characters/${characterId}/inventory/${itemId}/equip`,
 				{ method: "PATCH" }
 			);
 			fetchInventory();
@@ -108,8 +108,8 @@ export function InventoryPanel({ characterId }: InventoryPanelProps) {
 
 	const deleteItem = async (itemId: string) => {
 		try {
-			await fetch(
-				`${API_URL}/api/v1/characters/${characterId}/inventory/${itemId}`,
+			await apiFetch(
+				`/api/v1/characters/${characterId}/inventory/${itemId}`,
 				{ method: "DELETE" }
 			);
 			setSelectedItem(null);

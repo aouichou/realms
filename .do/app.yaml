@@ -106,7 +106,8 @@ services:
 
       # R2 Images (Cloudflare)
       - key: R2_ENDPOINT
-        value: "https://***REMOVED_R2_ACCOUNT_ID***.r2.cloudflarestorage.com"
+        value: "${R2_ENDPOINT}"
+        type: SECRET
       - key: R2_ACCESS_KEY
         value: "${R2_ACCESS_KEY}"
         type: SECRET
@@ -122,9 +123,9 @@ services:
       - key: TRACING_ENABLED
         value: "true"
       - key: GRAFANA_OTLP_ENDPOINT
-        value: "https://otlp-gateway-prod-eu-west-2.grafana.net/otlp"
+        value: "${GRAFANA_OTLP_ENDPOINT}"
       - key: GRAFANA_CLOUD_INSTANCE_ID
-        value: "1542577"
+        value: "${GRAFANA_CLOUD_INSTANCE_ID}"
       - key: GRAFANA_CLOUD_API_KEY
         value: "${GRAFANA_CLOUD_API_KEY}"
         type: SECRET

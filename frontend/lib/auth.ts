@@ -47,11 +47,8 @@ export const authService = {
 		// Capture CSRF token from response
 		setCsrfTokenFromHeader(response.headers);
 
-		// Store guest metadata (not tokens - those are in httpOnly cookies)
-		if (data.guest_token) {
-			localStorage.setItem('guest_token', data.guest_token);
-			localStorage.setItem('guest_created_at', Date.now().toString());
-		}
+		// Store guest timing metadata (not secrets - those are in httpOnly cookies)
+		localStorage.setItem('guest_created_at', Date.now().toString());
 
 		return {
 			user: data.user,
@@ -87,8 +84,7 @@ export const authService = {
 		// Capture CSRF token from response headers
 		setCsrfTokenFromHeader(response.headers);
 
-		// Clear guest metadata (tokens now in httpOnly cookies)
-		localStorage.removeItem('guest_token');
+		// Clear guest timing data
 		localStorage.removeItem('guest_created_at');
 
 		return {
@@ -124,8 +120,7 @@ export const authService = {
 		// Capture CSRF token from response headers
 		setCsrfTokenFromHeader(response.headers);
 
-		// Clear guest metadata (tokens now in httpOnly cookies)
-		localStorage.removeItem('guest_token');
+		// Clear guest timing data
 		localStorage.removeItem('guest_created_at');
 
 		return {
@@ -145,17 +140,12 @@ export const authService = {
 		username: string,
 		password: string
 	): Promise<{ user: User; tokens: AuthTokens }> {
-		const guestToken = localStorage.getItem('guest_token');
-
-		if (!guestToken) {
-			throw new Error('No guest account to claim');
-		}
-
+		// guest_token is sent automatically via httpOnly cookie
 		const response = await fetch(`${API_URL}/api/v1/auth/claim-guest`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ guest_token: guestToken, email, username, password }),
-			credentials: 'include', // Send/receive cookies
+			body: JSON.stringify({ email, username, password }),
+			credentials: 'include', // Send httpOnly cookies including guest_token
 		});
 
 		if (!response.ok) {
@@ -169,7 +159,6 @@ export const authService = {
 		setCsrfTokenFromHeader(response.headers);
 
 		// Clear guest metadata (tokens now in httpOnly cookies)
-		localStorage.removeItem('guest_token');
 		localStorage.removeItem('guest_created_at');
 
 		return {
@@ -246,16 +235,18 @@ export const authService = {
 		// Clear CSRF token (server will clear cookie)
 		clearCsrfToken();
 
-		// Clear client-side data (guest metadata, preferences remain)
-		localStorage.removeItem('guest_token');
+		// Clear client-side data
 		localStorage.removeItem('guest_created_at');
 	},
 
 	/**
 	 * Check if user is currently a guest
+	 * @deprecated Cannot check httpOnly cookie from JS - use getCurrentUser().is_guest instead
 	 */
 	isGuest(): boolean {
-		return !!localStorage.getItem('guest_token');
+		// guest_token is now in httpOnly cookie, not accessible from JS
+		// Use getCurrentUser() and check user.is_guest instead
+		return !!localStorage.getItem('guest_created_at');
 	},
 
 	/**

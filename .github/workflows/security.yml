@@ -48,7 +48,6 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
-        continue-on-error: true  # Requires code scanning enabled in repo settings
         with:
           category: '/language:${{ matrix.language }}'
 
@@ -69,7 +68,7 @@ jobs:
         run: pip install pip-audit
 
       - name: Audit Python dependencies
-        run: pip-audit -r requirements.txt --ignore-vuln PYSEC-2024-* || true
+        run: pip-audit -r requirements.txt
 
   npm-audit:
     name: npm Dependency Audit
@@ -87,7 +86,7 @@ jobs:
       - run: npm ci
 
       - name: Audit npm dependencies
-        run: npm audit --audit-level=high || true
+        run: npm audit --audit-level=high
 
   trivy:
     name: Trivy Security Scan
@@ -107,6 +106,5 @@ jobs:
       - name: Upload Trivy results
         uses: github/codeql-action/upload-sarif@v4
         if: always()
-        continue-on-error: true  # Requires code scanning enabled in repo settings
         with:
           sarif_file: 'trivy-results.sarif'

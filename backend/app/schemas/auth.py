@@ -41,7 +41,7 @@ class UserLogin(BaseModel):
 class ClaimGuestAccount(BaseModel):
     """Schema for claiming a guest account"""
 
-    guest_token: str
+    guest_token: Optional[str] = None
     email: EmailStr
     username: str = Field(..., min_length=3, max_length=100)
     password: str = Field(..., min_length=8, max_length=128)

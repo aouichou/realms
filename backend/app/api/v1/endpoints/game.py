@@ -64,7 +64,7 @@ async def save_game(
         return SaveResponse(success=True, save_data=save_data)
     except ValueError as e:
         if "already exists" in str(e):
-            raise HTTPException(status_code=409, detail=str(e))
+            raise HTTPException(status_code=409, detail="Save name already exists")
         raise
 
 

@@ -59,8 +59,16 @@ def _mock_session_service(monkeypatch):
     monkeypatch.setattr(session_service, "is_token_revoked", AsyncMock(return_value=False))
     monkeypatch.setattr(session_service, "add_message_to_history", AsyncMock())
     monkeypatch.setattr(session_service, "clear_conversation_history", AsyncMock())
-    # redis property used for lockout checks — return None so it fails open
-    monkeypatch.setattr(type(session_service), "redis", property(lambda self: None), raising=False)
+    # Provide a mock Redis so lockout checks succeed (fail-closed requires Redis)
+    mock_redis = AsyncMock()
+    mock_redis.zremrangebyscore = AsyncMock(return_value=0)
+    mock_redis.zcard = AsyncMock(return_value=0)
+    mock_redis.ttl = AsyncMock(return_value=-2)
+    mock_redis.delete = AsyncMock()
+    mock_redis.get = AsyncMock(return_value=None)  # No revoked tokens
+    monkeypatch.setattr(
+        type(session_service), "redis", property(lambda self: mock_redis), raising=False
+    )
 
 
 # -- helpers ---------------------------------------------------------------

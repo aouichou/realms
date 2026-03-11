@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import User
 from app.middleware.auth import get_current_active_user
+from app.observability.logger import get_logger
 from app.schemas.memory import (
     MemoryContextResponse,
     MemoryCreate,
@@ -18,6 +19,8 @@ from app.schemas.memory import (
 )
 from app.services.memory_service import MemoryService
 from app.services.ownership import verify_session_ownership
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/memories", tags=["memories"])
 
@@ -57,7 +60,8 @@ async def create_memory(
         return MemoryResponse.model_validate(memory)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create memory: {str(e)}")
+        logger.exception("Failed to create memory")
+        raise HTTPException(status_code=500, detail="Failed to create memory")
 
 
 @router.post("/search", response_model=MemorySearchResponse)

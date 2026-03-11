@@ -84,9 +84,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return f"user:{user_id}"
 
         if request.client:
-            forwarded = request.headers.get("X-Forwarded-For")
-            if forwarded:
-                return forwarded.split(",")[0].strip()
             return request.client.host
 
         return "unknown"

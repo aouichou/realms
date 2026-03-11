@@ -52,7 +52,9 @@ function RegisterForm() {
 				await register(formData.email, formData.username, formData.password);
 				showToast(t('auth.register.accountCreated'), 'success');
 			}
-			router.push(redirectTo || '/character/select');
+			// Validate redirect target — only allow relative paths to prevent open redirect
+			const safeRedirect = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/character/select';
+			router.push(safeRedirect);
 		} catch (error: any) {
 			showToast(error.message || t('auth.register.registerFailed'), 'error');
 		} finally {

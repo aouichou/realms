@@ -48,7 +48,7 @@ async def roll_dice(request: DiceRollRequest) -> DiceRollResponse:
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Invalid dice notation")
 
 
 @router.post("/check", response_model=AbilityCheckResponse)

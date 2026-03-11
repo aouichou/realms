@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
+import { apiFetch } from "@/lib/api-client";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { Circle, CircleDot, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -34,8 +35,8 @@ export function SpellSlotsDisplay({ characterId, characterName, onRest }: SpellS
 
 	const fetchSpellSlots = async () => {
 		try {
-			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/spells/character/${characterId}/slots`
+			const response = await apiFetch(
+				`/api/v1/spells/character/${characterId}/slots`
 			);
 
 			if (response.ok) {
@@ -52,11 +53,10 @@ export function SpellSlotsDisplay({ characterId, characterName, onRest }: SpellS
 	const handleRest = async () => {
 		setResting(true);
 		try {
-			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/spells/character/${characterId}/rest`,
+			const response = await apiFetch(
+				`/api/v1/spells/character/${characterId}/rest`,
 				{
 					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
 				}
 			);
 

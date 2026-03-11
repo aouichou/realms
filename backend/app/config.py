@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     environment: str = Field(
         default="development", description="Environment (development/staging/production)"
     )
-    debug: bool = Field(default=True, description="Debug mode")
+    debug: bool = Field(default=False, description="Debug mode")
 
     # API Server
     host: str = Field(default="0.0.0.0", description="API host")

@@ -113,7 +113,7 @@ def test_set_auth_cookies():
 def test_clear_auth_cookies():
     response = MagicMock()
     clear_auth_cookies(response)
-    assert response.delete_cookie.call_count == 2
+    assert response.delete_cookie.call_count == 3  # access_token, refresh_token, guest_token
 
 
 # ── Token revocation ──────────────────────────────────────────────────────

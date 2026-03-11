@@ -11,9 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import User
 from app.middleware.auth import get_current_active_user
+from app.observability.logger import get_logger
 from app.observability.tracing import trace_async
 from app.services.adventure_service import AdventureService
 from app.services.ownership import verify_character_ownership
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/adventures", tags=["adventures"])
 
@@ -91,9 +94,10 @@ async def start_preset_adventure(
         )
         return result
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Adventure or character not found")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to start adventure: {str(e)}")
+        logger.exception("Failed to start adventure")
+        raise HTTPException(status_code=500, detail="Failed to start adventure")
 
 
 @router.post("/start-custom", response_model=StartedAdventureResponse)
@@ -118,9 +122,10 @@ async def start_custom_adventure(
         )
         return result
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Adventure or character not found")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to start custom adventure: {str(e)}")
+        logger.exception("Failed to start custom adventure")
+        raise HTTPException(status_code=500, detail="Failed to start custom adventure")
 
 
 @router.get("/{adventure_id}")
@@ -213,9 +218,10 @@ async def generate_custom_adventure(
             created_at=adventure.created_at,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Adventure not found")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate adventure: {str(e)}")
+        logger.exception("Failed to generate adventure")
+        raise HTTPException(status_code=500, detail="Failed to generate adventure")
 
 
 @router.get("/custom/character/{character_id}", response_model=List[CustomAdventureResponse])
