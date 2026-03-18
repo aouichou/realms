@@ -44,7 +44,7 @@ jobs:
   npm-audit:
     name: npm Dependency Audit
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    if: github.event_name != 'pull_request' || !startsWith(github.actor, 'dependabot')
     defaults:
       run:
         working-directory: frontend
