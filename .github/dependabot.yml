@@ -17,6 +17,10 @@ updates:
       - backend
     commit-message:
       prefix: 'chore(deps):'
+    ignore:
+      - dependency-name: 'mistralai'
+        update-types:
+          - 'version-update:semver-major'
     groups:
       opentelemetry:
         patterns:

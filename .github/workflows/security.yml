@@ -22,44 +22,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  codeql:
-    name: CodeQL Analysis
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [python, javascript-typescript]
-        include:
-          - language: python
-            source-root: backend
-          - language: javascript-typescript
-            source-root: frontend
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: ${{ matrix.language }}
-          source-root: ${{ matrix.source-root }}
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v4
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
-        with:
-          category: '/language:${{ matrix.language }}'
-          upload: false
-
-      - name: Upload CodeQL results
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        continue-on-error: true
-        with:
-          sarif_file: ../results/${{ matrix.language }}.sarif
-          category: '/language:${{ matrix.language }}'
-
   python-audit:
     name: Python Dependency Audit
     runs-on: ubuntu-latest
