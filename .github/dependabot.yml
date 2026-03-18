@@ -50,6 +50,10 @@ updates:
       - frontend
     commit-message:
       prefix: 'chore(deps):'
+    ignore:
+      - dependency-name: 'eslint'
+        update-types:
+          - 'version-update:semver-major'
     groups:
       radix:
         patterns:
