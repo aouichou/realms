@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
 
@@ -44,13 +44,14 @@ jobs:
   npm-audit:
     name: npm Dependency Audit
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
 
