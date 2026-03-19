@@ -12,8 +12,8 @@ from typing import Optional
 import boto3
 import httpx
 from botocore.config import Config as BotoConfig
-from mistralai import Mistral
-from mistralai.models import ImageURLChunk, ToolFileChunk
+from mistralai.client import Mistral
+from mistralai.client.models import ImageURLChunk, ToolFileChunk
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

@@ -7,8 +7,8 @@ import asyncio
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence
 
-from mistralai import Mistral
-from mistralai.models import ChatCompletionResponse
+from mistralai.client import Mistral
+from mistralai.client.models import ChatCompletionResponse
 
 from app.config import settings
 from app.observability.logger import get_logger

@@ -1103,7 +1103,7 @@ en jeu (le personnage est confus ou joue un rôle).
         if provider_name == "mistral":
             import asyncio
 
-            from mistralai import Mistral
+            from mistralai.client import Mistral
 
             from app.config import settings
 
