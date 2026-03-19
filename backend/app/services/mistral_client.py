@@ -14,6 +14,7 @@ from app.config import settings
 from app.observability.logger import get_logger
 from app.observability.metrics import metrics
 from app.observability.tracing import trace_llm_call
+from app.utils.content_extractor import extract_text_content
 
 logger = get_logger(__name__)
 
@@ -215,12 +216,9 @@ class MistralClient:
                     delta = chunk.data.choices[0].delta
                     if hasattr(delta, "content") and delta.content:
                         token_count += 1
-                        # Ensure content is a string
+                        # v2: content can be str or List[ContentChunk]
                         content = delta.content
-                        if isinstance(content, str):
-                            yield content
-                        else:
-                            yield str(content)
+                        yield extract_text_content(content)
 
             logger.debug("Streaming completed: ~%d tokens", token_count)
 
