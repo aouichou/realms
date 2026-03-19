@@ -13,7 +13,12 @@ import boto3
 import httpx
 from botocore.config import Config as BotoConfig
 from mistralai.client import Mistral
-from mistralai.client.models import ImageURLChunk, ToolFileChunk
+from mistralai.client.models import (
+    ImageGenerationTool,
+    ImageURLChunk,
+    MessageOutputEntry,
+    ToolFileChunk,
+)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -132,7 +137,7 @@ class ImageService:
                     "Style: Fantasy art with detailed environments, medieval fantasy aesthetic. "
                     "Avoid modern elements. Emphasize adventure, mystery, and epicness."
                 ),
-                tools=[{"type": "image_generation"}],
+                tools=[ImageGenerationTool()],
             )
             self.agent_id = agent.id
             logger.info(f"Image generation agent created: {agent.id}")
@@ -309,13 +314,16 @@ Style Requirements:
                 logger.warning("Response has no outputs")
                 return None
 
+            # In v2, outputs is a Union of entry types; only MessageOutputEntry has content chunks
             last_output = response.outputs[-1]
             logger.info(
                 f"Last output type: {type(last_output)}, has content: {hasattr(last_output, 'content')}"
             )
 
-            if not hasattr(last_output, "content"):
-                logger.warning("Last output has no content")
+            if not isinstance(last_output, MessageOutputEntry):
+                logger.warning(
+                    f"Last output is {type(last_output).__name__}, not MessageOutputEntry"
+                )
                 return None
 
             for i, chunk in enumerate(last_output.content):
@@ -331,7 +339,8 @@ Style Requirements:
                     if not self.client:
                         logger.error("Cannot download file: Mistral client not initialized")
                         continue
-                    file_bytes = self.client.files.download(file_id=chunk.file_id).read()
+                    # v2 files.download returns httpx.Response
+                    file_bytes = self.client.files.download(file_id=chunk.file_id).content
 
                 # Handle ImageURLChunk (direct image URL — newer SDK versions)
                 elif isinstance(chunk, ImageURLChunk):
