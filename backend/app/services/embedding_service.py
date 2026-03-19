@@ -3,7 +3,7 @@
 import os
 from typing import List
 
-from mistralai import Mistral
+from mistralai.client import Mistral
 
 from app.observability.logger import get_logger
 

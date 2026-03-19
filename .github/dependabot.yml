@@ -19,8 +19,8 @@ updates:
       prefix: 'chore(deps):'
     ignore:
       - dependency-name: 'mistralai'
-        update-types:
-          - 'version-update:semver-major'
+        versions:
+          - '>= 3.0.0'
     groups:
       opentelemetry:
         patterns:
