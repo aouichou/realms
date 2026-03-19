@@ -198,7 +198,8 @@ class TestGenerateNarration:
 
     @patch(_METRICS_PATCH)
     @patch(_TRACE_PATCH)
-    async def test_list_content_raises(self, mock_trace_cls, mock_metrics):
+    async def test_list_content_extracted(self, mock_trace_cls, mock_metrics):
+        """v2: list content is handled by extract_text_content, not rejected."""
         mock_span = MagicMock()
         mock_trace_cls.return_value.__enter__ = MagicMock(return_value=mock_span)
         mock_trace_cls.return_value.__exit__ = MagicMock(return_value=False)
@@ -209,8 +210,9 @@ class TestGenerateNarration:
 
         with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
             mock_thread.return_value = mock_resp
-            with pytest.raises(ProviderUnavailableError):
-                await provider.generate_narration("prompt")
+            result = await provider.generate_narration("prompt")
+
+        assert result == "chunk1chunk2"
 
     @patch(_METRICS_PATCH)
     @patch(_TRACE_PATCH)

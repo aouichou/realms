@@ -7,13 +7,14 @@ import asyncio
 import time
 from typing import AsyncGenerator, Dict, List
 
-from mistralai import Mistral
-from mistralai.models import ChatCompletionResponse
+from mistralai.client import Mistral
+from mistralai.client.models import ChatCompletionResponse
 
 from app.observability.logger import get_logger
 from app.observability.metrics import metrics
 from app.observability.tracing import trace_llm_call
 from app.services.ai_provider import AIProvider, ProviderStatus
+from app.utils.content_extractor import extract_text_content
 
 logger = get_logger(__name__)
 
@@ -141,10 +142,12 @@ class MistralProvider(AIProvider):
             self.set_status(ProviderStatus.AVAILABLE)
 
             content = response.choices[0].message.content
-            if not content or isinstance(content, list):
-                raise ValueError("Empty or invalid response from Mistral API")
+            # v2: content can be str or List[ContentChunk]
+            text = extract_text_content(content)
+            if not text:
+                raise ValueError("Empty response from Mistral API")
 
-            return content
+            return text
 
         except Exception as e:
             duration = time.time() - start_time
@@ -243,10 +246,12 @@ class MistralProvider(AIProvider):
             self.set_status(ProviderStatus.AVAILABLE)
 
             content = response.choices[0].message.content
-            if not content or isinstance(content, list):
-                raise ValueError("Empty or invalid response from Mistral API")
+            # v2: content can be str or List[ContentChunk]
+            text = extract_text_content(content)
+            if not text:
+                raise ValueError("Empty response from Mistral API")
 
-            return content
+            return text
 
         except Exception as e:
             duration = time.time() - start_time
@@ -359,8 +364,8 @@ class MistralProvider(AIProvider):
                     # Extract text content from delta
                     if chunk.choices and chunk.choices[0].delta.content:
                         content = chunk.choices[0].delta.content
-                        if isinstance(content, str):
-                            yield content
+                        # v2: content can be str or List[ContentChunk]
+                        yield extract_text_content(content)
 
                     # Last chunk may contain usage stats
                     if chunk.usage:

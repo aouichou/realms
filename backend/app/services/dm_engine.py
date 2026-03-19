@@ -23,6 +23,7 @@ from app.services.message_summarizer import MessageSummarizer
 from app.services.provider_selector import provider_selector
 from app.services.token_counter import TokenCounter
 from app.services.tool_executor import execute_tool
+from app.utils.content_extractor import extract_text_content
 
 logger = get_logger(__name__)
 
@@ -1103,7 +1104,7 @@ en jeu (le personnage est confus ou joue un rôle).
         if provider_name == "mistral":
             import asyncio
 
-            from mistralai import Mistral
+            from mistralai.client import Mistral
 
             from app.config import settings
 
@@ -1222,16 +1223,8 @@ en jeu (le personnage est confus ou joue un rôle).
                 if not assistant_message.tool_calls or len(assistant_message.tool_calls) == 0:
                     # No tools called - this is the final narrative
                     raw_content = assistant_message.content or ""
-                    # Convert to string if it's a list of content chunks
-                    narration = (
-                        raw_content
-                        if isinstance(raw_content, str)
-                        else " ".join(
-                            chunk.get("text", "")
-                            for chunk in raw_content
-                            if isinstance(chunk, dict)
-                        )
-                    )
+                    # v2: content can be str or List[ContentChunk]
+                    narration = extract_text_content(raw_content)
 
                     # ADAPTIVE: Parse and execute any text-based tool calls in the narration
                     # instead of just removing them
@@ -1347,7 +1340,7 @@ en jeu (le personnage est confus ou joue un rôle).
                 current_messages.append(  # type: ignore[arg-type]
                     {
                         "role": "assistant",
-                        "content": assistant_message.content or "",
+                        "content": extract_text_content(assistant_message.content),
                         "tool_calls": [
                             {
                                 "id": tc.id,
