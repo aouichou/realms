@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
 	reactCompiler: true,
 	output: "standalone",
 
-	// Empty turbopack config to enable Turbopack (default in Next.js 16)
+	// Empty turbopack config to enable Turbopack (default in Next.js  16)
 	turbopack: {},
 
 	images: {
