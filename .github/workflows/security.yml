@@ -39,7 +39,7 @@ jobs:
         run: pip install pip-audit
 
       - name: Audit Python dependencies
-        run: pip-audit -r requirements.txt
+        run: pip-audit -r requirements.txt --ignore-vuln CVE-2026-4539  # ReDoS in pygments archetype lexer — disputed, no fix release yet
 
   npm-audit:
     name: npm Dependency Audit
