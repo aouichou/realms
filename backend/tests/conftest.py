@@ -10,7 +10,7 @@ import os
 # ── Set test environment variables BEFORE any app imports ──────────────────
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
-os.environ.setdefault("JWT_SECRET", "test-secret-key-for-ci-only")
+os.environ.setdefault("JWT_SECRET", "test-secret-key-for-ci-only-32bytes-min")
 os.environ.setdefault("MISTRAL_API_KEY", "test-key")
 os.environ.setdefault("PII_ENCRYPTION_KEY", "dGVzdC1lbmNyeXB0aW9uLWtleS1mb3ItY2ktb25seQ==")
 os.environ.setdefault("REDIS_URL", "")

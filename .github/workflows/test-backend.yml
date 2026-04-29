@@ -87,7 +87,7 @@ jobs:
           ENVIRONMENT: test
           DATABASE_URL: "sqlite+aiosqlite:///:memory:"
           REDIS_URL: ""
-          JWT_SECRET: "test-secret-key-for-ci-only"
+          JWT_SECRET: "test-secret-key-for-ci-only-32bytes-min"
           MISTRAL_API_KEY: "test-key"
           PII_ENCRYPTION_KEY: "dGVzdC1lbmNyeXB0aW9uLWtleS1mb3ItY2ktb25seQ=="
 
@@ -169,7 +169,7 @@ jobs:
           ENVIRONMENT: test
           DATABASE_URL: "postgresql+asyncpg://realms_user:realms_password@localhost:5432/mistral_realms_test?sslmode=disable"
           REDIS_URL: "redis://localhost:6379"
-          JWT_SECRET: "test-secret-key-for-ci-only"
+          JWT_SECRET: "test-secret-key-for-ci-only-32bytes-min"
           MISTRAL_API_KEY: "test-key"
           PII_ENCRYPTION_KEY: "dGVzdC1lbmNyeXB0aW9uLWtleS1mb3ItY2ktb25seQ=="
 

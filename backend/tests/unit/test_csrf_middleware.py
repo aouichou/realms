@@ -142,7 +142,8 @@ class TestCSRFMiddlewareDispatch:
         app = _make_app()
         token = generate_csrf_token()
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-            resp = await c.post("/test", cookies={CSRF_TOKEN_NAME: token})
+            c.cookies.set(CSRF_TOKEN_NAME, token)
+            resp = await c.post("/test")
             assert resp.status_code == 403
 
     async def test_post_blocked_with_only_header(self):
@@ -155,11 +156,8 @@ class TestCSRFMiddlewareDispatch:
     async def test_post_blocked_with_mismatched_tokens(self):
         app = _make_app()
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-            resp = await c.post(
-                "/test",
-                cookies={CSRF_TOKEN_NAME: "token-a"},
-                headers={CSRF_HEADER_NAME: "token-b"},
-            )
+            c.cookies.set(CSRF_TOKEN_NAME, "token-a")
+            resp = await c.post("/test", headers={CSRF_HEADER_NAME: "token-b"})
             assert resp.status_code == 403
             assert resp.json()["error"] == "CSRFValidationError"
 
@@ -167,11 +165,8 @@ class TestCSRFMiddlewareDispatch:
         app = _make_app()
         token = generate_csrf_token()
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-            resp = await c.post(
-                "/test",
-                cookies={CSRF_TOKEN_NAME: token},
-                headers={CSRF_HEADER_NAME: token},
-            )
+            c.cookies.set(CSRF_TOKEN_NAME, token)
+            resp = await c.post("/test", headers={CSRF_HEADER_NAME: token})
             assert resp.status_code == 200
 
     async def test_put_requires_csrf(self):

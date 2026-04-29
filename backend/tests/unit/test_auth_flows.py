@@ -143,10 +143,8 @@ async def test_refresh_valid_token(client, db_session):
     await db_session.flush()
 
     refresh = create_refresh_token(data={"sub": str(user.id)})
-    resp = await client.post(
-        f"{BASE}/refresh",
-        cookies={"refresh_token": refresh},
-    )
+    client.cookies.set("refresh_token", refresh)
+    resp = await client.post(f"{BASE}/refresh")
     assert resp.status_code == 200
 
 
@@ -165,10 +163,8 @@ async def test_refresh_revoked_token(client, db_session, monkeypatch):
         AsyncMock(return_value=True),
     )
 
-    resp = await client.post(
-        f"{BASE}/refresh",
-        cookies={"refresh_token": refresh},
-    )
+    client.cookies.set("refresh_token", refresh)
+    resp = await client.post(f"{BASE}/refresh")
     assert resp.status_code == 401
 
 
@@ -191,10 +187,8 @@ async def test_logout_with_refresh_cookie(client, db_session):
     await db_session.flush()
 
     refresh = create_refresh_token(data={"sub": str(user.id)})
-    resp = await client.post(
-        f"{BASE}/logout",
-        cookies={"refresh_token": refresh},
-    )
+    client.cookies.set("refresh_token", refresh)
+    resp = await client.post(f"{BASE}/logout")
     assert resp.status_code == 200
 
 
@@ -218,10 +212,8 @@ async def test_token_status_valid(client, db_session):
     await db_session.flush()
 
     token = create_access_token(data={"sub": str(user.id)})
-    resp = await client.get(
-        f"{BASE}/token-status",
-        cookies={"access_token": token},
-    )
+    client.cookies.set("access_token", token)
+    resp = await client.get(f"{BASE}/token-status")
     assert resp.status_code == 200
     data = resp.json()
     assert data["authenticated"] is True
@@ -230,10 +222,8 @@ async def test_token_status_valid(client, db_session):
 
 async def test_token_status_invalid_token(client, db_session):
     """Invalid access token returns unauthenticated."""
-    resp = await client.get(
-        f"{BASE}/token-status",
-        cookies={"access_token": "invalid-jwt-token"},
-    )
+    client.cookies.set("access_token", "invalid-jwt-token")
+    resp = await client.get(f"{BASE}/token-status")
     assert resp.status_code == 401
 
 

@@ -24,7 +24,7 @@ from tests.factories import make_character, make_quest, make_quest_objective, ma
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def _sync_engine():
     engine = create_engine(
         "sqlite:///:memory:",
@@ -33,6 +33,7 @@ def _sync_engine():
     )
     Base.metadata.create_all(engine)
     yield engine
+    Base.metadata.drop_all(engine)
     engine.dispose()
 
 

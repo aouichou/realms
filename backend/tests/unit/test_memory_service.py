@@ -36,7 +36,8 @@ def _patch_embedding_none():
 
 class TestStoreMemory:
     async def test_stores_memory(self):
-        db = AsyncMock()
+        db = MagicMock()
+        db.commit = AsyncMock()
         db.refresh = AsyncMock()
         with _patch_embedding():
             await MemoryService.store_memory(
@@ -59,7 +60,8 @@ class TestStoreMemory:
             assert added.tags == ["boss"]
 
     async def test_defaults_empty_lists(self):
-        db = AsyncMock()
+        db = MagicMock()
+        db.commit = AsyncMock()
         db.refresh = AsyncMock()
         with _patch_embedding():
             await MemoryService.store_memory(
@@ -75,7 +77,8 @@ class TestStoreMemory:
             assert added.items_involved == []
 
     async def test_none_embedding_stored(self):
-        db = AsyncMock()
+        db = MagicMock()
+        db.commit = AsyncMock()
         db.refresh = AsyncMock()
         with _patch_embedding_none():
             await MemoryService.store_memory(
