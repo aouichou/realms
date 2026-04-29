@@ -20,7 +20,7 @@ redis>=7.1.0
 hiredis>=3.3.0
 
 # Cloud Storage (Cloudflare R2 via S3 API)
-boto3>=1.39.9
+boto3>=1.42.96
 
 # Database
 asyncpg>=0.31.0
