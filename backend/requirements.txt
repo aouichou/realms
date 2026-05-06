@@ -46,7 +46,7 @@ opentelemetry-exporter-otlp>=1.41.1
 prometheus-client>=0.25.0
 
 # Internationalization
-babel>=2.16.0
+babel>=2.18.0
 
 # Semantic Similarity for Image Detection
 -r requirements-transformers.txt
