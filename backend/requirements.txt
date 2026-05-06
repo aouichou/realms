@@ -43,7 +43,7 @@ opentelemetry-instrumentation-httpx>=0.62b1
 opentelemetry-instrumentation-redis>=0.62b1
 opentelemetry-instrumentation-sqlalchemy>=0.62b1
 opentelemetry-exporter-otlp>=1.41.1
-prometheus-client>=0.21.1
+prometheus-client>=0.25.0
 
 # Internationalization
 babel>=2.16.0
