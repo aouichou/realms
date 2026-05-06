@@ -1,22 +1,22 @@
 # Web Framework
-fastapi>=0.135.0
-uvicorn[standard]>=0.40.0
-pydantic>=2.12.5
-pydantic-settings>=2.12.0
+fastapi>=0.136.1
+uvicorn[standard]>=0.46.0
+pydantic>=2.13.4
+pydantic-settings>=2.14.0
 
 # Mistral AI SDK
-mistralai>=2.4.2,<3.0.0
-tiktoken>=0.8.0  # Token counting for context management
+mistralai>=2.4.4,<3.0.0
+tiktoken>=0.12.0  # Token counting for context management
 
 # OpenAI SDK (used for OpenAI-compatible providers: Cerebras, Together, Sambanova)
-openai>=2.32.0
+openai>=2.33.0
 
 # HTTP & Async
 httpx>=0.28.1
 aiofiles>=25.1.0
 
 # Redis
-redis>=7.1.0
+redis>=7.4.0
 hiredis>=3.3.1
 
 # Cloud Storage (Cloudflare R2 via S3 API)
@@ -45,10 +45,10 @@ opentelemetry-instrumentation-httpx>=0.60b1,<0.61.0
 opentelemetry-instrumentation-redis>=0.60b1,<0.61.0
 opentelemetry-instrumentation-sqlalchemy>=0.60b1,<0.61.0
 opentelemetry-exporter-otlp>=1.39.1,<1.40.0
-prometheus-client>=0.21.1
+prometheus-client>=0.25.0
 
 # Internationalization
-babel>=2.16.0
+babel>=2.18.0
 
 # Semantic Similarity for Image Detection
 -r requirements-transformers.txt
@@ -66,4 +66,4 @@ ruff>=0.15.12
 mypy>=1.20.2
 
 # Utilities
-python-dotenv>=1.2.1
+python-dotenv>=1.2.2
