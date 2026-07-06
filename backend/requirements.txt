@@ -5,11 +5,11 @@ pydantic>=2.13.4
 pydantic-settings>=2.14.1
 
 # Mistral AI SDK
-mistralai>=2.4.5,<3.0.0
+mistralai>=2.4.9,<3.0.0
 tiktoken>=0.13.0  # Token counting for context management
 
 # OpenAI SDK (used for OpenAI-compatible providers: Cerebras, Together, Sambanova)
-openai>=2.36.0
+openai>=2.41.0
 
 # HTTP & Async
 httpx>=0.28.1
