@@ -63,26 +63,32 @@ jobs:
           REPORT=$(npm audit --json 2>/dev/null)
           EXIT_CODE=$?
           if [ $EXIT_CODE -eq 0 ]; then
-            exit 0
+            echo "::warning::No vulns found — the suppressed advisory (GHSA-mh99-v99m-4gvg) may no longer apply. Remove the suppression filter from security.yml."
+            exit 1
           fi
           # Filter out the known brace-expansion chain (GHSA-mh99-v99m-4gvg)
           echo "$REPORT" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 vulns = data.get('vulnerabilities', {})
-# Collect all advisory URLs we want to suppress
 SUPPRESSED_GHSA = {'GHSA-mh99-v99m-4gvg'}
-suppressed_urls = set()
-# Find packages directly affected by suppressed advisories
+suppressed_found = False
 suppressed_pkgs = set()
 for name, v in vulns.items():
     for via in v.get('via', []):
         if isinstance(via, dict):
             for g in SUPPRESSED_GHSA:
                 if g in via.get('url', ''):
-                    suppressed_urls.add(via.get('url', ''))
+                    suppressed_found = True
                     suppressed_pkgs.add(name)
-# Propagate: any package whose via chain only references suppressed packages is also suppressed
+if not suppressed_found and any(v['severity'] in ('high', 'critical') for v in vulns.values()):
+    # Suppressed advisory not found but other vulns exist — this shouldn't happen normally
+    pass
+elif not suppressed_found:
+    # No high vulns at all, or the suppressed one is gone
+    print('SUPPRESSED_ADVISORY_NOT_FOUND: the brace-expansion advisory (GHSA-mh99-v99m-4gvg) is no longer present. Remove the suppression filter from security.yml.')
+    sys.exit(1)
+# Propagate suppression through dependency chain
 changed = True
 while changed:
     changed = False
@@ -93,7 +99,6 @@ while changed:
         if v['severity'] in ('high', 'critical') and via_names.issubset(suppressed_pkgs | {''}):
             suppressed_pkgs.add(name)
             changed = True
-# Check for remaining high/critical vulns not in the suppressed chain
 remaining = {k: v for k, v in vulns.items()
              if k not in suppressed_pkgs and v['severity'] in ('high', 'critical')}
 if remaining:
