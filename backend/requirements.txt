@@ -16,7 +16,7 @@ httpx>=0.28.1
 aiofiles>=25.1.0
 
 # Redis
-redis>=8.0.0
+redis>=8.0.1
 hiredis>=3.4.0
 
 # Cloud Storage (Cloudflare R2 via S3 API)
