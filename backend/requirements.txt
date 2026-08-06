@@ -62,8 +62,8 @@ aiosqlite>=0.22.1
 
 # Code Quality
 black>=26.5.1
-ruff>=0.15.21
-mypy>=2.2.0
+ruff>=0.16.1
+mypy>=2.3.0
 
 # Utilities
 python-dotenv>=1.2.2
