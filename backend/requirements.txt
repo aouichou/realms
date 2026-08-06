@@ -1,15 +1,15 @@
 # Web Framework
 fastapi>=0.140.1
-uvicorn[standard]>=0.51.0
+uvicorn[standard]>=0.52.0
 pydantic>=2.13.4
 pydantic-settings>=2.14.2
 
 # Mistral AI SDK
-mistralai>=2.6.0,<3.0.0
+mistralai>=2.8.0,<3.0.0
 tiktoken>=0.13.0  # Token counting for context management
 
 # OpenAI SDK (used for OpenAI-compatible providers: Cerebras, Together, Sambanova)
-openai>=2.45.0
+openai>=2.51.0
 
 # HTTP & Async
 httpx>=0.28.1
@@ -26,7 +26,7 @@ boto3>=1.43.46
 asyncpg>=0.31.0
 sqlalchemy>=2.0.51
 alembic>=1.18.4
-pgvector>=0.4.2  # pgvector Python client for vector embeddings
+pgvector>=0.5.0  # pgvector Python client for vector embeddings
 
 # Security
 PyJWT>=2.13.0
@@ -45,7 +45,7 @@ opentelemetry-instrumentation-httpx>=0.60b1,<0.61.0
 opentelemetry-instrumentation-redis>=0.60b1,<0.61.0
 opentelemetry-instrumentation-sqlalchemy>=0.60b1,<0.61.0
 opentelemetry-exporter-otlp>=1.39.1,<1.40.0
-prometheus-client>=0.25.0
+prometheus-client>=0.26.0
 
 # Internationalization
 babel>=2.18.0
@@ -62,8 +62,8 @@ aiosqlite>=0.22.1
 
 # Code Quality
 black>=26.5.1
-ruff>=0.15.21
-mypy>=2.2.0
+ruff>=0.16.1
+mypy>=2.3.0
 
 # Utilities
 python-dotenv>=1.2.2
