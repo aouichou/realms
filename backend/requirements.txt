@@ -25,7 +25,7 @@ boto3>=1.43.63
 # Database
 asyncpg>=0.31.0
 sqlalchemy>=2.0.51
-alembic>=1.18.5
+alembic>=1.19.1
 pgvector>=0.5.0  # pgvector Python client for vector embeddings
 
 # Security
