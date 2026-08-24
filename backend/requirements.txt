@@ -2,7 +2,7 @@
 fastapi>=0.141.1
 uvicorn[standard]>=0.52.0
 pydantic>=2.13.4
-pydantic-settings>=2.14.2
+pydantic-settings>=2.15.0
 
 # Mistral AI SDK
 mistralai>=2.8.0,<3.0.0
